@@ -38,7 +38,15 @@ export class GasService {
       try {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          // Merge initial system configs with any newly registered users in localStorage
+          const existingEmails = new Set(parsed.map((p: UserAccessConfig) => p.email.toLowerCase().trim()));
+          const merged = [...parsed];
+          for (const init of INITIAL_USER_CONFIGS) {
+            if (!existingEmails.has(init.email.toLowerCase().trim())) {
+              merged.push(init);
+            }
+          }
+          return merged;
         }
       } catch (e) {}
     }
@@ -52,11 +60,12 @@ export class GasService {
 
   public static upsertUserConfig(config: UserAccessConfig): UserAccessConfig[] {
     const configs = this.getUserConfigs();
-    const index = configs.findIndex(c => c.email.toLowerCase() === config.email.toLowerCase());
+    const cleanEmail = config.email.toLowerCase().trim();
+    const index = configs.findIndex(c => c.email.toLowerCase().trim() === cleanEmail);
     if (index >= 0) {
-      configs[index] = { ...configs[index], ...config };
+      configs[index] = { ...configs[index], ...config, email: cleanEmail };
     } else {
-      configs.push(config);
+      configs.push({ ...config, email: cleanEmail });
     }
     this.saveUserConfigs(configs);
     return configs;

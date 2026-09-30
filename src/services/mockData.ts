@@ -258,6 +258,18 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     allowedKomoditas: ['Tembakau Blend'],
     canExportPdf: false,
     canManageUsers: false
+  },
+  {
+    email: 'assmanajer.pp1@gmail.com',
+    nama: 'Asisten Developer',
+    role: 'Staff Operasional',
+    password: '123',
+    defaultPin: '123456',
+    isDefaultPassword: true,
+    hasDevAccess: false,
+    allowedKomoditas: ['Tembakau Blend'],
+    canExportPdf: false,
+    canManageUsers: false
   }
 ];
 
