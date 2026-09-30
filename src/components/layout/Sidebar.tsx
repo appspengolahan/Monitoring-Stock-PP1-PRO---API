@@ -15,7 +15,9 @@ import {
   Maximize2,
   Minimize2,
   Smartphone,
-  Users
+  Users,
+  Bot,
+  Sparkles
 } from 'lucide-react';
 import { UserSession } from '../../types';
 
@@ -26,6 +28,7 @@ interface SidebarProps {
   onOpenMigration: () => void;
   onOpenSwitchApp: () => void;
   onOpenUserManagement?: () => void;
+  onOpenAIBot?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isFullscreen?: boolean;
@@ -41,6 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenMigration,
   onOpenSwitchApp,
   onOpenUserManagement,
+  onOpenAIBot,
   isCollapsed = false,
   onToggleCollapse,
   isFullscreen = false,
@@ -48,6 +52,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenInstall,
   isInstalled = false
 }) => {
+  const hasBsppAccess = React.useMemo(() => {
+    if (!session.allowedKomoditas || session.allowedKomoditas.includes('*') || session.allowedKomoditas.includes('all')) {
+      return true;
+    }
+    return session.allowedKomoditas.some(ak => {
+      const lower = ak.toLowerCase();
+      return lower.includes('cengkeh') || lower.includes('tembakau') || lower.includes('krosok') || lower.includes('rajang');
+    });
+  }, [session.allowedKomoditas]);
+
   const menuItems = [
     {
       id: 'ringkasan',
@@ -67,12 +81,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       desc: 'Live & Snapshot Tanggal',
       icon: Layers
     },
-    {
+    ...(hasBsppAccess ? [{
       id: 'bspp',
       label: 'BSPP & Selisih',
       desc: 'Cengkeh & Rajang II',
       icon: Scale
-    },
+    }] : []),
     {
       id: 'analisa',
       label: 'Analisa & Ringkasan',
@@ -206,6 +220,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           );
         })}
+
+        {/* AI Stock Assistant Tab */}
+        {onOpenAIBot && (
+          <div className="relative group pt-1">
+            <button
+              onClick={onOpenAIBot}
+              className={`w-full flex items-center rounded-xl transition-all ${
+                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+              } text-indigo-300 hover:text-white bg-indigo-950/40 hover:bg-indigo-900/60 border border-indigo-500/30 cursor-pointer shadow-2xs`}
+              title={isCollapsed ? "AI Assistant (Gemini 3.8 Flash)" : undefined}
+            >
+              <div className="w-5 h-5 rounded-md bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-100 animate-pulse" />
+              </div>
+              {!isCollapsed && (
+                <div className="min-w-0">
+                  <div className="text-xs font-bold truncate leading-tight text-white flex items-center gap-1.5">
+                    <span>AI Stock Bot</span>
+                    <span className="text-[9px] bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 px-1.5 py-0.2 rounded-md font-mono">
+                      Gemini
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] text-indigo-300/80 truncate">
+                    Tanya Jawab &amp; Audit Stok
+                  </div>
+                </div>
+              )}
+            </button>
+            {isCollapsed && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                <div className="font-semibold text-indigo-200 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>AI Stock Bot (Gemini)</span>
+                </div>
+                <div className="text-[10px] text-slate-400">Tanya Jawab &amp; Audit Cerdas</div>
+              </div>
+            )}
+          </div>
+        )}
 
         {(session.hasDevAccess || session.canManageUsers) && !isCollapsed && (
           <div className="pt-4 px-3 pb-2 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">

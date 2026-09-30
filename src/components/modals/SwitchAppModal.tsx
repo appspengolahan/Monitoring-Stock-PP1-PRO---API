@@ -4,43 +4,71 @@ import { X, ExternalLink, Layers, CheckCircle2 } from 'lucide-react';
 interface SwitchAppModalProps {
   isOpen: boolean;
   onClose: () => void;
+  allowedKomoditas?: string[];
 }
 
-export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({ isOpen, onClose }) => {
+export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({ isOpen, onClose, allowedKomoditas = ['*'] }) => {
   if (!isOpen) return null;
 
-  const boards = [
+  const allBoards = [
     {
+      id: 'main',
       nama: 'Monitoring Stock Persediaan PP1',
       desc: 'Board saat ini (Tembakau, Krosok, Cengkeh, Blend & BSPP)',
       url: '#',
+      commodityKey: 'all',
       isCurrent: true
     },
     {
+      id: 'blend',
       nama: 'Rekap Susut Blend',
       desc: 'Monitoring susut pengolahan & rekap mixing blend tembakau',
       url: 'https://appspengolahan.github.io/Rekap-Proses-Blend/',
+      commodityKey: 'blend',
       isCurrent: false
     },
     {
+      id: 'cengkeh',
       nama: 'Rekap Susut Cengkeh',
       desc: 'Monitoring susut perajangan & drying cengkeh',
       url: 'https://appspengolahan.github.io/Rekap-proses-cengkeh/',
+      commodityKey: 'cengkeh',
       isCurrent: false
     },
     {
+      id: 'tembakau',
       nama: 'Rekap Susut Tembakau',
       desc: 'Rekapitulasi proses dan susut bahan tembakau',
       url: 'https://appspengolahan.github.io/Rekap-Proses-Tembakau/',
+      commodityKey: 'tembakau',
       isCurrent: false
     },
     {
+      id: 'krosok',
       nama: 'Rekap Susut Krosok',
       desc: 'Monitoring susut perajangan krosok (Rajang I & II)',
       url: 'https://appspengolahan.github.io/Rekap-Proses-Krosok/',
+      commodityKey: 'krosok',
       isCurrent: false
     }
   ];
+
+  // Filter boards based on user's allowed commodities
+  const boards = allBoards.filter(b => {
+    if (b.isCurrent) return true; // always show main board
+    if (!allowedKomoditas || allowedKomoditas.includes('*') || allowedKomoditas.includes('all')) {
+      return true;
+    }
+    return allowedKomoditas.some(ak => {
+      const lower = ak.toLowerCase();
+      if (lower === '*' || lower === 'all') return true;
+      if (b.commodityKey === 'blend' && lower.includes('blend')) return true;
+      if (b.commodityKey === 'cengkeh' && lower.includes('cengkeh')) return true;
+      if (b.commodityKey === 'tembakau' && lower.includes('tembakau') && !lower.includes('blend')) return true;
+      if (b.commodityKey === 'krosok' && lower.includes('krosok')) return true;
+      return false;
+    });
+  });
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">

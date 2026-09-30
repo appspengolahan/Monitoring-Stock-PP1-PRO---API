@@ -11,23 +11,37 @@ interface MobileBottomNavProps {
   currentTab: string;
   onSelectTab: (tab: string) => void;
   onOpenMenu: () => void;
+  allowedKomoditas?: string[];
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   currentTab,
   onSelectTab,
-  onOpenMenu
+  onOpenMenu,
+  allowedKomoditas = ['*']
 }) => {
+  const hasBsppAccess = React.useMemo(() => {
+    if (!allowedKomoditas || allowedKomoditas.includes('*') || allowedKomoditas.includes('all')) {
+      return true;
+    }
+    return allowedKomoditas.some(ak => {
+      const lower = ak.toLowerCase();
+      return lower.includes('cengkeh') || lower.includes('tembakau') || lower.includes('krosok') || lower.includes('rajang');
+    });
+  }, [allowedKomoditas]);
+
   const tabs = [
     { id: 'ringkasan', label: 'Ringkasan', icon: LayoutDashboard },
     { id: 'mutasi', label: 'Mutasi', icon: ArrowLeftRight },
     { id: 'kode', label: 'Saldo Kode', icon: Layers },
-    { id: 'bspp', label: 'BSPP', icon: Scale },
+    ...(hasBsppAccess ? [{ id: 'bspp', label: 'BSPP', icon: Scale }] : []),
   ];
+
+  const gridColsClass = tabs.length === 3 ? 'grid-cols-4' : 'grid-cols-5';
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 pb-[env(safe-area-inset-bottom)] shadow-lg">
-      <div className="grid grid-cols-5 items-center h-15">
+      <div className={`grid ${gridColsClass} items-center h-15`}>
         {tabs.map(tab => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;

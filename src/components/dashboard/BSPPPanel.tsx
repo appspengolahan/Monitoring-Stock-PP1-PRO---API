@@ -259,6 +259,27 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
     return [0, step * 1, step * 2, step * 3, step * 4, maxBarKg];
   }, [maxBarKg]);
 
+  // If user has no access to any BSPP commodities (e.g. only Tembakau Blend)
+  if (!currentData || bsppList.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-8 sm:p-12 text-center max-w-2xl mx-auto my-6 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80 flex items-center justify-center mx-auto mb-4">
+          <Scale className="w-7 h-7" />
+        </div>
+        <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">
+          Akses BSPP Dibatasi
+        </h3>
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md mx-auto mb-4">
+          Akun Anda memiliki izin khusus bahan baku tertentu. Modul Bukti Selisih Persediaan (BSPP) saat ini hanya tersedia dan dikhususkan untuk komoditas <span className="font-semibold text-slate-800">Cengkeh</span> dan <span className="font-semibold text-slate-800">Tembakau &amp; Krosok (Rajang II)</span>.
+        </p>
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+          <Info className="w-3.5 h-3.5 text-slate-500" />
+          <span>Hubungi Site Engineer / Lead Dev untuk penambahan wewenang audit BSPP</span>
+        </div>
+      </div>
+    );
+  }
+
   // Export PDF Handler
   const handleExportPdf = () => {
     const head = ['Tanggal', 'Jenis', 'Label Netto (Kg)', 'Timbang Ulang (Kg)', 'Selisih (Kg)', 'Selisih (%)', 'Status'];

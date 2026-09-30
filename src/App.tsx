@@ -21,6 +21,8 @@ import { LoginModal } from './components/modals/LoginModal';
 import { InstallModal } from './components/modals/InstallModal';
 import { UserManagementModal } from './components/modals/UserManagementModal';
 import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
+import { AISmartInsights } from './components/dashboard/AISmartInsights';
+import { AIBotModal } from './components/modals/AIBotModal';
 import { useFullscreen } from './hooks/useFullscreen';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { 
@@ -40,7 +42,9 @@ import {
   Smartphone,
   Users,
   Lock,
-  KeyRound
+  KeyRound,
+  Bot,
+  Sparkles
 } from 'lucide-react';
 
 export default function App() {
@@ -80,6 +84,7 @@ export default function App() {
   const [isInstallOpen, setIsInstallOpen] = useState<boolean>(false);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState<boolean>(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
+  const [isAIBotOpen, setIsAIBotOpen] = useState<boolean>(false);
 
   // Auto-detect ?page=admin query param to open login modal
   useEffect(() => {
@@ -98,6 +103,35 @@ export default function App() {
     }
     return komoditasList.filter(k => session.allowedKomoditas.includes(k.komoditas));
   }, [komoditasList, session.allowedKomoditas]);
+
+  // Filtered BSPP list according to user RBAC allowedKomoditas
+  const visibleBsppList = React.useMemo(() => {
+    if (!session.allowedKomoditas || session.allowedKomoditas.includes('*') || session.allowedKomoditas.includes('all')) {
+      return bsppList;
+    }
+    return bsppList.filter(b => {
+      const bNama = b.nama.toLowerCase();
+      return session.allowedKomoditas.some(allowed => {
+        const allowedLower = allowed.toLowerCase();
+        if (allowedLower === '*' || allowedLower === 'all') return true;
+        // Check if allowed commodity matches BSPP commodity (e.g. "Cengkeh" -> "Cengkeh", "Tembakau" / "Krosok" -> "Tembakau & Krosok")
+        if (bNama.includes(allowedLower)) return true;
+        if (allowedLower.includes('cengkeh') && bNama.includes('cengkeh')) return true;
+        if ((allowedLower.includes('tembakau') || allowedLower.includes('krosok')) && (bNama.includes('tembakau') || bNama.includes('krosok'))) return true;
+        return false;
+      });
+    });
+  }, [bsppList, session.allowedKomoditas]);
+
+  const hasBsppAccess = React.useMemo(() => {
+    if (!session.allowedKomoditas || session.allowedKomoditas.includes('*') || session.allowedKomoditas.includes('all')) {
+      return true;
+    }
+    return session.allowedKomoditas.some(ak => {
+      const lower = ak.toLowerCase();
+      return lower.includes('cengkeh') || lower.includes('tembakau') || lower.includes('krosok') || lower.includes('rajang');
+    });
+  }, [session.allowedKomoditas]);
 
   const allAvailableCommodityNames = React.useMemo(() => {
     return komoditasList.map(k => k.komoditas);
@@ -176,6 +210,7 @@ export default function App() {
         onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+        onOpenAIBot={() => setIsAIBotOpen(true)}
         onLogout={() => setIsLoginOpen(true)}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebarCollapse={handleToggleSidebar}
@@ -200,6 +235,7 @@ export default function App() {
             onOpenMigration={() => setIsMigrationOpen(true)}
             onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
             onOpenUserManagement={() => setIsUserManagementOpen(true)}
+            onOpenAIBot={() => setIsAIBotOpen(true)}
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={handleToggleSidebar}
             isFullscreen={isFullscreen}
@@ -253,14 +289,16 @@ export default function App() {
             >
               Saldo Kode
             </button>
-            <button
-              onClick={() => setCurrentTab('bspp')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'bspp' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              BSPP
-            </button>
+            {hasBsppAccess && (
+              <button
+                onClick={() => setCurrentTab('bspp')}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  currentTab === 'bspp' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
+                }`}
+              >
+                BSPP
+              </button>
+            )}
             <button
               onClick={() => setCurrentTab('analisa')}
               className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
@@ -282,10 +320,24 @@ export default function App() {
 
           {/* Render Active View (Filtered by User Access) */}
           {currentTab === 'ringkasan' && (
-            <OverviewCards
-              data={visibleKomoditasList}
-              onSelectCommodity={handleSelectCommodityFromCard}
-            />
+            <div className="space-y-6">
+              {/* AI Smart Insights Bar */}
+              <AISmartInsights
+                komoditasList={visibleKomoditasList}
+                bsppList={visibleBsppList}
+                userRole={session.role}
+                allowedKomoditas={session.allowedKomoditas}
+                onNavigateTab={tab => {
+                  setCurrentTab(tab);
+                  if (tab !== 'mutasi') setTargetCommodityFilter('all');
+                }}
+              />
+
+              <OverviewCards
+                data={visibleKomoditasList}
+                onSelectCommodity={handleSelectCommodityFromCard}
+              />
+            </div>
           )}
 
           {currentTab === 'mutasi' && (
@@ -304,7 +356,7 @@ export default function App() {
           )}
 
           {currentTab === 'bspp' && (
-            <BSPPPanel bsppList={bsppList} />
+            <BSPPPanel bsppList={visibleBsppList} />
           )}
 
           {currentTab === 'analisa' && (
@@ -340,6 +392,7 @@ export default function App() {
           if (tab !== 'mutasi') setTargetCommodityFilter('all');
         }}
         onOpenMenu={() => setIsMobileMenuOpen(true)}
+        allowedKomoditas={session.allowedKomoditas}
       />
 
       {/* Mobile Drawer Menu */}
@@ -370,6 +423,22 @@ export default function App() {
                   <span>{isFullscreen ? 'Keluar Layar Penuh' : 'Mode Layar Penuh (Fullscreen)'}</span>
                 </div>
                 <span className="text-[11px] font-normal text-slate-500">HP &amp; Tablet</span>
+              </button>
+
+              {/* AI Stock Assistant Option in Mobile Menu */}
+              <button
+                onClick={() => { setIsAIBotOpen(true); setIsMobileMenuOpen(false); }}
+                className="w-full text-left p-3 rounded-xl bg-indigo-50 text-indigo-900 flex items-center justify-between font-bold"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-md bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <span>AI Stock Assistant (Gemini)</span>
+                </div>
+                <span className="text-[10px] bg-indigo-200/80 text-indigo-950 px-2 py-0.5 rounded-full font-mono">
+                  Smart Bot
+                </span>
               </button>
 
               {/* Install PWA Option */}
@@ -474,6 +543,7 @@ export default function App() {
       <SwitchAppModal
         isOpen={isSwitchAppOpen}
         onClose={() => setIsSwitchAppOpen(false)}
+        allowedKomoditas={session.allowedKomoditas}
       />
 
       <UserManagementModal
@@ -503,6 +573,36 @@ export default function App() {
         }}
         onClose={() => setIsLoginOpen(false)}
       />
+
+      {/* AI Logistik & Stock Bot Modal */}
+      <AIBotModal
+        isOpen={isAIBotOpen}
+        onClose={() => setIsAIBotOpen(false)}
+        komoditasList={visibleKomoditasList}
+        bsppList={visibleBsppList}
+        session={session}
+      />
+
+      {/* Floating AI Stock Assistant Trigger Button (Bottom Right) */}
+      <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-40">
+        <button
+          onClick={() => setIsAIBotOpen(true)}
+          className="group flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-full shadow-xl hover:shadow-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+          title="Tanya Jawab AI Bot & Ringkasan Stok"
+        >
+          <div className="relative">
+            <Bot className="w-5 h-5 text-white" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-indigo-700 animate-pulse"></span>
+          </div>
+          <div className="hidden sm:flex flex-col text-left">
+            <span className="text-xs font-bold leading-tight flex items-center gap-1">
+              <span>AI Stock Bot</span>
+              <Sparkles className="w-3 h-3 text-amber-300" />
+            </span>
+            <span className="text-[10px] text-blue-100 font-medium">Tanya Stok &amp; BSPP</span>
+          </div>
+        </button>
+      </div>
     </div>
   );
 }

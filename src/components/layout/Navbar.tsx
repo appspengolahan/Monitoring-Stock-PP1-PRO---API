@@ -13,7 +13,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Users,
-  KeyRound
+  KeyRound,
+  Sparkles
 } from 'lucide-react';
 import { UserSession, UserRole } from '../../types';
 
@@ -28,6 +29,7 @@ interface NavbarProps {
   onOpenSwitchApp: () => void;
   onOpenUserManagement?: () => void;
   onOpenChangePassword?: () => void;
+  onOpenAIBot?: () => void;
   onLogout: () => void;
   isSidebarCollapsed?: boolean;
   onToggleSidebarCollapse?: () => void;
@@ -49,6 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSwitchApp,
   onOpenUserManagement,
   onOpenChangePassword,
+  onOpenAIBot,
   onLogout,
   isSidebarCollapsed = false,
   onToggleSidebarCollapse,
@@ -160,6 +163,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Smartphone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span className="hidden sm:inline">Install HP</span>
+            </button>
+          )}
+
+          {/* AI Stock Assistant Button */}
+          {onOpenAIBot && (
+            <button
+              onClick={onOpenAIBot}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all shadow-2xs cursor-pointer group"
+              title="Tanya Jawab AI Bot & Ringkasan Cerdas"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600 group-hover:scale-110 transition-transform animate-pulse" />
+              <span className="hidden sm:inline">AI Bot</span>
             </button>
           )}
 
