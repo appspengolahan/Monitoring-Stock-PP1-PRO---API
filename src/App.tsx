@@ -19,6 +19,7 @@ import { GasMigrationModal } from './components/modals/GasMigrationModal';
 import { SwitchAppModal } from './components/modals/SwitchAppModal';
 import { LoginModal } from './components/modals/LoginModal';
 import { InstallModal } from './components/modals/InstallModal';
+import { UserManagementModal } from './components/modals/UserManagementModal';
 import { useFullscreen } from './hooks/useFullscreen';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { 
@@ -35,7 +36,8 @@ import {
   ExternalLink,
   Maximize2,
   Minimize2,
-  Smartphone
+  Smartphone,
+  Users
 } from 'lucide-react';
 
 export default function App() {
@@ -73,6 +75,19 @@ export default function App() {
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isInstallOpen, setIsInstallOpen] = useState<boolean>(false);
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState<boolean>(false);
+
+  // Filtered Komoditas list according to user RBAC allowedKomoditas
+  const visibleKomoditasList = React.useMemo(() => {
+    if (!session.allowedKomoditas || session.allowedKomoditas.includes('*') || session.allowedKomoditas.includes('all')) {
+      return komoditasList;
+    }
+    return komoditasList.filter(k => session.allowedKomoditas.includes(k.komoditas));
+  }, [komoditasList, session.allowedKomoditas]);
+
+  const allAvailableCommodityNames = React.useMemo(() => {
+    return komoditasList.map(k => k.komoditas);
+  }, [komoditasList]);
 
   // 5. Background sync on initial load
   useEffect(() => {
@@ -145,6 +160,7 @@ export default function App() {
         onOpenHelp={() => setIsHelpOpen(true)}
         onOpenMigration={() => setIsMigrationOpen(true)}
         onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
+        onOpenUserManagement={() => setIsUserManagementOpen(true)}
         onLogout={() => setIsLoginOpen(true)}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebarCollapse={handleToggleSidebar}
@@ -168,6 +184,7 @@ export default function App() {
             session={session}
             onOpenMigration={() => setIsMigrationOpen(true)}
             onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
+            onOpenUserManagement={() => setIsUserManagementOpen(true)}
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={handleToggleSidebar}
             isFullscreen={isFullscreen}
@@ -237,26 +254,28 @@ export default function App() {
             >
               Analisa
             </button>
-            <button
-              onClick={() => setIsMigrationOpen(true)}
-              className="px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-all bg-blue-600 text-white font-bold flex items-center gap-1 shrink-0 shadow-2xs"
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span>Headless GAS</span>
-            </button>
+            {session.hasDevAccess && (
+              <button
+                onClick={() => setIsMigrationOpen(true)}
+                className="px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-all bg-blue-600 text-white font-bold flex items-center gap-1 shrink-0 shadow-2xs"
+              >
+                <Database className="w-3.5 h-3.5" />
+                <span>Headless GAS</span>
+              </button>
+            )}
           </div>
 
-          {/* Render Active View */}
+          {/* Render Active View (Filtered by User Access) */}
           {currentTab === 'ringkasan' && (
             <OverviewCards
-              data={komoditasList}
+              data={visibleKomoditasList}
               onSelectCommodity={handleSelectCommodityFromCard}
             />
           )}
 
           {currentTab === 'mutasi' && (
             <MutasiPanel
-              data={komoditasList}
+              data={visibleKomoditasList}
               onToggleCek={handleToggleCek}
               initialCommodity={targetCommodityFilter}
             />
@@ -264,7 +283,7 @@ export default function App() {
 
           {currentTab === 'kode' && (
             <SaldoKodePanel
-              data={komoditasList}
+              data={visibleKomoditasList}
               initialCommodity={targetCommodityFilter}
             />
           )}
@@ -274,7 +293,7 @@ export default function App() {
           )}
 
           {currentTab === 'analisa' && (
-            <AnalyticsCharts data={komoditasList} />
+            <AnalyticsCharts data={visibleKomoditasList} />
           )}
 
           {/* Institutional Footer */}
@@ -350,13 +369,29 @@ export default function App() {
                 <span>Analisa Komposisi &amp; Mutasi</span>
                 <span className="text-slate-400">&rarr;</span>
               </button>
-              <button
-                onClick={() => { setIsMigrationOpen(true); setIsMobileMenuOpen(false); }}
-                className="w-full text-left p-3 rounded-xl hover:bg-slate-50 flex items-center justify-between text-blue-700"
-              >
-                <span>Pusat Arsitektur Headless GAS</span>
-                <Database className="w-4 h-4" />
-              </button>
+              {session.hasDevAccess && (
+                <button
+                  onClick={() => { setIsMigrationOpen(true); setIsMobileMenuOpen(false); }}
+                  className="w-full text-left p-3 rounded-xl hover:bg-slate-50 flex items-center justify-between text-blue-700"
+                >
+                  <span>Pusat Arsitektur Headless GAS</span>
+                  <Database className="w-4 h-4" />
+                </button>
+              )}
+
+              {session.canManageUsers && (
+                <button
+                  onClick={() => { setIsUserManagementOpen(true); setIsMobileMenuOpen(false); }}
+                  className="w-full text-left p-3 rounded-xl hover:bg-blue-50 flex items-center justify-between text-blue-700 font-bold"
+                >
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span>Pengaturan Hak Akses Staf</span>
+                  </div>
+                  <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">RBAC</span>
+                </button>
+              )}
+
               <button
                 onClick={() => { setIsSwitchAppOpen(true); setIsMobileMenuOpen(false); }}
                 className="w-full text-left p-3 rounded-xl hover:bg-slate-50 flex items-center justify-between"
@@ -403,6 +438,13 @@ export default function App() {
       <SwitchAppModal
         isOpen={isSwitchAppOpen}
         onClose={() => setIsSwitchAppOpen(false)}
+      />
+
+      <UserManagementModal
+        isOpen={isUserManagementOpen}
+        onClose={() => setIsUserManagementOpen(false)}
+        availableKomoditas={allAvailableCommodityNames}
+        currentUserEmail={session.email}
       />
 
       <LoginModal

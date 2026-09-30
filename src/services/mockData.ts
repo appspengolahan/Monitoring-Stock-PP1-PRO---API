@@ -186,10 +186,67 @@ export const INITIAL_BSPP_DATA: BSPPData[] = [
   }
 ];
 
-export const MOCK_USERS = [
-  { nama: 'Lalu Mahendra', role: 'Project Manager' as const, password: '123' },
-  { nama: 'Dwi Prasetyo', role: 'Site Engineer' as const, password: '123' },
-  { nama: 'Budi Santoso', role: 'Vendor Lapangan' as const, password: '123' },
-  { nama: 'Direksi PT Batu Karang', role: 'Client / Owner' as const, password: '123' },
-  { nama: 'Staff Gudang PP1', role: 'Admin Produksi' as const, password: '123' }
+export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
+  {
+    email: 'obeetools@gmail.com',
+    nama: 'Web Developer (ObeeTools)',
+    role: 'Web Developer',
+    password: '123',
+    hasDevAccess: true,
+    allowedKomoditas: ['*'],
+    canExportPdf: true,
+    canManageUsers: true
+  },
+  {
+    email: 'loehendra@gmail.com',
+    nama: 'Lalu Mahendra (Site Enginer/PM)',
+    role: 'Site Engineer / PM',
+    password: '123',
+    hasDevAccess: true,
+    allowedKomoditas: ['*'],
+    canExportPdf: true,
+    canManageUsers: true
+  },
+  {
+    email: 'appspengolahan@gmail.com',
+    nama: 'Admin Pengolahan PP1',
+    role: 'Admin Produksi',
+    password: '123',
+    hasDevAccess: false,
+    allowedKomoditas: ['*'],
+    canExportPdf: true,
+    canManageUsers: false
+  },
+  {
+    email: 'divisi1.bkr@gmail.com',
+    nama: 'Admin Divisi I (BKR)',
+    role: 'Admin Produksi',
+    password: '123',
+    hasDevAccess: false,
+    allowedKomoditas: ['*'],
+    canExportPdf: true,
+    canManageUsers: false
+  },
+  {
+    email: 'mandor.cengkeh@batukarang.com',
+    nama: 'Mandor Gudang Cengkeh',
+    role: 'Staff Operasional',
+    password: '123',
+    hasDevAccess: false,
+    allowedKomoditas: ['Cengkeh'],
+    canExportPdf: false,
+    canManageUsers: false
+  },
+  {
+    email: 'mandor.blend@batukarang.com',
+    nama: 'Mandor Tembakau Blend',
+    role: 'Staff Operasional',
+    password: '123',
+    hasDevAccess: false,
+    allowedKomoditas: ['Tembakau Blend'],
+    canExportPdf: false,
+    canManageUsers: false
+  }
 ];
+
+export const MOCK_USERS = INITIAL_USER_CONFIGS;

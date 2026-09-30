@@ -1,5 +1,5 @@
-import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole } from '../types';
-import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, MOCK_USERS } from './mockData';
+import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig } from '../types';
+import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 
 export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbywAsu-wvbBxWwl2P9YojeZgR13U3BR9cS8THDCGE9EMINUXIIcR1HjoAK59W1Aqm1lYQ/exec';
 
@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   KOMODITAS: 'stockpp1_komoditas_data_v2',
   BSPP: 'stockpp1_bspp_data_v2',
   SESSION: 'stockpp1_user_session',
+  USER_CONFIGS: 'stockpp1_user_access_configs_v1',
   GAS_URL: 'stockpp1_gas_api_url',
   LAST_SYNC: 'stockpp1_last_sync_timestamp',
   CUSTOM_MUTASI: 'stockpp1_custom_mutasi_v1',
@@ -30,6 +31,43 @@ export class GasService {
     localStorage.setItem(STORAGE_KEYS.GAS_URL, DEFAULT_GAS_URL);
   }
 
+  // --- User Access Configs Management (Opsi B: Local/Client Cache) ---
+  public static getUserConfigs(): UserAccessConfig[] {
+    const stored = localStorage.getItem(STORAGE_KEYS.USER_CONFIGS);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    this.saveUserConfigs(INITIAL_USER_CONFIGS);
+    return INITIAL_USER_CONFIGS;
+  }
+
+  public static saveUserConfigs(configs: UserAccessConfig[]): void {
+    localStorage.setItem(STORAGE_KEYS.USER_CONFIGS, JSON.stringify(configs));
+  }
+
+  public static upsertUserConfig(config: UserAccessConfig): UserAccessConfig[] {
+    const configs = this.getUserConfigs();
+    const index = configs.findIndex(c => c.email.toLowerCase() === config.email.toLowerCase());
+    if (index >= 0) {
+      configs[index] = { ...configs[index], ...config };
+    } else {
+      configs.push(config);
+    }
+    this.saveUserConfigs(configs);
+    return configs;
+  }
+
+  public static deleteUserConfig(email: string): UserAccessConfig[] {
+    const configs = this.getUserConfigs().filter(c => c.email.toLowerCase() !== email.toLowerCase());
+    this.saveUserConfigs(configs);
+    return configs;
+  }
+
   // --- Session & RBAC ---
   public static getCurrentSession(): UserSession {
     const stored = localStorage.getItem(STORAGE_KEYS.SESSION);
@@ -40,10 +78,15 @@ export class GasService {
         // fallback
       }
     }
-    // Default active guest session with Project Manager role for immediate evaluation
+    // Default active session: Lalu Mahendra (Site Engineer / PM)
     const defaultSession: UserSession = {
       nama: 'Lalu Mahendra',
-      role: 'Project Manager',
+      email: 'loehendra@gmail.com',
+      role: 'Site Engineer / PM',
+      hasDevAccess: true,
+      allowedKomoditas: ['*'],
+      canExportPdf: true,
+      canManageUsers: true,
       token: 'session_token_pm_001',
       isLoggedIn: true,
       loginTime: new Date().toISOString()
@@ -60,7 +103,9 @@ export class GasService {
     const current = this.getCurrentSession();
     const updated: UserSession = {
       ...current,
-      role: newRole
+      role: newRole,
+      hasDevAccess: newRole === 'Web Developer' || newRole === 'Site Engineer / PM',
+      canManageUsers: newRole === 'Web Developer' || newRole === 'Site Engineer / PM'
     };
     this.saveSession(updated);
     return updated;
@@ -70,31 +115,25 @@ export class GasService {
     localStorage.removeItem(STORAGE_KEYS.SESSION);
   }
 
-  public static async login(nama: string, password: string): Promise<{ ok: boolean; session?: UserSession; message?: string }> {
-    // 1. First try live GAS login endpoint if available
-    try {
-      const liveResult = await this.fetchWithTimeout(`${this.gasUrl}?action=login&nama=${encodeURIComponent(nama)}&password=${encodeURIComponent(password)}`, 4000);
-      if (liveResult && liveResult.ok) {
-        const session: UserSession = {
-          nama: liveResult.nama || nama,
-          role: 'Project Manager', // default to PM or mapped role
-          token: liveResult.token || 'token_' + Date.now(),
-          isLoggedIn: true,
-          loginTime: new Date().toISOString()
-        };
-        this.saveSession(session);
-        return { ok: true, session };
-      }
-    } catch (e) {
-      // live endpoint might not have REST login deployed yet, fall through to client validation
-    }
+  public static async login(identifier: string, password?: string): Promise<{ ok: boolean; session?: UserSession; message?: string }> {
+    const cleanId = identifier.toLowerCase().trim();
+    const configs = this.getUserConfigs();
 
-    // 2. Local credential matching (matching DAFTAR_AKSES & MOCK_USERS)
-    const user = MOCK_USERS.find(u => u.nama.toLowerCase() === nama.toLowerCase().trim() && u.password === password);
-    if (user) {
+    // Match by email OR by name
+    const found = configs.find(c => 
+      c.email.toLowerCase() === cleanId || 
+      c.nama.toLowerCase() === cleanId
+    );
+
+    if (found) {
       const session: UserSession = {
-        nama: user.nama,
-        role: user.role,
+        nama: found.nama,
+        email: found.email,
+        role: found.role,
+        hasDevAccess: found.hasDevAccess,
+        allowedKomoditas: found.allowedKomoditas,
+        canExportPdf: found.canExportPdf,
+        canManageUsers: found.canManageUsers ?? (found.role === 'Web Developer' || found.role === 'Site Engineer / PM'),
         token: 'token_' + Math.random().toString(36).substring(2),
         isLoggedIn: true,
         loginTime: new Date().toISOString()
@@ -103,20 +142,21 @@ export class GasService {
       return { ok: true, session };
     }
 
-    // Generic match for testing any custom name
-    if (password === '123' || password === 'admin' || password === 'batukarang') {
-      const session: UserSession = {
-        nama: nama.trim(),
-        role: 'Project Manager',
-        token: 'token_' + Math.random().toString(36).substring(2),
-        isLoggedIn: true,
-        loginTime: new Date().toISOString()
-      };
-      this.saveSession(session);
-      return { ok: true, session };
-    }
-
-    return { ok: false, message: 'Nama atau password salah. (Password demo: 123)' };
+    // Generic match fallback if not found in table
+    const session: UserSession = {
+      nama: identifier.trim(),
+      email: cleanId.includes('@') ? cleanId : `${cleanId.replace(/\s+/g, '.')}@batukarang.com`,
+      role: 'Staff Operasional',
+      hasDevAccess: false,
+      allowedKomoditas: ['*'],
+      canExportPdf: false,
+      canManageUsers: false,
+      token: 'token_' + Math.random().toString(36).substring(2),
+      isLoggedIn: true,
+      loginTime: new Date().toISOString()
+    };
+    this.saveSession(session);
+    return { ok: true, session };
   }
 
   // --- Local Cache Data Access (0.01 detik response) ---

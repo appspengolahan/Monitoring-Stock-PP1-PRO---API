@@ -11,7 +11,8 @@ import {
   Database,
   Smartphone,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Users
 } from 'lucide-react';
 import { UserSession, UserRole } from '../../types';
 
@@ -24,6 +25,7 @@ interface NavbarProps {
   onOpenHelp: () => void;
   onOpenMigration: () => void;
   onOpenSwitchApp: () => void;
+  onOpenUserManagement?: () => void;
   onLogout: () => void;
   isSidebarCollapsed?: boolean;
   onToggleSidebarCollapse?: () => void;
@@ -43,6 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenHelp,
   onOpenMigration,
   onOpenSwitchApp,
+  onOpenUserManagement,
   onLogout,
   isSidebarCollapsed = false,
   onToggleSidebarCollapse,
@@ -52,13 +55,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   isInstalled = false
 }) => {
   const roles: UserRole[] = [
-    'Project Manager',
-    'Kepala Bagian',
-    'Mandor Penerimaan',
-    'Mandor Sortasi',
-    'Mandor Rajang',
-    'Admin Gudang',
-    'Admin Produksi'
+    'Web Developer',
+    'Site Engineer / PM',
+    'Admin Produksi',
+    'Staff Operasional'
   ];
 
   return (
@@ -103,15 +103,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 2: Navigation Links */}
         <div className="hidden sm:flex items-center gap-1.5 sm:gap-2">
-          {/* Headless GAS API */}
-          <button
-            onClick={onOpenMigration}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all shadow-2xs"
-            title="Integrasi Headless GAS REST API"
-          >
-            <Database className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span className="whitespace-nowrap">Headless GAS API</span>
-          </button>
+          {/* Headless GAS API (Only visible to Web Developer & Site Engineer / PM) */}
+          {session.hasDevAccess && (
+            <button
+              onClick={onOpenMigration}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all shadow-2xs"
+              title="Integrasi Headless GAS REST API"
+            >
+              <Database className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span className="whitespace-nowrap">Headless GAS API</span>
+            </button>
+          )}
 
           {/* Switch Board button */}
           <button
@@ -203,6 +205,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="px-3 py-1 text-[11px] text-slate-500 truncate">
                   User: <span className="font-medium text-slate-700">{session.nama}</span>
                 </div>
+                {session.canManageUsers && onOpenUserManagement && (
+                  <button
+                    onClick={onOpenUserManagement}
+                    className="w-full mt-1 text-left px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 hover:bg-blue-50 transition-colors flex items-center gap-1.5"
+                  >
+                    <Users className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Pengaturan Hak Akses</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

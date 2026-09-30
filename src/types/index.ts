@@ -1,13 +1,29 @@
 export type UserRole = 
-  | 'Project Manager' 
-  | 'Site Engineer' 
-  | 'Vendor Lapangan' 
-  | 'Client / Owner' 
-  | 'Admin Produksi';
+  | 'Web Developer'
+  | 'Site Engineer / PM'
+  | 'Project Manager'
+  | 'Admin Produksi'
+  | 'Staff Operasional';
+
+export interface UserAccessConfig {
+  email: string;
+  nama: string;
+  role: UserRole;
+  password?: string;
+  hasDevAccess: boolean; // Dapat melihat menu Headless GAS API & teknis backend
+  allowedKomoditas: string[]; // List nama komoditas yang diizinkan, atau ['*'] / ['all'] untuk full akses
+  canExportPdf: boolean;
+  canManageUsers?: boolean;
+}
 
 export interface UserSession {
   nama: string;
+  email: string;
   role: UserRole;
+  hasDevAccess: boolean;
+  allowedKomoditas: string[]; // ['*'] means full access to all
+  canExportPdf: boolean;
+  canManageUsers?: boolean;
   token?: string;
   isLoggedIn: boolean;
   loginTime?: string;

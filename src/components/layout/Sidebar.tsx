@@ -14,7 +14,8 @@ import {
   PanelLeftOpen,
   Maximize2,
   Minimize2,
-  Smartphone
+  Smartphone,
+  Users
 } from 'lucide-react';
 import { UserSession } from '../../types';
 
@@ -24,6 +25,7 @@ interface SidebarProps {
   session: UserSession;
   onOpenMigration: () => void;
   onOpenSwitchApp: () => void;
+  onOpenUserManagement?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isFullscreen?: boolean;
@@ -38,6 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   session,
   onOpenMigration,
   onOpenSwitchApp,
+  onOpenUserManagement,
   isCollapsed = false,
   onToggleCollapse,
   isFullscreen = false,
@@ -204,41 +207,74 @@ export const Sidebar: React.FC<SidebarProps> = ({
           );
         })}
 
-        {!isCollapsed && (
+        {(session.hasDevAccess || session.canManageUsers) && !isCollapsed && (
           <div className="pt-4 px-3 pb-2 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
-            Infrastruktur &amp; Integrasi
+            Infrastruktur &amp; Akses
           </div>
         )}
-        {isCollapsed && <div className="my-2 border-t border-slate-800" />}
+        {(session.hasDevAccess || session.canManageUsers) && isCollapsed && <div className="my-2 border-t border-slate-800" />}
 
-        {/* GAS Headless Config Tab */}
-        <div className="relative group">
-          <button
-            onClick={onOpenMigration}
-            className={`w-full flex items-center rounded-xl transition-all ${
-              isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
-            } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
-            title={isCollapsed ? "Headless GAS Center (REST JSON API)" : undefined}
-          >
-            <Database className="w-5 h-5 text-indigo-400 shrink-0" />
-            {!isCollapsed && (
-              <div className="min-w-0">
-                <div className="text-xs font-semibold truncate leading-tight text-indigo-200">
-                  Headless GAS Center
+        {/* GAS Headless Config Tab (Only for Dev / Site Engineer) */}
+        {session.hasDevAccess && (
+          <div className="relative group">
+            <button
+              onClick={onOpenMigration}
+              className={`w-full flex items-center rounded-xl transition-all ${
+                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+              } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
+              title={isCollapsed ? "Headless GAS Center (REST JSON API)" : undefined}
+            >
+              <Database className="w-5 h-5 text-indigo-400 shrink-0" />
+              {!isCollapsed && (
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold truncate leading-tight text-indigo-200">
+                    Headless GAS Center
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 truncate">
+                    REST JSON API &amp; Test URL
+                  </div>
                 </div>
-                <div className="text-[10.5px] text-slate-500 truncate">
-                  REST JSON API &amp; Test URL
-                </div>
+              )}
+            </button>
+            {isCollapsed && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                <div className="font-semibold text-indigo-200">Headless GAS Center</div>
+                <div className="text-[10px] text-slate-400">REST JSON API &amp; Test URL</div>
               </div>
             )}
-          </button>
-          {isCollapsed && (
-            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
-              <div className="font-semibold text-indigo-200">Headless GAS Center</div>
-              <div className="text-[10px] text-slate-400">REST JSON API &amp; Test URL</div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* User Management RBAC Tab */}
+        {session.canManageUsers && onOpenUserManagement && (
+          <div className="relative group">
+            <button
+              onClick={onOpenUserManagement}
+              className={`w-full flex items-center rounded-xl transition-all ${
+                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+              } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
+              title={isCollapsed ? "Pengaturan Hak Akses Staf (RBAC)" : undefined}
+            >
+              <Users className="w-5 h-5 text-blue-400 shrink-0" />
+              {!isCollapsed && (
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold truncate leading-tight text-blue-200">
+                    Hak Akses Staf
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 truncate">
+                    Atur Pembatasan Bahan Baku
+                  </div>
+                </div>
+              )}
+            </button>
+            {isCollapsed && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                <div className="font-semibold text-blue-200">Hak Akses Staf</div>
+                <div className="text-[10px] text-slate-400">Atur Pembatasan Bahan Baku</div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Switch Board Susut */}
         <div className="relative group">
