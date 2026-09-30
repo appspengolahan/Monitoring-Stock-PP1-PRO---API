@@ -1,0 +1,6 @@
+{
+  "name": "Monitoring Stock Persediaan",
+  "description": "Aplikasi monitoring stock persediaan bahan baku (Tembakau, Krosok, Cengkeh, Blend) dan BSPP untuk Divisi Produksi I - PT Batu Karang dengan arsitektur Hybrid Headless GAS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

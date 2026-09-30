@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="primary" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  
+  <!-- Subtle Grid Pattern / Tech accent -->
+  <circle cx="256" cy="256" r="180" stroke="rgba(255,255,255,0.06)" stroke-width="2" fill="none"/>
+  <circle cx="256" cy="256" r="220" stroke="rgba(59,130,246,0.15)" stroke-width="1.5" stroke-dasharray="8 8" fill="none"/>
+
+  <!-- Main Factory / Stock Warehouse Icon -->
+  <g filter="url(#shadow)" transform="translate(106, 116)">
+    <!-- Factory Silhouette Base -->
+    <path d="M20 230 L20 120 L90 160 L90 120 L160 160 L160 80 L230 120 L230 230 Z" 
+          fill="url(#primary)" />
+    
+    <!-- Factory Chimney / Building Detail -->
+    <rect x="230" y="50" width="50" height="180" rx="6" fill="#1d4ed8"/>
+    
+    <!-- Door / Stock Gate -->
+    <rect x="110" y="160" width="50" height="70" rx="4" fill="#0f172a"/>
+    <line x1="135" y1="160" x2="135" y2="230" stroke="#38bdf8" stroke-width="3"/>
+    
+    <!-- Factory Windows -->
+    <rect x="45" y="180" width="24" height="24" rx="4" fill="#bae6fd"/>
+    <rect x="180" y="180" width="24" height="24" rx="4" fill="#bae6fd"/>
+
+    <!-- Pulse / Growth Badge -->
+    <g transform="translate(195, 140)">
+      <circle cx="45" cy="45" r="32" fill="#0f172a" stroke="#10b981" stroke-width="4"/>
+      <!-- Checkmark / Stock Arrow Up -->
+      <path d="M35 45 L42 52 L56 36" fill="none" stroke="#34d399" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <!-- PP1 Badge Text -->
+  <rect x="156" y="380" width="200" height="52" rx="26" fill="rgba(30, 41, 59, 0.85)" stroke="rgba(56, 189, 248, 0.4)" stroke-width="2"/>
+  <text x="256" y="415" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="24" 
+        font-weight="800" 
+        letter-spacing="2"
+        fill="#ffffff" 
+        text-anchor="middle">
+    STOCK PP1
+  </text>
+</svg>
