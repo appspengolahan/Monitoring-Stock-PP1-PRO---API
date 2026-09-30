@@ -80,14 +80,63 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
     return target ? [{ komoditas: target.komoditas, kodes: target.kodeList.map(i => i.nama) }] : [];
   }, [data, filterKomoditas]);
 
-  // Unique Jenis Mutasi across data
+  // Unique Jenis Mutasi filtered by selected Bahan (Komoditas) and Kode
   const jenisOptions = useMemo(() => {
+    // If specific Bahan is selected
+    if (filterKomoditas !== 'all') {
+      const targetKomoditas = data.find(k => k.komoditas === filterKomoditas);
+      const set = new Set<string>();
+      if (targetKomoditas) {
+        targetKomoditas.mutasiTerbaru.forEach(m => {
+          if (m.jenisMutasi) {
+            // Also filter by selected Kode if any
+            if (filterKode === 'all' || m.kode === filterKode) {
+              set.add(m.jenisMutasi);
+            }
+          }
+        });
+      }
+      return Array.from(set).sort();
+    }
+
+    // If 'Semua Bahan' is selected, collect all unique mutasi across dataset
     const set = new Set<string>();
     allMutasi.forEach(e => {
-      if (e.mutasi.jenisMutasi) set.add(e.mutasi.jenisMutasi);
+      if (e.mutasi.jenisMutasi) {
+        if (filterKode === 'all' || e.mutasi.kode === filterKode) {
+          set.add(e.mutasi.jenisMutasi);
+        }
+      }
     });
     return Array.from(set).sort();
-  }, [allMutasi]);
+  }, [allMutasi, data, filterKomoditas, filterKode]);
+
+  // Grouped Jenis Mutasi for categorized display when 'Semua Bahan' is selected
+  const groupedJenisOptions = useMemo(() => {
+    if (filterKomoditas !== 'all') return null;
+
+    return data.map(k => {
+      const set = new Set<string>();
+      k.mutasiTerbaru.forEach(m => {
+        if (m.jenisMutasi) {
+          if (filterKode === 'all' || m.kode === filterKode) {
+            set.add(m.jenisMutasi);
+          }
+        }
+      });
+      return {
+        komoditas: k.komoditas,
+        jenisList: Array.from(set).sort()
+      };
+    }).filter(g => g.jenisList.length > 0);
+  }, [data, filterKomoditas, filterKode]);
+
+  // Automatically reset filterJenis if it's no longer present in available jenisOptions
+  React.useEffect(() => {
+    if (filterJenis !== 'all' && !jenisOptions.includes(filterJenis)) {
+      setFilterJenis('all');
+    }
+  }, [filterKomoditas, filterKode, jenisOptions, filterJenis]);
 
   // Filtered mutasi items
   const filteredEntries = useMemo(() => {
@@ -270,20 +319,43 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
 
           {/* Jenis Mutasi Filter */}
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-              Jenis Mutasi
-            </label>
+            <div className="flex items-center justify-between mb-0.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Jenis Mutasi
+              </label>
+              {filterKomoditas !== 'all' && (
+                <span className="text-[9.5px] font-medium text-blue-600">
+                  {filterKomoditas}
+                </span>
+              )}
+            </div>
             <select
               value={filterJenis}
               onChange={e => setFilterJenis(e.target.value)}
               className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
-              <option value="all">Semua Jenis Mutasi</option>
-              {jenisOptions.map(j => (
-                <option key={j} value={j}>
-                  {j}
-                </option>
-              ))}
+              <option value="all">
+                {filterKomoditas === 'all' 
+                  ? 'Semua Jenis Mutasi' 
+                  : `Semua Mutasi (${filterKomoditas})`}
+              </option>
+              {filterKomoditas === 'all' && groupedJenisOptions ? (
+                groupedJenisOptions.map(group => (
+                  <optgroup key={group.komoditas} label={group.komoditas}>
+                    {group.jenisList.map(j => (
+                      <option key={`${group.komoditas}-${j}`} value={j}>
+                        {j}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))
+              ) : (
+                jenisOptions.map(j => (
+                  <option key={j} value={j}>
+                    {j}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
