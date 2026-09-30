@@ -192,6 +192,8 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     nama: 'Web Developer (ObeeTools)',
     role: 'Web Developer',
     password: '123',
+    defaultPin: '123456',
+    isDefaultPassword: false, // Lead dev password setup
     hasDevAccess: true,
     allowedKomoditas: ['*'],
     canExportPdf: true,
@@ -202,6 +204,8 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     nama: 'Lalu Mahendra (Site Enginer/PM)',
     role: 'Site Engineer / PM',
     password: '123',
+    defaultPin: '123456',
+    isDefaultPassword: false,
     hasDevAccess: true,
     allowedKomoditas: ['*'],
     canExportPdf: true,
@@ -212,6 +216,8 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     nama: 'Admin Pengolahan PP1',
     role: 'Admin Produksi',
     password: '123',
+    defaultPin: '123456',
+    isDefaultPassword: true, // Masih Bawaan
     hasDevAccess: false,
     allowedKomoditas: ['*'],
     canExportPdf: true,
@@ -222,6 +228,8 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     nama: 'Admin Divisi I (BKR)',
     role: 'Admin Produksi',
     password: '123',
+    defaultPin: '123456',
+    isDefaultPassword: true, // Masih Bawaan
     hasDevAccess: false,
     allowedKomoditas: ['*'],
     canExportPdf: true,
@@ -232,6 +240,8 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     nama: 'Mandor Gudang Cengkeh',
     role: 'Staff Operasional',
     password: '123',
+    defaultPin: '123456',
+    isDefaultPassword: true, // Masih Bawaan
     hasDevAccess: false,
     allowedKomoditas: ['Cengkeh'],
     canExportPdf: false,
@@ -242,6 +252,8 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     nama: 'Mandor Tembakau Blend',
     role: 'Staff Operasional',
     password: '123',
+    defaultPin: '123456',
+    isDefaultPassword: true, // Masih Bawaan
     hasDevAccess: false,
     allowedKomoditas: ['Tembakau Blend'],
     canExportPdf: false,

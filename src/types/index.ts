@@ -10,6 +10,8 @@ export interface UserAccessConfig {
   nama: string;
   role: UserRole;
   password?: string;
+  isDefaultPassword?: boolean; // true jika masih bawaan, false jika sudah diubah mandiri
+  defaultPin?: string; // PIN bawaan standar (default: '123456')
   hasDevAccess: boolean; // Dapat melihat menu Headless GAS API & teknis backend
   allowedKomoditas: string[]; // List nama komoditas yang diizinkan, atau ['*'] / ['all'] untuk full akses
   canExportPdf: boolean;
@@ -21,6 +23,7 @@ export interface UserSession {
   email: string;
   role: UserRole;
   hasDevAccess: boolean;
+  isDefaultPassword?: boolean;
   allowedKomoditas: string[]; // ['*'] means full access to all
   canExportPdf: boolean;
   canManageUsers?: boolean;

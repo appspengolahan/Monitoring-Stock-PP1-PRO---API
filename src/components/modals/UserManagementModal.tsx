@@ -11,7 +11,9 @@ import {
   Eye, 
   EyeOff, 
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  RotateCcw,
+  KeyRound
 } from 'lucide-react';
 import { UserAccessConfig, UserRole } from '../../types';
 import { GasService } from '../../services/gasService';
@@ -37,6 +39,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formHasDevAccess, setFormHasDevAccess] = useState<boolean>(false);
   const [formAllowedKomoditas, setFormAllowedKomoditas] = useState<string[]>([]);
   const [formCanExport, setFormCanExport] = useState<boolean>(true);
+  const [formDefaultPin, setFormDefaultPin] = useState<string>('123456');
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -55,6 +58,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setFormEmail('');
     setFormNama('');
     setFormRole('Staff Operasional');
+    setFormDefaultPin('123456');
     setFormHasDevAccess(false);
     setFormAllowedKomoditas([availableKomoditas[0] || 'Cengkeh']);
     setFormCanExport(false);
@@ -66,6 +70,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setFormEmail(user.email);
     setFormNama(user.nama);
     setFormRole(user.role);
+    setFormDefaultPin(user.defaultPin || '123456');
     setFormHasDevAccess(user.hasDevAccess);
     setFormAllowedKomoditas(user.allowedKomoditas);
     setFormCanExport(user.canExportPdf);
@@ -101,10 +106,16 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
       return;
     }
 
+    const pinToUse = formDefaultPin.trim() || '123456';
+    const existing = users.find(u => u.email.toLowerCase() === formEmail.trim().toLowerCase());
+
     const config: UserAccessConfig = {
       email: formEmail.trim().toLowerCase(),
       nama: formNama.trim(),
       role: formRole,
+      password: isAddingNew ? pinToUse : (existing?.password || pinToUse),
+      defaultPin: pinToUse,
+      isDefaultPassword: isAddingNew ? true : (existing?.isDefaultPassword ?? true),
       hasDevAccess: formRole === 'Web Developer' || formRole === 'Site Engineer / PM' ? formHasDevAccess : false,
       allowedKomoditas: formAllowedKomoditas.length === 0 ? ['*'] : formAllowedKomoditas,
       canExportPdf: formCanExport,
@@ -117,6 +128,15 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setEditingEmail(null);
     setStatusMessage(`Hak akses untuk ${config.email} berhasil disimpan!`);
     setTimeout(() => setStatusMessage(null), 3500);
+  };
+
+  const handleResetPin = (email: string) => {
+    if (window.confirm(`Reset PIN untuk ${email} kembali ke PIN default (123456)?`)) {
+      const updated = GasService.resetUserPassword(email, '123456');
+      setUsers(updated);
+      setStatusMessage(`PIN untuk ${email} berhasil di-reset ke default: 123456`);
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
   };
 
   const handleDelete = (emailToDelete: string) => {
@@ -220,7 +240,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 block mb-1">
                     Peran Pengguna (Role)
@@ -244,7 +264,24 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                   </select>
                 </div>
 
-                <div className="flex flex-col justify-end space-y-1.5">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                    Password Awal / PIN Bawaan
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                    <input
+                      type="text"
+                      value={formDefaultPin}
+                      onChange={e => setFormDefaultPin(e.target.value)}
+                      placeholder="Default: 123456"
+                      className="w-full pl-8 pr-2 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400">PIN default pabrik: 123456</span>
+                </div>
+
+                <div className="flex flex-col justify-end space-y-1.5 pb-1">
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
                     <input
                       type="checkbox"
@@ -253,7 +290,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                       onChange={e => setFormHasDevAccess(e.target.checked)}
                       className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
                     />
-                    <span>Mode Pengembangan (Headless GAS API)</span>
+                    <span>Mode Dev (Headless GAS)</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
                     <input
@@ -392,9 +429,23 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                         )}
                       </span>
                       <span>·</span>
+                      <span className="flex items-center gap-1 font-medium">
+                        {u.isDefaultPassword ? (
+                          <span className="text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1">
+                            <KeyRound className="w-3 h-3 text-amber-600" />
+                            <span>Bawaan Dev (PIN: {u.defaultPin || '123456'})</span>
+                          </span>
+                        ) : (
+                          <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1">
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span>Telah Diubah Mandiri</span>
+                          </span>
+                        )}
+                      </span>
+                      <span>·</span>
                       <span className="font-medium text-slate-700">
-                        Akses Bahan: {hasAllBahan ? (
-                          <strong className="text-blue-700">Semua Komoditas (Full)</strong>
+                        Akses: {hasAllBahan ? (
+                          <strong className="text-blue-700">Semua Bahan</strong>
                         ) : (
                           <span className="text-slate-800 bg-white border border-slate-200 px-1.5 py-0.5 rounded font-mono text-[10.5px]">
                             {u.allowedKomoditas.join(', ')}
@@ -406,9 +457,17 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
                   <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
                     <button
+                      onClick={() => handleResetPin(u.email)}
+                      className="px-2 py-1.5 text-xs text-amber-700 hover:text-amber-800 hover:bg-amber-50 rounded-lg border border-amber-200 transition-colors flex items-center gap-1"
+                      title="Reset PIN ke Default Pabrik (123456)"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="text-[11px] font-bold">Reset PIN</span>
+                    </button>
+                    <button
                       onClick={() => handleStartEdit(u)}
                       className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors"
-                      title="Ubah Hak Akses"
+                      title="Ubah Hak Akses & Role"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
@@ -416,7 +475,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                       <button
                         onClick={() => handleDelete(u.email)}
                         className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors"
-                        title="Hapus Staf"
+                        title="Hapus Staf & Cabut Akses"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

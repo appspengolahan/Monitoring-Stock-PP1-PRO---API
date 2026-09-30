@@ -20,6 +20,7 @@ import { SwitchAppModal } from './components/modals/SwitchAppModal';
 import { LoginModal } from './components/modals/LoginModal';
 import { InstallModal } from './components/modals/InstallModal';
 import { UserManagementModal } from './components/modals/UserManagementModal';
+import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { useFullscreen } from './hooks/useFullscreen';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { 
@@ -37,7 +38,9 @@ import {
   Maximize2,
   Minimize2,
   Smartphone,
-  Users
+  Users,
+  Lock,
+  KeyRound
 } from 'lucide-react';
 
 export default function App() {
@@ -76,6 +79,17 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isInstallOpen, setIsInstallOpen] = useState<boolean>(false);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState<boolean>(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
+
+  // Auto-detect ?page=admin query param to open login modal
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('page') === 'admin') {
+        setIsLoginOpen(true);
+      }
+    } catch (e) {}
+  }, []);
 
   // Filtered Komoditas list according to user RBAC allowedKomoditas
   const visibleKomoditasList = React.useMemo(() => {
@@ -161,6 +175,7 @@ export default function App() {
         onOpenMigration={() => setIsMigrationOpen(true)}
         onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
+        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         onLogout={() => setIsLoginOpen(true)}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebarCollapse={handleToggleSidebar}
@@ -297,10 +312,19 @@ export default function App() {
           )}
 
           {/* Institutional Footer */}
-          <footer className="mt-8 pt-4 border-t border-slate-200 text-center text-[11px] text-slate-500 space-y-1">
-            <p className="font-semibold text-slate-700">
-              Monitoring Stock Persediaan PP1 · Divisi Produksi I · PT Batu Karang
-            </p>
+          <footer className="mt-8 pt-4 border-t border-slate-200 text-center text-[11px] text-slate-500 space-y-1.5">
+            <div className="flex items-center justify-center gap-1.5">
+              <p className="font-semibold text-slate-700">
+                Monitoring Stock Persediaan PP1 · Divisi Produksi I · PT Batu Karang
+              </p>
+              <button
+                onClick={() => setIsLoginOpen(true)}
+                className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+                title="Pintu Masuk Admin (?page=admin)"
+              >
+                <Lock className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <p className="text-[10px] text-slate-400">
               All Rights Reserved · Arsitektur Hybrid Headless GAS · Developed by Lalu Mahendra
             </p>
@@ -369,6 +393,18 @@ export default function App() {
                 <span>Analisa Komposisi &amp; Mutasi</span>
                 <span className="text-slate-400">&rarr;</span>
               </button>
+              {/* Ganti Password Mandiri Option */}
+              <button
+                onClick={() => { setIsChangePasswordOpen(true); setIsMobileMenuOpen(false); }}
+                className="w-full text-left p-3 rounded-xl hover:bg-amber-50 text-amber-900 flex items-center justify-between font-semibold"
+              >
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-amber-600" />
+                  <span>Ganti Password Mandiri</span>
+                </div>
+                <span className="text-slate-400">&rarr;</span>
+              </button>
+
               {session.hasDevAccess && (
                 <button
                   onClick={() => { setIsMigrationOpen(true); setIsMobileMenuOpen(false); }}
@@ -445,6 +481,18 @@ export default function App() {
         onClose={() => setIsUserManagementOpen(false)}
         availableKomoditas={allAvailableCommodityNames}
         currentUserEmail={session.email}
+      />
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        userEmail={session.email}
+        userName={session.nama}
+        onSuccess={() => {
+          setSession(GasService.getCurrentSession());
+          setSyncStatusNotice('Password berhasil diperbarui.');
+          setTimeout(() => setSyncStatusNotice(null), 4000);
+        }}
       />
 
       <LoginModal

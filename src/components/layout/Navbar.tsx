@@ -12,7 +12,8 @@ import {
   Smartphone,
   PanelLeftClose,
   PanelLeftOpen,
-  Users
+  Users,
+  KeyRound
 } from 'lucide-react';
 import { UserSession, UserRole } from '../../types';
 
@@ -26,6 +27,7 @@ interface NavbarProps {
   onOpenMigration: () => void;
   onOpenSwitchApp: () => void;
   onOpenUserManagement?: () => void;
+  onOpenChangePassword?: () => void;
   onLogout: () => void;
   isSidebarCollapsed?: boolean;
   onToggleSidebarCollapse?: () => void;
@@ -46,6 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenMigration,
   onOpenSwitchApp,
   onOpenUserManagement,
+  onOpenChangePassword,
   onLogout,
   isSidebarCollapsed = false,
   onToggleSidebarCollapse,
@@ -160,6 +163,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
+          {/* Ganti Password Mandiri Button */}
+          {onOpenChangePassword && (
+            <button
+              onClick={onOpenChangePassword}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-all shadow-2xs"
+              title="Ganti Password Akun Anda"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span className="hidden sm:inline">Ganti Password</span>
+            </button>
+          )}
+
           {/* Refresh Button */}
           <button
             onClick={onRefresh}
@@ -205,6 +220,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="px-3 py-1 text-[11px] text-slate-500 truncate">
                   User: <span className="font-medium text-slate-700">{session.nama}</span>
                 </div>
+                {onOpenChangePassword && (
+                  <button
+                    onClick={onOpenChangePassword}
+                    className="w-full mt-1 text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-colors flex items-center gap-1.5"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Ganti Password Mandiri</span>
+                  </button>
+                )}
                 {session.canManageUsers && onOpenUserManagement && (
                   <button
                     onClick={onOpenUserManagement}

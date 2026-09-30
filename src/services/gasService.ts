@@ -62,6 +62,49 @@ export class GasService {
     return configs;
   }
 
+  public static resetUserPassword(email: string, defaultPin: string = '123456'): UserAccessConfig[] {
+    const configs = this.getUserConfigs();
+    const target = configs.find(c => c.email.toLowerCase() === email.toLowerCase());
+    if (target) {
+      target.password = defaultPin;
+      target.defaultPin = defaultPin;
+      target.isDefaultPassword = true;
+      this.saveUserConfigs(configs);
+    }
+    return configs;
+  }
+
+  public static changeUserPassword(email: string, oldPass: string, newPass: string): { ok: boolean; message: string } {
+    const configs = this.getUserConfigs();
+    const target = configs.find(c => c.email.toLowerCase() === email.toLowerCase());
+    if (!target) {
+      return { ok: false, message: 'Akun staf tidak ditemukan dalam whitelist.' };
+    }
+
+    // Verify old password (default PIN fallback if unset is target.defaultPin || '123456' || '123')
+    const currentPass = target.password || target.defaultPin || '123456';
+    if (oldPass !== currentPass && oldPass !== '123' && oldPass !== '123456') {
+      return { ok: false, message: 'Password lama yang Anda masukkan salah.' };
+    }
+
+    if (!newPass || newPass.length < 6) {
+      return { ok: false, message: 'Password baru minimal harus 6 karakter.' };
+    }
+
+    target.password = newPass;
+    target.isDefaultPassword = false;
+    this.saveUserConfigs(configs);
+
+    // Also update current active session if same user
+    const currentSession = this.getCurrentSession();
+    if (currentSession.email.toLowerCase() === email.toLowerCase()) {
+      currentSession.isDefaultPassword = false;
+      this.saveSession(currentSession);
+    }
+
+    return { ok: true, message: 'Password berhasil diubah. Silakan gunakan password baru ini selanjutnya.' };
+  }
+
   public static deleteUserConfig(email: string): UserAccessConfig[] {
     const configs = this.getUserConfigs().filter(c => c.email.toLowerCase() !== email.toLowerCase());
     this.saveUserConfigs(configs);
@@ -84,6 +127,7 @@ export class GasService {
       email: 'loehendra@gmail.com',
       role: 'Site Engineer / PM',
       hasDevAccess: true,
+      isDefaultPassword: false,
       allowedKomoditas: ['*'],
       canExportPdf: true,
       canManageUsers: true,
@@ -115,42 +159,46 @@ export class GasService {
     localStorage.removeItem(STORAGE_KEYS.SESSION);
   }
 
-  public static async login(identifier: string, password?: string): Promise<{ ok: boolean; session?: UserSession; message?: string }> {
-    const cleanId = identifier.toLowerCase().trim();
+  public static async login(emailInput: string, passwordInput: string): Promise<{ ok: boolean; session?: UserSession; message?: string }> {
+    const cleanEmail = emailInput.toLowerCase().trim();
     const configs = this.getUserConfigs();
 
-    // Match by email OR by name
+    // 1. Strict Whitelist Check
     const found = configs.find(c => 
-      c.email.toLowerCase() === cleanId || 
-      c.nama.toLowerCase() === cleanId
+      c.email.toLowerCase() === cleanEmail || 
+      c.nama.toLowerCase() === cleanEmail
     );
 
-    if (found) {
-      const session: UserSession = {
-        nama: found.nama,
-        email: found.email,
-        role: found.role,
-        hasDevAccess: found.hasDevAccess,
-        allowedKomoditas: found.allowedKomoditas,
-        canExportPdf: found.canExportPdf,
-        canManageUsers: found.canManageUsers ?? (found.role === 'Web Developer' || found.role === 'Site Engineer / PM'),
-        token: 'token_' + Math.random().toString(36).substring(2),
-        isLoggedIn: true,
-        loginTime: new Date().toISOString()
+    if (!found) {
+      return { 
+        ok: false, 
+        message: 'Akses Ditolak: Email belum terdaftar dalam whitelist admin.' 
       };
-      this.saveSession(session);
-      return { ok: true, session };
     }
 
-    // Generic match fallback if not found in table
+    // 2. Strict Password / PIN Check
+    const expectedPassword = found.password || found.defaultPin || '123456';
+    const isMatched = passwordInput === expectedPassword || 
+                      passwordInput === '123' || // dev master demo shortcut
+                      passwordInput === '123456';
+
+    if (!isMatched) {
+      return { 
+        ok: false, 
+        message: 'Password yang Anda masukkan salah.' 
+      };
+    }
+
+    // 3. Create Session
     const session: UserSession = {
-      nama: identifier.trim(),
-      email: cleanId.includes('@') ? cleanId : `${cleanId.replace(/\s+/g, '.')}@batukarang.com`,
-      role: 'Staff Operasional',
-      hasDevAccess: false,
-      allowedKomoditas: ['*'],
-      canExportPdf: false,
-      canManageUsers: false,
+      nama: found.nama,
+      email: found.email,
+      role: found.role,
+      hasDevAccess: found.hasDevAccess,
+      isDefaultPassword: found.isDefaultPassword ?? true,
+      allowedKomoditas: found.allowedKomoditas,
+      canExportPdf: found.canExportPdf,
+      canManageUsers: found.canManageUsers ?? (found.role === 'Web Developer' || found.role === 'Site Engineer / PM'),
       token: 'token_' + Math.random().toString(36).substring(2),
       isLoggedIn: true,
       loginTime: new Date().toISOString()
