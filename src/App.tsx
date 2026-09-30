@@ -9,6 +9,7 @@ import { GasService } from './services/gasService';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
+import { MobileMiniSidebar } from './components/layout/MobileMiniSidebar';
 import { OverviewCards } from './components/dashboard/OverviewCards';
 import { MutasiPanel } from './components/dashboard/MutasiPanel';
 import { SaldoKodePanel } from './components/dashboard/SaldoKodePanel';
@@ -157,6 +158,26 @@ export default function App() {
 
       {/* Main Workspace: Sidebar + Content */}
       <div className="flex-1 flex overflow-hidden">
+        {/* Mobile Mini Sidebar (Icon Only on Smartphone) */}
+        <MobileMiniSidebar
+          currentTab={currentTab}
+          onSelectTab={tab => {
+            setCurrentTab(tab);
+            if (tab !== 'mutasi') setTargetCommodityFilter('all');
+          }}
+          session={session}
+          onOpenMigration={() => setIsMigrationOpen(true)}
+          onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
+          onOpenHelp={() => setIsHelpOpen(true)}
+          onOpenInstall={() => setIsInstallOpen(true)}
+          onOpenMenu={() => setIsMobileMenuOpen(true)}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          isInstalled={isInstalled}
+        />
+
         {/* Desktop Sidebar */}
         <div className="hidden lg:flex shrink-0">
           <Sidebar
@@ -178,7 +199,7 @@ export default function App() {
         </div>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto px-3 sm:px-5 lg:px-6 py-3 sm:py-4 pb-20 lg:pb-10 max-w-7xl mx-auto w-full select-text">
+        <main className="flex-1 overflow-y-auto px-2.5 sm:px-5 lg:px-6 py-2.5 sm:py-4 pb-12 lg:pb-10 max-w-7xl mx-auto w-full select-text">
           {/* Sync notification toast */}
           {syncStatusNotice && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-xs sm:text-sm flex items-center justify-between shadow-2xs animate-in fade-in duration-200">
@@ -194,57 +215,6 @@ export default function App() {
               </button>
             </div>
           )}
-
-          {/* Quick Tab Segmented Bar for Mobile / Tablet */}
-          <div className="lg:hidden flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-xl mb-4 overflow-x-auto text-xs font-semibold select-none">
-            <button
-              onClick={() => { setCurrentTab('ringkasan'); setTargetCommodityFilter('all'); }}
-              className={`px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'ringkasan' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              Ringkasan Stok
-            </button>
-            <button
-              onClick={() => setCurrentTab('mutasi')}
-              className={`px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'mutasi' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              Mutasi Lintas Bahan
-            </button>
-            <button
-              onClick={() => setCurrentTab('kode')}
-              className={`px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'kode' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              Saldo Kode
-            </button>
-            <button
-              onClick={() => setCurrentTab('bspp')}
-              className={`px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'bspp' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              BSPP
-            </button>
-            <button
-              onClick={() => setCurrentTab('analisa')}
-              className={`px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'analisa' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              Analisa
-            </button>
-            <button
-              onClick={() => setIsMigrationOpen(true)}
-              className="px-3 py-2 rounded-lg whitespace-nowrap transition-all bg-blue-600 text-white font-bold flex items-center gap-1 shrink-0 shadow-2xs"
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span>Headless GAS API</span>
-            </button>
-          </div>
 
           {/* Render Active View */}
           {currentTab === 'ringkasan' && (
@@ -278,26 +248,16 @@ export default function App() {
           )}
 
           {/* Institutional Footer */}
-          <footer className="mt-12 pt-6 border-t border-slate-200 text-center text-xs text-slate-500 space-y-1">
+          <footer className="mt-8 pt-4 border-t border-slate-200 text-center text-[11px] text-slate-500 space-y-1">
             <p className="font-semibold text-slate-700">
               Monitoring Stock Persediaan PP1 · Divisi Produksi I · PT Batu Karang
             </p>
-            <p className="text-[11.5px] text-slate-500">
+            <p className="text-[10px] text-slate-400">
               All Rights Reserved · Arsitektur Hybrid Headless GAS · Developed by Lalu Mahendra
             </p>
           </footer>
         </main>
       </div>
-
-      {/* Mobile Bottom Bar for Smartphone users */}
-      <MobileBottomNav
-        currentTab={currentTab}
-        onSelectTab={tab => {
-          setCurrentTab(tab);
-          if (tab !== 'mutasi') setTargetCommodityFilter('all');
-        }}
-        onOpenMenu={() => setIsMobileMenuOpen(true)}
-      />
 
       {/* Mobile Drawer Menu */}
       {isMobileMenuOpen && (
