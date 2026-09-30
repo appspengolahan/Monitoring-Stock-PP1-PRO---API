@@ -1,20 +1,30 @@
 import React, { useState, useMemo } from 'react';
 import { KomoditasData } from '../../types';
+import { 
+  Search, 
+  Filter, 
+  Calendar, 
+  Clock, 
+  Layers, 
+  Download, 
+  Sparkles,
+  HelpCircle,
+  FileSpreadsheet
+} from 'lucide-react';
 import { GasService } from '../../services/gasService';
 import { exportToPdf } from '../../services/pdfExport';
-import { 
-  Layers, 
-  Calendar, 
-  Download, 
-  Search, 
-  Clock, 
-  CheckCircle, 
-  AlertCircle
-} from 'lucide-react';
 
 interface SaldoKodePanelProps {
   data: KomoditasData[];
   initialCommodity?: string;
+}
+
+interface FlattenedKode {
+  komoditas: string;
+  satuan: string;
+  nama: string;
+  saldo: number;
+  tanggalTerakhir?: string;
 }
 
 export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
@@ -23,130 +33,135 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 }) => {
   const [filterKomoditas, setFilterKomoditas] = useState<string>(initialCommodity);
   const [filterGrade, setFilterGrade] = useState<string>('all');
-  const [isSnapshotMode, setIsSnapshotMode] = useState<boolean>(false);
-  const [snapshotDate, setSnapshotDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [hideZero, setHideZero] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
-  const [filterDateTo, setFilterDateTo] = useState<string>('');
+  const [isSnapshotMode, setIsSnapshotMode] = useState<boolean>(false);
+  const [snapshotDate, setSnapshotDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [hideZero, setHideZero] = useState<boolean>(false);
 
-  const formatNumber = (n: number): string => {
-    return Number(n).toLocaleString('id-ID', {
+  // Sync initialCommodity if parent updates
+  React.useEffect(() => {
+    if (initialCommodity) {
+      setFilterKomoditas(initialCommodity);
+    }
+  }, [initialCommodity]);
+
+  // Available grade options
+  const gradeOptions = useMemo(() => {
+    if (filterKomoditas === 'all') {
+      return data.map(k => ({
+        komoditas: k.komoditas,
+        kodes: k.kodeList.map(item => item.nama)
+      }));
+    }
+    const target = data.find(k => k.komoditas === filterKomoditas);
+    return target ? [{ komoditas: target.komoditas, kodes: target.kodeList.map(i => i.nama) }] : [];
+  }, [data, filterKomoditas]);
+
+  // Compute live or snapshot items
+  const flattenedItems = useMemo(() => {
+    const list: FlattenedKode[] = [];
+
+    data.forEach((k, index) => {
+      if (filterKomoditas !== 'all' && k.komoditas !== filterKomoditas) {
+        return;
+      }
+
+      if (isSnapshotMode && snapshotDate) {
+        // Compute date snapshot via GasService
+        const snapshot = GasService.getSaldoPerTanggal(index, snapshotDate);
+        snapshot.kodeList.forEach(item => {
+          list.push({
+            komoditas: k.komoditas,
+            satuan: k.satuan,
+            nama: item.nama,
+            saldo: item.saldo,
+            tanggalTerakhir: snapshotDate
+          });
+        });
+      } else {
+        // Standard live running saldo
+        k.kodeList.forEach(item => {
+          // find last mutasi date for this code
+          const lastMutasi = k.mutasiTerbaru.find(m => m.kode === item.nama);
+          list.push({
+            komoditas: k.komoditas,
+            satuan: k.satuan,
+            nama: item.nama,
+            saldo: item.saldo,
+            tanggalTerakhir: lastMutasi?.tanggal
+          });
+        });
+      }
+    });
+
+    return list;
+  }, [data, filterKomoditas, isSnapshotMode, snapshotDate]);
+
+  // Filter items
+  const filteredItems = useMemo(() => {
+    return flattenedItems.filter(item => {
+      if (filterGrade !== 'all' && item.nama !== filterGrade) {
+        return false;
+      }
+
+      if (hideZero && (item.saldo === 0 || !item.saldo)) {
+        return false;
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = item.nama.toLowerCase().includes(q);
+        const matchBahan = item.komoditas.toLowerCase().includes(q);
+        if (!matchName && !matchBahan) return false;
+      }
+
+      return true;
+    });
+  }, [flattenedItems, filterGrade, hideZero, searchQuery]);
+
+  // Aggregate total
+  const totalSaldo = useMemo(() => {
+    return filteredItems.reduce((acc, curr) => acc + (curr.saldo || 0), 0);
+  }, [filteredItems]);
+
+  const formatNumber = (num: number): string => {
+    return Number(num).toLocaleString('id-ID', {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
     });
   };
 
-  const formatTanggalIndo = (dateStr?: string | null): string => {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const s = d.toLocaleDateString('id-ID', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-    return s.charAt(0).toUpperCase() + s.slice(1);
+  const formatTanggalIndo = (tanggalISO?: string): string => {
+    if (!tanggalISO) return '—';
+    try {
+      const date = new Date(tanggalISO);
+      if (isNaN(date.getTime())) return tanggalISO;
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch {
+      return tanggalISO;
+    }
   };
 
-  // Active commodities
-  const activeKomoditasList = useMemo(() => {
-    return filterKomoditas === 'all'
-      ? data
-      : data.filter(k => k.komoditas === filterKomoditas);
-  }, [data, filterKomoditas]);
-
-  // Grade options for dropdown
-  const gradeOptions = useMemo(() => {
-    return activeKomoditasList.map(k => ({
-      komoditas: k.komoditas,
-      kodes: k.kodeList.map(item => item.nama)
-    }));
-  }, [activeKomoditasList]);
-
-  // Compute items based on whether in Snapshot Mode or Live Mode
-  const displayedItems = useMemo(() => {
-    if (isSnapshotMode && snapshotDate) {
-      // Snapshot mode per date
-      const items: { komoditas: string; satuan: string; nama: string; saldo: number; tanggalTerakhir?: string | null }[] = [];
-      activeKomoditasList.forEach(k => {
-        const idx = data.findIndex(item => item.komoditas === k.komoditas);
-        const snapshot = GasService.getSaldoPerTanggal(idx, snapshotDate);
-        snapshot.kodeList.forEach(kd => {
-          if (filterGrade !== 'all' && kd.nama !== filterGrade) return;
-          items.push({
-            komoditas: k.komoditas,
-            satuan: k.satuan,
-            nama: kd.nama,
-            saldo: kd.saldo,
-            tanggalTerakhir: snapshotDate
-          });
-        });
-      });
-      return items;
-    }
-
-    // Live mode
-    const items: { komoditas: string; satuan: string; nama: string; saldo: number; tanggalTerakhir?: string | null }[] = [];
-    activeKomoditasList.forEach(k => {
-      k.kodeList.forEach(kd => {
-        if (filterGrade !== 'all' && kd.nama !== filterGrade) return;
-
-        // Date range filter by last mutation
-        if (filterDateFrom && kd.tanggalTerakhir) {
-          if (new Date(kd.tanggalTerakhir).getTime() < new Date(filterDateFrom).getTime()) return;
-        }
-        if (filterDateTo && kd.tanggalTerakhir) {
-          if (new Date(kd.tanggalTerakhir).getTime() > new Date(filterDateTo + 'T23:59:59Z').getTime()) return;
-        }
-
-        items.push({
-          komoditas: k.komoditas,
-          satuan: k.satuan,
-          nama: kd.nama,
-          saldo: kd.saldo,
-          tanggalTerakhir: kd.tanggalTerakhir
-        });
-      });
-    });
-    return items;
-  }, [isSnapshotMode, snapshotDate, activeKomoditasList, data, filterGrade, filterDateFrom, filterDateTo]);
-
-  // Filter out zeros & search query
-  const filteredItems = useMemo(() => {
-    let result = displayedItems;
-    if (hideZero) {
-      result = result.filter(item => Math.round(Math.abs(item.saldo) * 10) / 10 !== 0);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter(item => 
-        item.nama.toLowerCase().includes(q) ||
-        item.komoditas.toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [displayedItems, hideZero, searchQuery]);
-
-  const totalSaldo = filteredItems.reduce((acc, curr) => acc + (curr.saldo || 0), 0);
-
-  // PDF Export
+  // Export PDF
   const handleExportPdf = () => {
-    const title = isSnapshotMode 
-      ? `Saldo per Kode/Grade (Snapshot per ${formatTanggalIndo(snapshotDate)})`
-      : 'Saldo Terkini per Kode/Grade';
+    const title = isSnapshotMode
+      ? `Saldo Persediaan Bahan PP1 (Snapshot per ${snapshotDate})`
+      : 'Saldo Terkini per Kode / Grade';
 
     const head = isSnapshotMode
-      ? ['Bahan', 'Kode / Grade', 'Saldo Snapshot (Kg)']
-      : ['Bahan', 'Kode / Grade', 'Mutasi Terakhir', 'Saldo Terkini (Kg)'];
+      ? [['BAHAN', 'KODE / GRADE', 'SALDO HISTORIS (KG)']]
+      : [['BAHAN', 'KODE / GRADE', 'MUTASI TERAKHIR', 'SALDO TERKINI (KG)']];
 
-    const body = isSnapshotMode
-      ? filteredItems.map(item => [item.komoditas, item.nama, formatNumber(item.saldo)])
-      : filteredItems.map(item => [item.komoditas, item.nama, formatTanggalIndo(item.tanggalTerakhir), formatNumber(item.saldo)]);
-
-    // Add Total Row
-    body.push(['', 'TOTAL KESELURUHAN', isSnapshotMode ? '' : '', `${formatNumber(totalSaldo)} Kg`]);
+    const body = filteredItems.map(item => {
+      if (isSnapshotMode) {
+        return [item.komoditas, item.nama, formatNumber(item.saldo)];
+      }
+      return [item.komoditas, item.nama, formatTanggalIndo(item.tanggalTerakhir), formatNumber(item.saldo)];
+    });
 
     exportToPdf({
       title,
@@ -163,13 +178,13 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-      {/* Header */}
-      <div className="p-5 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header - Compact */}
+      <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
             {isSnapshotMode ? 'Saldo per Kode / Grade (Snapshot Historis)' : 'Saldo Terkini per Kode / Grade'}
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
             {isSnapshotMode 
               ? `Saldo dihitung seolah-olah dicek pada tanggal ${formatTanggalIndo(snapshotDate)}`
               : 'Daftar stok per tab kartu persediaan berjalan'}
@@ -179,19 +194,19 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
         <button
           onClick={handleExportPdf}
           disabled={filteredItems.length === 0}
-          className="flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 transition-colors shrink-0"
         >
-          <Download className="w-4 h-4" />
+          <Download className="w-3.5 h-3.5" />
           <span>Export PDF Saldo</span>
         </button>
       </div>
 
-      {/* Filter Bar */}
-      <div className="p-4 sm:p-5 bg-slate-50/70 border-b border-slate-200 space-y-3.5">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Filter Bar - Compact */}
+      <div className="px-4 py-3 sm:px-5 sm:py-3 bg-slate-50/70 border-b border-slate-200 space-y-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {/* Bahan */}
           <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
               Bahan
             </label>
             <select
@@ -200,7 +215,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
                 setFilterKomoditas(e.target.value);
                 setFilterGrade('all');
               }}
-              className="w-full text-xs sm:text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               <option value="all">Semua Bahan</option>
               {data.map(k => (
@@ -213,13 +228,13 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 
           {/* Grade / Kode */}
           <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
               Grade / Kode
             </label>
             <select
               value={filterGrade}
               onChange={e => setFilterGrade(e.target.value)}
-              className="w-full text-xs sm:text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               <option value="all">Semua Grade</option>
               {gradeOptions.map(group => (
@@ -236,102 +251,86 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 
           {/* Search */}
           <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
               Pencarian Grade
             </label>
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Cari nama grade/kode..."
-                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
         </div>
 
-        {/* Snapshot Mode Switcher & Date Picker */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200/60">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="inline-flex items-center gap-2 text-xs font-semibold text-blue-900 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={isSnapshotMode}
-                onChange={e => setIsSnapshotMode(e.target.checked)}
-                className="rounded-sm border-blue-400 text-blue-600 focus:ring-blue-500 w-4 h-4"
-              />
-              <span>Mode: Saldo per Tanggal Tertentu (Snapshot)</span>
-            </label>
+        {/* Snapshot Toggle & Checkbox - Compact */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsSnapshotMode(!isSnapshotMode)}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 ${
+                isSnapshotMode
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>{isSnapshotMode ? 'Mode Snapshot: AKTIF' : 'Hitung Saldo per Tanggal'}</span>
+            </button>
 
-            {isSnapshotMode ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-600 font-medium">Per Tanggal:</span>
+            {isSnapshotMode && (
+              <div className="flex items-center gap-1 animate-in fade-in duration-200">
                 <input
                   type="date"
                   value={snapshotDate}
                   onChange={e => setSnapshotDate(e.target.value)}
-                  className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800"
-                />
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Mutasi Terakhir:</span>
-                <input
-                  type="date"
-                  value={filterDateFrom}
-                  onChange={e => setFilterDateFrom(e.target.value)}
-                  className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-1 text-slate-700"
-                />
-                <span className="text-xs text-slate-400">s/d</span>
-                <input
-                  type="date"
-                  value={filterDateTo}
-                  onChange={e => setFilterDateTo(e.target.value)}
-                  className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-1 text-slate-700"
+                  className="text-xs bg-white border border-blue-300 rounded-md px-2 py-1 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 />
               </div>
             )}
           </div>
 
-          <label className="inline-flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none">
+          <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={hideZero}
               onChange={e => setHideZero(e.target.checked)}
-              className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+              className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
             />
-            <span>Sembunyikan Saldo 0</span>
+            <span className="text-[11px]">Sembunyikan Saldo 0</span>
           </label>
         </div>
       </div>
 
-      {/* Summary Card */}
-      <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
-          <div className="bg-white p-3 rounded-xl border border-slate-200">
-            <span className="text-[11px] font-semibold uppercase text-slate-500 block mb-0.5">
+      {/* Summary Card - Compact */}
+      <div className="px-4 py-2.5 sm:px-5 sm:py-2.5 bg-slate-50 border-b border-slate-200">
+        <div className="grid grid-cols-2 gap-2 max-w-md">
+          <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+            <span className="text-[10px] font-semibold uppercase text-slate-500 block">
               Jumlah Kode / Grade
             </span>
-            <span className="text-xl font-bold text-slate-900 font-mono tabular-nums">
+            <span className="text-sm sm:text-base font-bold text-slate-900 font-mono tabular-nums leading-tight">
               {filteredItems.length}
             </span>
           </div>
 
-          <div className="bg-white p-3 rounded-xl border border-slate-200">
-            <span className="text-[11px] font-semibold uppercase text-slate-500 block mb-0.5">
+          <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+            <span className="text-[10px] font-semibold uppercase text-slate-500 block">
               Total Akumulasi Saldo
             </span>
-            <span className="text-xl font-bold text-blue-800 font-mono tabular-nums">
-              {formatNumber(totalSaldo)} <span className="text-xs font-normal">Kg</span>
+            <span className="text-sm sm:text-base font-bold text-blue-800 font-mono tabular-nums leading-tight">
+              {formatNumber(totalSaldo)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
             </span>
           </div>
         </div>
 
         {isSnapshotMode && (
-          <p className="text-[11.5px] text-slate-500 mt-2 flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+          <p className="text-[10.5px] text-slate-500 mt-1.5 flex items-center gap-1">
+            <Clock className="w-3 h-3 text-blue-600 shrink-0" />
             <span>
               Saldo dihitung seolah-olah dicek pada <strong>{formatTanggalIndo(snapshotDate)}</strong> — mutasi setelah tanggal ini diabaikan untuk verifikasi data.
             </span>
@@ -339,41 +338,41 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
         )}
       </div>
 
-      {/* Table */}
+      {/* Table - Compact Row Density */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-100/80 border-b border-slate-200 text-[11.5px] font-semibold text-slate-600 uppercase tracking-wider">
-              <th className="py-3 px-4">Bahan</th>
-              <th className="py-3 px-4">Kode / Grade</th>
-              {!isSnapshotMode && <th className="py-3 px-4">Mutasi Terakhir</th>}
-              <th className="py-3 px-4 text-right">Saldo {isSnapshotMode ? 'Snapshot' : 'Terkini'} (Kg)</th>
+            <tr className="bg-slate-100/90 border-b border-slate-200 text-[10.5px] font-semibold text-slate-600 uppercase tracking-wider">
+              <th className="py-2 px-3 sm:px-4">Bahan</th>
+              <th className="py-2 px-3 sm:px-4">Kode / Grade</th>
+              {!isSnapshotMode && <th className="py-2 px-3 sm:px-4">Mutasi Terakhir</th>}
+              <th className="py-2 px-3 sm:px-4 text-right">Saldo {isSnapshotMode ? 'Snapshot' : 'Terkini'} (Kg)</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+          <tbody className="divide-y divide-slate-100 text-xs">
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={isSnapshotMode ? 3 : 4} className="py-12 text-center text-slate-400">
+                <td colSpan={isSnapshotMode ? 3 : 4} className="py-8 text-center text-slate-400">
                   Tidak ada data kode/grade yang cocok dengan filter.
                 </td>
               </tr>
             ) : (
               filteredItems.map((item, idx) => (
-                <tr key={`${item.komoditas}-${item.nama}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-600 font-medium">
+                <tr key={`${item.komoditas}-${item.nama}-${idx}`} className="hover:bg-slate-50/90 transition-colors">
+                  <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-600 font-medium">
                     {item.komoditas}
                   </td>
-                  <td className="py-3 px-4 whitespace-nowrap font-semibold text-slate-900">
+                  <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap font-bold text-slate-900">
                     {item.nama}
                   </td>
                   {!isSnapshotMode && (
-                    <td className="py-3 px-4 whitespace-nowrap text-slate-500 font-medium">
+                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-500 font-medium">
                       {formatTanggalIndo(item.tanggalTerakhir)}
                     </td>
                   )}
-                  <td className="py-3 px-4 whitespace-nowrap text-right font-mono tabular-nums font-bold text-slate-900">
+                  <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums font-bold text-slate-900">
                     {formatNumber(item.saldo)}{' '}
-                    <span className="text-[11px] font-normal text-slate-500">{item.satuan}</span>
+                    <span className="text-[10px] font-normal text-slate-500">{item.satuan}</span>
                   </td>
                 </tr>
               ))
