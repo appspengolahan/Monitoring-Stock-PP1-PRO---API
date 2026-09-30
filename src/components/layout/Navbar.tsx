@@ -62,7 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 transition-colors shadow-2xs">
+    <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-3 sm:px-4 lg:px-6 py-2.5 transition-colors shadow-xs">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         {/* Zone 1: Brand & Sidebar Toggle */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -83,30 +83,30 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></span>
-              <h1 className="text-xs sm:text-base lg:text-lg font-bold tracking-tight text-slate-900 truncate">
-                Monitoring Stock PP1
+              <h1 className="text-sm sm:text-base lg:text-lg font-bold tracking-tight text-slate-900 truncate">
+                Monitoring Stock Persediaan
               </h1>
             </div>
-            <p className="text-[10px] sm:text-[12px] text-slate-500 flex items-center gap-1 truncate">
+            <p className="text-[11px] sm:text-[12px] text-slate-600 flex items-center gap-1.5 truncate">
               <span>Divisi Produksi I</span>
-              <span aria-hidden="true" className="text-slate-300">·</span>
+              <span aria-hidden="true" className="text-slate-400">·</span>
               <span>PT Batu Karang</span>
-              <span aria-hidden="true" className="text-slate-300 hidden sm:inline">·</span>
-              <span className="text-slate-500 font-mono text-[10.5px] tabular-nums hidden sm:inline">
-                {lastUpdated ? `Sync: ${new Date(lastUpdated).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Aktif'}
+              <span aria-hidden="true" className="text-slate-400 hidden sm:inline">·</span>
+              <span className="text-slate-500 font-mono text-[10.5px] tabular-nums hidden md:inline">
+                {lastUpdated ? `Sync: ${new Date(lastUpdated).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Aktif'}
               </span>
             </p>
           </div>
         </div>
 
-        {/* Zone 2: Desktop Quick Access Links */}
-        <div className="hidden md:flex items-center gap-2">
+        {/* Zone 2: Navigation Links */}
+        <div className="hidden sm:flex items-center gap-1.5 sm:gap-2">
           {/* Headless GAS API */}
           <button
             onClick={onOpenMigration}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all shadow-2xs"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all shadow-2xs"
             title="Integrasi Headless GAS REST API"
           >
             <Database className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -116,7 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Switch Board button */}
           <button
             onClick={onOpenSwitchApp}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200 transition-all"
+            className="hidden md:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200 transition-all"
             title="Pindah Board Monitoring Susut"
           >
             <Layers className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -125,17 +125,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Zone 3: Actions & Controls */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Fullscreen Button (Handphone & PC) */}
           {onToggleFullscreen && (
             <button
               onClick={onToggleFullscreen}
-              className={`p-1.5 sm:p-2 rounded-lg border transition-all ${
+              className={`p-2 rounded-lg border transition-all ${
                 isFullscreen 
                   ? 'bg-blue-50 border-blue-300 text-blue-700' 
                   : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
               }`}
-              title={isFullscreen ? "Keluar Layar Penuh" : "Mode Layar Penuh"}
+              title={isFullscreen ? "Keluar Layar Penuh (Exit Fullscreen)" : "Mode Layar Penuh (Fullscreen)"}
               aria-label="Toggle Fullscreen"
             >
               {isFullscreen ? (
@@ -150,7 +150,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {onOpenInstall && !isInstalled && (
             <button
               onClick={onOpenInstall}
-              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 text-xs font-semibold rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shadow-2xs"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shadow-2xs"
               title="Pasang Aplikasi ke Layar Utama HP / PC"
             >
               <Smartphone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -162,33 +162,34 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-1 px-2.5 py-1.5 sm:py-2 text-xs font-semibold rounded-lg text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-60 transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-60 transition-colors shadow-xs"
             title="Ambil data terkini dari Google Sheets"
           >
             <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{isRefreshing ? 'Memuat...' : 'Refresh'}</span>
+            <span className="hidden md:inline">{isRefreshing ? 'Memuat...' : 'Refresh'}</span>
           </button>
 
           {/* Role Selector */}
           <div className="relative group">
-            <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 cursor-pointer transition-colors">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-700 shrink-0" />
-              <span className="font-semibold text-slate-900 truncate max-w-[85px] sm:max-w-[120px] text-[11px] sm:text-xs">
-                {session.role}
-              </span>
-              <ChevronDown className="w-3 h-3 text-slate-500" />
+            <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 cursor-pointer transition-colors">
+              <ShieldCheck className="w-4 h-4 text-blue-700 shrink-0" />
+              <div className="flex flex-col text-left leading-tight hidden lg:block">
+                <span className="text-[10px] text-slate-500 uppercase font-semibold">Peran</span>
+                <span className="font-semibold text-slate-900 truncate max-w-[110px]">{session.role}</span>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
             </div>
 
             {/* Role Dropdown */}
-            <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-lg p-1 hidden group-hover:block z-50">
-              <div className="px-2.5 py-1 border-b border-slate-100 text-[10px] font-semibold text-slate-500 uppercase">
-                Peran Pengguna (RBAC)
+            <div className="absolute right-0 top-full mt-1.5 w-56 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 hidden group-hover:block z-50">
+              <div className="px-3 py-1.5 border-b border-slate-100 text-[11px] font-semibold text-slate-600">
+                PILIH PERAN PENGGUNA (RBAC)
               </div>
               {roles.map(r => (
                 <button
                   key={r}
                   onClick={() => onChangeRole(r)}
-                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
                     session.role === r
                       ? 'bg-blue-50 text-blue-700 font-semibold'
                       : 'text-slate-700 hover:bg-slate-50'
@@ -198,8 +199,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {session.role === r && <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>}
                 </button>
               ))}
+              <div className="mt-1 pt-1 border-t border-slate-100">
+                <div className="px-3 py-1 text-[11px] text-slate-500 truncate">
+                  User: <span className="font-medium text-slate-700">{session.nama}</span>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Help Button */}
+          <button
+            onClick={onOpenHelp}
+            className="p-1.5 sm:p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors hidden sm:flex"
+            title="Bantuan & Petunjuk Penggunaan"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
 
           {/* Logout / Switch User */}
           <button
@@ -207,7 +222,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="p-1.5 sm:p-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors"
             title="Keluar / Ganti Akun"
           >
-            <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
