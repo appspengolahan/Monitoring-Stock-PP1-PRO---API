@@ -130,53 +130,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </button>
         </form>
 
-        {/* Quick Demo Role Logins */}
-        <div className="mt-6 pt-5 border-t border-slate-100">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">
-            Pilihan Cepat Masuk Akun (Uji Coba RBAC)
-          </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {GasService.getUserConfigs().slice(0, 6).map(u => (
-              <button
-                key={u.email}
-                onClick={() => {
-                  setEmailInput(u.email);
-                  setPasswordInput(u.password || u.defaultPin || '123456');
-                  const session: UserSession = {
-                    nama: u.nama,
-                    email: u.email,
-                    role: u.role,
-                    hasDevAccess: u.hasDevAccess,
-                    isDefaultPassword: u.isDefaultPassword,
-                    allowedKomoditas: u.allowedKomoditas,
-                    canExportPdf: u.canExportPdf,
-                    canManageUsers: u.canManageUsers,
-                    token: 'token_quick_' + Date.now(),
-                    isLoggedIn: true,
-                    loginTime: new Date().toISOString()
-                  };
-                  GasService.saveSession(session);
-                  onSuccess(session);
-                }}
-                className="p-2 text-left bg-slate-50 hover:bg-blue-50 hover:border-blue-200 border border-slate-200/80 rounded-xl text-xs transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 truncate block">{u.role}</span>
-                  {u.isDefaultPassword ? (
-                    <span className="text-[9px] text-amber-700 bg-amber-100 px-1 py-0.5 rounded font-semibold">PIN Default</span>
-                  ) : (
-                    <span className="text-[9px] text-emerald-700 bg-emerald-100 px-1 py-0.5 rounded font-semibold">Mandiri</span>
-                  )}
-                </div>
-                <span className="text-[11px] text-slate-600 truncate block font-mono">{u.email}</span>
-                <span className="text-[10px] text-slate-400 truncate block">Akses: {u.allowedKomoditas.join(', ')}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {onClose && (
-          <div className="mt-4 text-center">
+          <div className="mt-4 pt-3 border-t border-slate-100 text-center">
             <button
               onClick={onClose}
               className="text-xs text-slate-500 hover:text-slate-800 transition-colors"
