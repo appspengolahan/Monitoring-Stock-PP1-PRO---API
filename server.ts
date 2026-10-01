@@ -1,6 +1,15 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
@@ -25,6 +34,16 @@ async function startServer() {
   // Server-Side Gemini Smart Insights endpoint
   app.post('/api/ai/insights', async (req, res) => {
     try {
+      const { stockContext, userRole, allowedKomoditas } = req.body;
+
+      // Restrict feature: Do not allow Staff Operasional
+      if (userRole === 'Staff Operasional' || (userRole && userRole.toLowerCase().includes('staff'))) {
+        return res.status(403).json({
+          ok: false,
+          error: 'Fitur AI Smart Insights dibatasi untuk peran ini.'
+        });
+      }
+
       if (!ai) {
         return res.json({
           ok: true,
@@ -54,8 +73,6 @@ async function startServer() {
           ]
         });
       }
-
-      const { stockContext, userRole, allowedKomoditas } = req.body;
 
       const prompt = `Anda adalah Asisten Cerdas AI Ahli Inventaris & Logistik Gudang Divisi Produksi I - PT Batu Karang.
 Tugas Anda: Analisis konteks data persediaan stok saat ini dan berikan TEPAT 3 buah kartu insight ringkas, tajam, dan operasional dalam format JSON.
@@ -114,6 +131,14 @@ Format Jawaban yang Diharapkan (HANYA JSON VALID TANPA MARKDOWN):
   app.post('/api/ai/chat', async (req, res) => {
     try {
       const { message, history, stockContext, userRole, allowedKomoditas } = req.body;
+
+      // Restrict feature: Do not allow Staff Operasional
+      if (userRole === 'Staff Operasional' || (userRole && userRole.toLowerCase().includes('staff'))) {
+        return res.status(403).json({
+          ok: false,
+          error: 'Fitur AI Bot dibatasi untuk peran ini.'
+        });
+      }
 
       if (!message) {
         return res.status(400).json({ ok: false, error: 'Pesan tidak boleh kosong' });
@@ -224,14 +249,34 @@ ${JSON.stringify(stockContext || {}, null, 2)}`;
   // Attach Vite middleware in development mode
   const vite = await createViteServer({
     server: { middlewareMode: true },
-    appType: 'spa'
+    appType: 'custom'
   });
 
   app.use(vite.middlewares);
+
+  // Serve index.html transformed by Vite for any client-side routes
+  app.use('*', async (req, res, next) => {
+    const url = req.originalUrl;
+    try {
+      const templatePath = path.resolve(__dirname, 'index.html');
+      if (!fs.existsSync(templatePath)) {
+        return next();
+      }
+      let template = fs.readFileSync(templatePath, 'utf-8');
+      template = await vite.transformIndexHtml(url, template);
+      res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+    } catch (e: any) {
+      vite.ssrFixStacktrace(e);
+      next(e);
+    }
+  });
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running at http://localhost:${PORT}`);
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});

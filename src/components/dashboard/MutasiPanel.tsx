@@ -221,9 +221,9 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
 
   // PDF Export Trigger
   const handleExportPdf = () => {
-    const head = [['TANGGAL', 'BAHAN', 'KODE / GRADE', 'JENIS MUTASI', 'MASUK (KG)', 'KELUAR (KG)', 'CEK']];
+    const head: string[] = ['TANGGAL', 'BAHAN', 'KODE / GRADE', 'JENIS MUTASI', 'MASUK (KG)', 'KELUAR (KG)', 'CEK'];
     const body = filteredEntries.map(e => [
-      formatTanggalIndo(e.mutasi.tanggal),
+      formatTanggalIndo(e.mutasi.tanggal || ''),
       e.komoditas,
       e.mutasi.kode,
       e.mutasi.jenisMutasi,
@@ -493,7 +493,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
                     className="hover:bg-slate-50/90 transition-colors"
                   >
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-700 font-medium">
-                      {formatTanggalIndo(m.tanggal)}
+                      {formatTanggalIndo(m.tanggal || '')}
                     </td>
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-600">
                       {e.komoditas}

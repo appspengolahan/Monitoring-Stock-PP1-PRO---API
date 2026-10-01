@@ -133,6 +133,13 @@ export default function App() {
     });
   }, [session.allowedKomoditas]);
 
+  // AI Feature access: Hidden for Staff Operasional
+  const hasAIAccess = React.useMemo(() => {
+    if (!session || !session.role) return false;
+    const roleLower = session.role.toLowerCase();
+    return !roleLower.includes('staff');
+  }, [session?.role]);
+
   const allAvailableCommodityNames = React.useMemo(() => {
     return komoditasList.map(k => k.komoditas);
   }, [komoditasList]);
@@ -198,8 +205,6 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans select-none">
       {/* Top Navigation */}
       <Navbar
-        currentTab={currentTab}
-        onSelectTab={setCurrentTab}
         session={session}
         onChangeRole={handleChangeRole}
         onRefresh={handleRefresh}
@@ -210,7 +215,7 @@ export default function App() {
         onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
-        onOpenAIBot={() => setIsAIBotOpen(true)}
+        onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
         onLogout={() => setIsLoginOpen(true)}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebarCollapse={handleToggleSidebar}
@@ -235,7 +240,7 @@ export default function App() {
             onOpenMigration={() => setIsMigrationOpen(true)}
             onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
             onOpenUserManagement={() => setIsUserManagementOpen(true)}
-            onOpenAIBot={() => setIsAIBotOpen(true)}
+            onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={handleToggleSidebar}
             isFullscreen={isFullscreen}
@@ -321,17 +326,19 @@ export default function App() {
           {/* Render Active View (Filtered by User Access) */}
           {currentTab === 'ringkasan' && (
             <div className="space-y-6">
-              {/* AI Smart Insights Bar */}
-              <AISmartInsights
-                komoditasList={visibleKomoditasList}
-                bsppList={visibleBsppList}
-                userRole={session.role}
-                allowedKomoditas={session.allowedKomoditas}
-                onNavigateTab={tab => {
-                  setCurrentTab(tab);
-                  if (tab !== 'mutasi') setTargetCommodityFilter('all');
-                }}
-              />
+              {/* AI Smart Insights Bar (Hanya tampil untuk non-staff / manajemen) */}
+              {hasAIAccess && (
+                <AISmartInsights
+                  komoditasList={visibleKomoditasList}
+                  bsppList={visibleBsppList}
+                  userRole={session.role}
+                  allowedKomoditas={session.allowedKomoditas}
+                  onNavigateTab={tab => {
+                    setCurrentTab(tab);
+                    if (tab !== 'mutasi') setTargetCommodityFilter('all');
+                  }}
+                />
+              )}
 
               <OverviewCards
                 data={visibleKomoditasList}
@@ -425,21 +432,23 @@ export default function App() {
                 <span className="text-[11px] font-normal text-slate-500">HP &amp; Tablet</span>
               </button>
 
-              {/* AI Stock Assistant Option in Mobile Menu */}
-              <button
-                onClick={() => { setIsAIBotOpen(true); setIsMobileMenuOpen(false); }}
-                className="w-full text-left p-3 rounded-xl bg-indigo-50 text-indigo-900 flex items-center justify-between font-bold"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-md bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                    <Sparkles className="w-3.5 h-3.5" />
+              {/* AI Stock Assistant Option in Mobile Menu (Hanya non-staff) */}
+              {hasAIAccess && (
+                <button
+                  onClick={() => { setIsAIBotOpen(true); setIsMobileMenuOpen(false); }}
+                  className="w-full text-left p-3 rounded-xl bg-indigo-50 text-indigo-900 flex items-center justify-between font-bold"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-md bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </div>
+                    <span>AI Stock Assistant (Gemini)</span>
                   </div>
-                  <span>AI Stock Assistant (Gemini)</span>
-                </div>
-                <span className="text-[10px] bg-indigo-200/80 text-indigo-950 px-2 py-0.5 rounded-full font-mono">
-                  Smart Bot
-                </span>
-              </button>
+                  <span className="text-[10px] bg-indigo-200/80 text-indigo-950 px-2 py-0.5 rounded-full font-mono">
+                    Smart Bot
+                  </span>
+                </button>
+              )}
 
               {/* Install PWA Option */}
               {!isInstalled && (
@@ -574,35 +583,39 @@ export default function App() {
         onClose={() => setIsLoginOpen(false)}
       />
 
-      {/* AI Logistik & Stock Bot Modal */}
-      <AIBotModal
-        isOpen={isAIBotOpen}
-        onClose={() => setIsAIBotOpen(false)}
-        komoditasList={visibleKomoditasList}
-        bsppList={visibleBsppList}
-        session={session}
-      />
+      {/* AI Logistik & Stock Bot Modal (Hanya jika berhak akses) */}
+      {hasAIAccess && (
+        <AIBotModal
+          isOpen={isAIBotOpen}
+          onClose={() => setIsAIBotOpen(false)}
+          komoditasList={visibleKomoditasList}
+          bsppList={visibleBsppList}
+          session={session}
+        />
+      )}
 
-      {/* Floating AI Stock Assistant Trigger Button (Bottom Right) */}
-      <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-40">
-        <button
-          onClick={() => setIsAIBotOpen(true)}
-          className="group flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-full shadow-xl hover:shadow-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
-          title="Tanya Jawab AI Bot & Ringkasan Stok"
-        >
-          <div className="relative">
-            <Bot className="w-5 h-5 text-white" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-indigo-700 animate-pulse"></span>
-          </div>
-          <div className="hidden sm:flex flex-col text-left">
-            <span className="text-xs font-bold leading-tight flex items-center gap-1">
-              <span>AI Stock Bot</span>
-              <Sparkles className="w-3 h-3 text-amber-300" />
-            </span>
-            <span className="text-[10px] text-blue-100 font-medium">Tanya Stok &amp; BSPP</span>
-          </div>
-        </button>
-      </div>
+      {/* Floating AI Stock Assistant Trigger Button (Bottom Right - Hanya non-staff) */}
+      {hasAIAccess && (
+        <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-40">
+          <button
+            onClick={() => setIsAIBotOpen(true)}
+            className="group flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-full shadow-xl hover:shadow-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+            title="Tanya Jawab AI Bot & Ringkasan Stok"
+          >
+            <div className="relative">
+              <Bot className="w-5 h-5 text-white" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-indigo-700 animate-pulse"></span>
+            </div>
+            <div className="hidden sm:flex flex-col text-left">
+              <span className="text-xs font-bold leading-tight flex items-center gap-1">
+                <span>AI Stock Bot</span>
+                <Sparkles className="w-3 h-3 text-amber-300" />
+              </span>
+              <span className="text-[10px] text-blue-100 font-medium">Tanya Stok &amp; BSPP</span>
+            </div>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -88,7 +88,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
             satuan: k.satuan,
             nama: item.nama,
             saldo: item.saldo,
-            tanggalTerakhir: lastMutasi?.tanggal
+            tanggalTerakhir: lastMutasi?.tanggal || undefined
           });
         });
       }
@@ -152,9 +152,9 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
       ? `Saldo Persediaan Bahan PP1 (Snapshot per ${snapshotDate})`
       : 'Saldo Terkini per Kode / Grade';
 
-    const head = isSnapshotMode
-      ? [['BAHAN', 'KODE / GRADE', 'SALDO HISTORIS (KG)']]
-      : [['BAHAN', 'KODE / GRADE', 'MUTASI TERAKHIR', 'SALDO TERKINI (KG)']];
+    const head: string[] = isSnapshotMode
+      ? ['BAHAN', 'KODE / GRADE', 'SALDO HISTORIS (KG)']
+      : ['BAHAN', 'KODE / GRADE', 'MUTASI TERAKHIR', 'SALDO TERKINI (KG)'];
 
     const body = filteredItems.map(item => {
       if (isSnapshotMode) {
