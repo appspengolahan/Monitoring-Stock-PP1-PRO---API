@@ -14,10 +14,20 @@ export interface AIChatMessage {
 }
 
 export class AIService {
+  private static cachedInsights: AIInsightItem[] | null = null;
+  private static lastInsightsFetchTime: number = 0;
+  private static readonly INSIGHTS_CLIENT_CACHE_MS = 3 * 60 * 1000; // 3 minutes
+
   /**
    * Fetch 3 executive summary insight cards from the server proxy using Gemini 3.8 Flash
    */
   static async getInsights(stockContext: any, userRole: string, allowedKomoditas?: string[]): Promise<AIInsightItem[]> {
+    const now = Date.now();
+    // Return client cached insights if fresh to avoid duplicate network calls
+    if (this.cachedInsights && now - this.lastInsightsFetchTime < this.INSIGHTS_CLIENT_CACHE_MS) {
+      return this.cachedInsights;
+    }
+
     try {
       const res = await fetch('/api/ai/insights', {
         method: 'POST',
@@ -37,12 +47,19 @@ export class AIService {
 
       const data = await res.json();
       if (Array.isArray(data.insights) && data.insights.length > 0) {
+        this.cachedInsights = data.insights;
+        this.lastInsightsFetchTime = now;
         return data.insights;
       }
-      return this.getFallbackInsights(stockContext);
+      const fallback = this.getFallbackInsights(stockContext);
+      this.cachedInsights = fallback;
+      this.lastInsightsFetchTime = now;
+      return fallback;
     } catch (err) {
-      console.warn('AIService.getInsights fallback:', err);
-      return this.getFallbackInsights(stockContext);
+      const fallback = this.getFallbackInsights(stockContext);
+      this.cachedInsights = fallback;
+      this.lastInsightsFetchTime = now;
+      return fallback;
     }
   }
 

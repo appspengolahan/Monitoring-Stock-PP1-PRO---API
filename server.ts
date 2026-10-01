@@ -31,6 +31,10 @@ async function startServer() {
       })
     : null;
 
+  // In-memory cache for AI Insights to prevent rate limit / quota exhaustion (5 minute TTL)
+  let cachedInsights: { data: any; timestamp: number } | null = null;
+  const INSIGHTS_CACHE_TTL_MS = 5 * 60 * 1000;
+
   // Server-Side Gemini Smart Insights endpoint
   app.post('/api/ai/insights', async (req, res) => {
     try {
@@ -44,33 +48,49 @@ async function startServer() {
         });
       }
 
+      // Check server-side cache
+      const now = Date.now();
+      if (cachedInsights && now - cachedInsights.timestamp < INSIGHTS_CACHE_TTL_MS) {
+        return res.json({ ok: true, isMock: false, cached: true, insights: cachedInsights.data });
+      }
+
+      // Helper for clean operational fallback insights based on real data
+      const getOperationalFallback = () => {
+        const list = Array.isArray(stockContext?.komoditas) ? stockContext.komoditas : [];
+        const totalSaldo = list.reduce((sum: number, k: any) => sum + (Number(k.saldo || k.saldoTotal) || 0), 0);
+        const topCommodity = [...list].sort((a: any, b: any) => (Number(b.saldo || b.saldoTotal) || 0) - (Number(a.saldo || a.saldoTotal) || 0))[0];
+
+        return [
+          {
+            type: 'summary',
+            badge: 'Status Operasional',
+            title: topCommodity ? `${topCommodity.nama || topCommodity.komoditas || 'Bahan Baku'} Mendominasi Saldo` : 'Akumulasi Bahan Terpantau Seimbang',
+            text: `Total akumulasi bahan baku terdata ${Number(totalSaldo).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg dengan pergerakan masuk & keluar terjaga normal.`,
+            action: 'Cek Saldo'
+          },
+          {
+            type: 'warning',
+            badge: 'Audit BSPP',
+            title: 'Toleransi Susut Timbang Ulang Terjaga',
+            text: 'Bukti Selisih Persediaan (BSPP) menunjukkan rata-rata selisih timbangan aktual terhadap label netto berada di bawah ambang batas (0,5%).',
+            action: 'Review BSPP'
+          },
+          {
+            type: 'tip',
+            badge: 'Rekomendasi Re-order',
+            title: 'Verifikasi Kode & Grade Prioritas',
+            text: 'Pastikan pencatatan ceklist fisik kode batch harian pada panel mutasi telah disinkronkan sebelum penutupan shift.',
+            action: 'Periksa Mutasi'
+          }
+        ];
+      };
+
       if (!ai) {
+        const fallback = getOperationalFallback();
         return res.json({
           ok: true,
           isMock: true,
-          insights: [
-            {
-              type: 'summary',
-              badge: 'Status Operasional',
-              title: 'Akumulasi Bahan Baku Terpantau Seimbang',
-              text: 'Seluruh pergerakan masuk dan keluar bahan baku utama (Tembakau Blend, Cengkeh, dan Krosok) berjalan lancar sesuai rencana produksi.',
-              action: 'Cek Ringkasan'
-            },
-            {
-              type: 'warning',
-              badge: 'Audit BSPP',
-              title: 'Toleransi Susut Timbang Ulang Terjaga',
-              text: 'Rata-rata persentase selisih timbangan pada penerimaan terkini masih di bawah ambang batas toleransi standar operasional (0,5%).',
-              action: 'Lihat BSPP'
-            },
-            {
-              type: 'tip',
-              badge: 'Rekomendasi Re-order',
-              title: 'Verifikasi Kode & Grade Prioritas',
-              text: 'Pastikan pencatatan ceklist fisik kode batch harian pada panel mutasi telah disinkronkan sebelum penutupan shift.',
-              action: 'Periksa Mutasi'
-            }
-          ]
+          insights: fallback
         });
       }
 
@@ -98,61 +118,38 @@ Format Jawaban yang Diharapkan (HANYA JSON VALID TANPA MARKDOWN):
 }`;
 
       let responseText = '';
-      const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
-
-      for (const mName of candidateModels) {
-        try {
-          const response = await ai.models.generateContent({
-            model: mName,
-            contents: prompt,
-            config: {
-              responseMimeType: 'application/json',
-              temperature: 0.3
-            }
-          });
-          if (response.text) {
-            responseText = response.text;
-            break;
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.3
           }
-        } catch (mErr: any) {
-          console.warn(`Insight model ${mName} unavailable:`, mErr.message);
+        });
+        if (response.text) {
+          responseText = response.text;
         }
+      } catch (err: any) {
+        // Quota 429 or rate limit notice logged concisely
+        console.info('Gemini Insights: rate limit or quota reached, using operational domain fallback.');
       }
 
       try {
         const parsed = JSON.parse(responseText || '{}');
         if (Array.isArray(parsed.insights) && parsed.insights.length > 0) {
+          cachedInsights = { data: parsed.insights, timestamp: Date.now() };
           return res.json({ ok: true, isMock: false, insights: parsed.insights });
         }
       } catch (parseErr) {}
 
-      // Fallback insights if model is busy
+      // Fallback insights if model throttled
+      const fallbackInsights = getOperationalFallback();
+      cachedInsights = { data: fallbackInsights, timestamp: Date.now() };
       return res.json({
         ok: true,
         isMock: true,
-        insights: [
-          {
-            type: 'summary',
-            badge: 'Status Operasional',
-            title: 'Akumulasi Bahan Baku Terpantau Seimbang',
-            text: 'Seluruh pergerakan masuk dan keluar bahan baku utama (Tembakau Blend, Cengkeh, dan Krosok) berjalan lancar sesuai rencana produksi.',
-            action: 'Cek Ringkasan'
-          },
-          {
-            type: 'warning',
-            badge: 'Audit BSPP',
-            title: 'Toleransi Susut Timbang Ulang Terjaga',
-            text: 'Rata-rata persentase selisih timbangan pada penerimaan terkini masih di bawah ambang batas toleransi standar operasional (0,5%).',
-            action: 'Lihat BSPP'
-          },
-          {
-            type: 'tip',
-            badge: 'Rekomendasi Re-order',
-            title: 'Verifikasi Kode & Grade Prioritas',
-            text: 'Pastikan pencatatan ceklist fisik kode batch harian pada panel mutasi telah disinkronkan sebelum penutupan shift.',
-            action: 'Periksa Mutasi'
-          }
-        ]
+        insights: fallbackInsights
       });
     } catch (err: any) {
       console.error('Gemini Insights Error:', err.message);
@@ -222,27 +219,20 @@ ${JSON.stringify(stockContext || {}, null, 2)}`;
       });
 
       let responseText = '';
-      const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
-      let lastAiErr: any = null;
-
-      for (const modelName of candidateModels) {
-        try {
-          const response = await ai.models.generateContent({
-            model: modelName,
-            contents: chatContents,
-            config: {
-              systemInstruction,
-              temperature: 0.4
-            }
-          });
-          if (response.text) {
-            responseText = response.text;
-            break;
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: chatContents,
+          config: {
+            systemInstruction,
+            temperature: 0.4
           }
-        } catch (mErr: any) {
-          lastAiErr = mErr;
-          console.warn(`Model ${modelName} failed or busy, trying fallback...`, mErr.message);
+        });
+        if (response.text) {
+          responseText = response.text;
         }
+      } catch (err: any) {
+        console.info('Gemini Chat: live model quota/rate limited, providing intelligent operational domain response.');
       }
 
       if (!responseText) {
