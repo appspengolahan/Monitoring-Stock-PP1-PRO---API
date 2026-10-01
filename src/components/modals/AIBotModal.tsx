@@ -66,13 +66,17 @@ Silakan pilih pertanyaan cepat di bawah atau ketik langsung kebutuhan Anda!`,
   const stockContext = {
     komoditas: komoditasList.map(k => ({
       nama: k.komoditas,
+      komoditas: k.komoditas,
       saldo: k.saldoTotal,
+      saldoTotal: k.saldoTotal,
       masuk: k.masukTotal,
+      masukTotal: k.masukTotal,
       keluar: k.keluarTotal,
+      keluarTotal: k.keluarTotal,
       jumlahKode: k.jumlahKode,
       kategori: k.kategoriList,
       entriTervalidasi: k.entriTervalidasi,
-      mutasiTerbaru: k.mutasiTerbaru?.slice(0, 5) || []
+      mutasiTerbaru: k.mutasiTerbaru?.slice(0, 10) || []
     })),
     bspp: bsppList.map(b => ({
       nama: b.nama,

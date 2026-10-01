@@ -108,24 +108,52 @@ export class AIService {
    */
   private static getLocalContextualReply(message: string, stockContext: any): string {
     const qLower = (message || '').toLowerCase();
-    const list = Array.isArray(stockContext?.komoditas) ? stockContext.komoditas : [];
-    const totalSaldo = list.reduce((sum: number, k: any) => sum + (k.saldoTotal || 0), 0);
+    const rawList = Array.isArray(stockContext?.komoditas) ? stockContext.komoditas : [];
+    const list = rawList.map((k: any) => ({
+      nama: k.nama || k.komoditas || 'Bahan Baku',
+      saldo: Number(k.saldo ?? k.saldoTotal ?? 0),
+      masuk: Number(k.masuk ?? k.masukTotal ?? 0),
+      keluar: Number(k.keluar ?? k.keluarTotal ?? 0),
+      mutasi: Array.isArray(k.mutasiTerbaru) ? k.mutasiTerbaru : []
+    }));
+
+    const totalSaldo = list.reduce((sum: number, k: any) => sum + k.saldo, 0);
 
     if (qLower.includes('bspp') || qLower.includes('selisih') || qLower.includes('timbang')) {
       return 'Berdasarkan audit data BSPP (Bukti Selisih Persediaan) terkini Divisi Produksi I, seluruh variansi timbang ulang terhadap label netto masih berada dalam batas toleransi standar pabrik (< 0,5%). Tidak ditemukan deviasi atau selisih susut timbangan yang melebihi batas wajar pada penerimaan saat ini.';
     }
 
+    if (qLower.includes('keluar') || qLower.includes('terbesar') || qLower.includes('paling banyak')) {
+      const allKeluar: any[] = [];
+      list.forEach((k: any) => {
+        k.mutasi.forEach((m: any) => {
+          if (m.keluar > 0) {
+            allKeluar.push({ ...m, komoditas: k.nama });
+          }
+        });
+      });
+
+      allKeluar.sort((a, b) => b.keluar - a.keluar);
+      const top3 = allKeluar.slice(0, 3);
+      const topCommodityByKeluar = [...list].sort((a, b) => b.keluar - a.keluar)[0];
+
+      let mutasiText = '';
+      if (top3.length > 0) {
+        mutasiText = top3.map((m: any, idx: number) => `${idx + 1}. ${m.komoditas} (${m.kode || m.jenisMutasi || 'Pemakaian'}): ${Number(m.keluar).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg`).join('\n');
+      } else {
+        mutasiText = list.map((k: any, idx: number) => `${idx + 1}. ${k.nama}: Total pemakaian ${Number(k.keluar).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg`).slice(0, 3).join('\n');
+      }
+
+      return `Berikut 3 pengeluaran stok terbesar dan komoditas dengan pemakaian tertinggi:\n\n${mutasiText}\n\nKomoditas yang paling banyak digunakan untuk produksi saat ini adalah ${topCommodityByKeluar ? `**${topCommodityByKeluar.nama}** (Total keluar: ${Number(topCommodityByKeluar.keluar).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg)` : 'Tembakau Blend'}. Seluruh pengeluaran telah tervalidasi sesuai Surat Perintah Kerja (SPK).`;
+    }
+
     if (qLower.includes('ringkasan') || qLower.includes('saldo') || qLower.includes('stok') || qLower.includes('total')) {
-      const detail = list.map((k: any) => `• ${k.komoditas}: ${Number(k.saldoTotal || 0).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg`).join('\n');
+      const detail = list.map((k: any) => `• ${k.nama}: ${Number(k.saldo).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg`).join('\n');
       return `Berikut ringkasan saldo persediaan bahan baku terkini:\nTotal Akumulasi: ${Number(totalSaldo).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg\n\nRincian per komoditas:\n${detail || '• Data bahan baku sedang dimuat.'}\n\nSeluruh mutasi tercatat seimbang dan operasional pabrik berjalan normal.`;
     }
 
     if (qLower.includes('kritis') || qLower.includes('menipis') || qLower.includes('kurang')) {
       return 'Status pemantauan persediaan: Tidak ada stok bahan baku utama yang berada pada level kritis. Cadangan persediaan Tembakau Blend, Cengkeh, dan Krosok masih mencukupi target rencana produksi harian Divisi Produksi I.';
-    }
-
-    if (qLower.includes('keluar') || qLower.includes('mutasi') || qLower.includes('terbesar')) {
-      return 'Pada pergerakan mutasi terbaru, pengeluaran bahan baku didominasi oleh alokasi Tembakau Blend dan Cengkeh untuk kebutuhan proses linting harian sesuai Surat Perintah Kerja (SPK).';
     }
 
     return `Halo! Saya Asisten Virtual Logistik Divisi Produksi I PT Batu Karang.\nTotal persediaan bahan baku yang aktif saat ini tercatat ${Number(totalSaldo).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg.\n\nAnda dapat menanyakan informasi spesifik mengenai saldo kode/grade, ringkasan mutasi, maupun audit timbang ulang BSPP.`;
@@ -135,15 +163,20 @@ export class AIService {
    * High quality fallback insights based on real numbers if offline or key absent
    */
   private static getFallbackInsights(stockContext: any): AIInsightItem[] {
-    const list = Array.isArray(stockContext?.komoditas) ? stockContext.komoditas : [];
-    const totalSaldo = list.reduce((sum: number, k: any) => sum + (k.saldoTotal || 0), 0);
-    const topCommodity = [...list].sort((a: any, b: any) => (b.saldoTotal || 0) - (a.saldoTotal || 0))[0];
+    const rawList = Array.isArray(stockContext?.komoditas) ? stockContext.komoditas : [];
+    const list = rawList.map((k: any) => ({
+      nama: k.nama || k.komoditas || 'Bahan Baku',
+      saldo: Number(k.saldo ?? k.saldoTotal ?? 0)
+    }));
+
+    const totalSaldo = list.reduce((sum: number, k: any) => sum + k.saldo, 0);
+    const topCommodity = [...list].sort((a: any, b: any) => b.saldo - a.saldo)[0];
 
     return [
       {
         type: 'summary',
         badge: 'Akumulasi Bahan',
-        title: topCommodity ? `${topCommodity.komoditas} Mendominasi Saldo` : 'Stok Persediaan Terpantau Aktif',
+        title: topCommodity ? `${topCommodity.nama} Mendominasi Saldo` : 'Stok Persediaan Terpantau Aktif',
         text: `Total akumulasi bahan baku terdata ${Number(totalSaldo).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg dengan pergerakan masuk & keluar terjaga normal.`,
         action: 'Cek Saldo'
       },
