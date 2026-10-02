@@ -139,6 +139,16 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
                     {formatNumber(item.saldoTotal)}{' '}
                     <span className="text-xs font-semibold text-slate-500">{item.satuan}</span>
                   </div>
+                  {item.saldoSKTTotal !== undefined && item.saldoSKMTotal !== undefined && (item.saldoSKTTotal > 0 || item.saldoSKMTotal > 0) && (
+                    <div className="mt-2 pt-2 border-t border-slate-200/80 flex items-center justify-between text-[10.5px] font-mono">
+                      <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-medium">
+                        SKT: {formatNumber(item.saldoSKTTotal)}
+                      </span>
+                      <span className="text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 font-medium">
+                        SKM: {formatNumber(item.saldoSKMTotal)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Secondary 2-column metrics */}

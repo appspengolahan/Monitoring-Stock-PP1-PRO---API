@@ -151,6 +151,93 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ data }) => {
           </div>
         </div>
       </div>
+
+      {/* Segmentasi Jalur Produksi (SKT vs SKM) untuk Tembakau & Krosok Rajang II */}
+      {data.filter(k => k.saldoSKTTotal !== undefined && k.saldoSKMTotal !== undefined && (k.saldoSKTTotal > 0 || k.saldoSKMTotal > 0)).map(item => {
+        const total = (item.saldoSKTTotal || 0) + (item.saldoSKMTotal || 0);
+        const pctSKT = total > 0 ? ((item.saldoSKTTotal || 0) / total) * 100 : 0;
+        const pctSKM = total > 0 ? ((item.saldoSKMTotal || 0) / total) * 100 : 0;
+
+        return (
+          <div key={`skt-skm-${item.komoditas}`} className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-700 uppercase tracking-wider mb-1">
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Segmentasi Jalur Produksi (SKT vs SKM)</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  {item.komoditas}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-500 font-mono">
+                  Total Gabungan: <strong className="text-slate-900">{formatNumber(item.saldoTotal)} {item.satuan}</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Split Bar */}
+            <div className="space-y-3">
+              <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden flex">
+                <div 
+                  style={{ width: `${pctSKT}%` }} 
+                  className="bg-amber-500 h-full transition-all duration-500 flex items-center justify-center text-[9px] font-bold text-white overflow-hidden"
+                  title={`SKT: ${pctSKT.toFixed(1)}%`}
+                >
+                  {pctSKT > 15 ? `${pctSKT.toFixed(1)}%` : ''}
+                </div>
+                <div 
+                  style={{ width: `${pctSKM}%` }} 
+                  className="bg-blue-600 h-full transition-all duration-500 flex items-center justify-center text-[9px] font-bold text-white overflow-hidden"
+                  title={`SKM: ${pctSKM.toFixed(1)}%`}
+                >
+                  {pctSKM > 15 ? `${pctSKM.toFixed(1)}%` : ''}
+                </div>
+              </div>
+
+              {/* Legend & Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="bg-amber-50/50 border border-amber-200/80 rounded-xl p-3.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-3.5 h-3.5 rounded-md bg-amber-500 shrink-0"></span>
+                    <div>
+                      <span className="text-xs font-bold text-amber-950 block">SKT (Sigaret Kretek Tangan)</span>
+                      <span className="text-[11px] text-amber-800/80 font-medium">Jalur Giling / Linting Manual</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm sm:text-base font-extrabold text-amber-950 font-mono tabular-nums block">
+                      {formatNumber(item.saldoSKTTotal || 0)} {item.satuan}
+                    </span>
+                    <span className="text-[11px] font-semibold text-amber-700 font-mono">
+                      {pctSKT.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50/50 border border-blue-200/80 rounded-xl p-3.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-3.5 h-3.5 rounded-md bg-blue-600 shrink-0"></span>
+                    <div>
+                      <span className="text-xs font-bold text-blue-950 block">SKM (Sigaret Kretek Mesin)</span>
+                      <span className="text-[11px] text-blue-800/80 font-medium">Jalur Maker / Mesin Otomatis</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm sm:text-base font-extrabold text-blue-950 font-mono tabular-nums block">
+                      {formatNumber(item.saldoSKMTotal || 0)} {item.satuan}
+                    </span>
+                    <span className="text-[11px] font-semibold text-blue-700 font-mono">
+                      {pctSKM.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

@@ -24,6 +24,9 @@ interface FlattenedKode {
   satuan: string;
   nama: string;
   saldo: number;
+  saldoSKT?: number;
+  saldoSKM?: number;
+  kategoriProduksi?: 'Murni SKT' | 'Murni SKM' | 'Gabungan' | 'Nol';
   tanggalTerakhir?: string;
 }
 
@@ -33,6 +36,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 }) => {
   const [filterKomoditas, setFilterKomoditas] = useState<string>(initialCommodity);
   const [filterGrade, setFilterGrade] = useState<string>('all');
+  const [filterProduksi, setFilterProduksi] = useState<'all' | 'SKT' | 'SKM' | 'Gabungan'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSnapshotMode, setIsSnapshotMode] = useState<boolean>(false);
   const [snapshotDate, setSnapshotDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
@@ -88,7 +92,10 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
             satuan: k.satuan,
             nama: item.nama,
             saldo: item.saldo,
-            tanggalTerakhir: lastMutasi?.tanggal || undefined
+            saldoSKT: item.saldoSKT,
+            saldoSKM: item.saldoSKM,
+            kategoriProduksi: item.kategoriProduksi,
+            tanggalTerakhir: lastMutasi?.tanggal || item.tanggalTerakhir || undefined
           });
         });
       }
@@ -96,6 +103,11 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 
     return list;
   }, [data, filterKomoditas, isSnapshotMode, snapshotDate]);
+
+  // Check if current view has SKT / SKM data breakdown
+  const hasProduksiBreakdown = useMemo(() => {
+    return flattenedItems.some(i => i.kategoriProduksi || i.saldoSKT !== undefined || i.saldoSKM !== undefined);
+  }, [flattenedItems]);
 
   // Filter items
   const filteredItems = useMemo(() => {
@@ -108,6 +120,22 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
         return false;
       }
 
+      if (filterProduksi !== 'all') {
+        if (filterProduksi === 'SKT') {
+          if (item.kategoriProduksi !== 'Murni SKT' && !(item.saldoSKT && item.saldoSKT > 0 && !item.saldoSKM)) {
+            return false;
+          }
+        } else if (filterProduksi === 'SKM') {
+          if (item.kategoriProduksi !== 'Murni SKM' && !(item.saldoSKM && item.saldoSKM > 0 && !item.saldoSKT)) {
+            return false;
+          }
+        } else if (filterProduksi === 'Gabungan') {
+          if (item.kategoriProduksi !== 'Gabungan' && !(item.saldoSKT && item.saldoSKT > 0 && item.saldoSKM && item.saldoSKM > 0)) {
+            return false;
+          }
+        }
+      }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchName = item.nama.toLowerCase().includes(q);
@@ -117,12 +145,32 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 
       return true;
     });
-  }, [flattenedItems, filterGrade, hideZero, searchQuery]);
+  }, [flattenedItems, filterGrade, filterProduksi, hideZero, searchQuery]);
 
-  // Aggregate total
+  // Aggregate totals
   const totalSaldo = useMemo(() => {
     return filteredItems.reduce((acc, curr) => acc + (curr.saldo || 0), 0);
   }, [filteredItems]);
+
+  const totalSaldoSKT = useMemo(() => {
+    return filteredItems.reduce((acc, curr) => acc + (curr.saldoSKT || 0), 0);
+  }, [filteredItems]);
+
+  const totalSaldoSKM = useMemo(() => {
+    return filteredItems.reduce((acc, curr) => acc + (curr.saldoSKM || 0), 0);
+  }, [filteredItems]);
+
+  const countSKT = useMemo(() => {
+    return flattenedItems.filter(i => i.kategoriProduksi === 'Murni SKT' || (i.saldoSKT && i.saldoSKT > 0 && !i.saldoSKM)).length;
+  }, [flattenedItems]);
+
+  const countSKM = useMemo(() => {
+    return flattenedItems.filter(i => i.kategoriProduksi === 'Murni SKM' || (i.saldoSKM && i.saldoSKM > 0 && !i.saldoSKT)).length;
+  }, [flattenedItems]);
+
+  const countGabungan = useMemo(() => {
+    return flattenedItems.filter(i => i.kategoriProduksi === 'Gabungan' || (i.saldoSKT && i.saldoSKT > 0 && i.saldoSKM && i.saldoSKM > 0)).length;
+  }, [flattenedItems]);
 
   const formatNumber = (num: number): string => {
     return Number(num).toLocaleString('id-ID', {
@@ -150,26 +198,46 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
   const handleExportPdf = () => {
     const title = isSnapshotMode
       ? `Saldo Persediaan Bahan PP1 (Snapshot per ${snapshotDate})`
-      : 'Saldo Terkini per Kode / Grade';
+      : hasProduksiBreakdown
+        ? 'Saldo Terkini per Kode (Rincian SKT, SKM & Gabungan)'
+        : 'Saldo Terkini per Kode / Grade';
 
     const head: string[] = isSnapshotMode
       ? ['BAHAN', 'KODE / GRADE', 'SALDO HISTORIS (KG)']
-      : ['BAHAN', 'KODE / GRADE', 'MUTASI TERAKHIR', 'SALDO TERKINI (KG)'];
+      : hasProduksiBreakdown
+        ? ['BAHAN', 'KODE / GRADE', 'TIPE PRODUKSI', 'SKT (KG)', 'SKM (KG)', 'TOTAL (KG)']
+        : ['BAHAN', 'KODE / GRADE', 'MUTASI TERAKHIR', 'SALDO TERKINI (KG)'];
 
     const body = filteredItems.map(item => {
       if (isSnapshotMode) {
         return [item.komoditas, item.nama, formatNumber(item.saldo)];
       }
+      if (hasProduksiBreakdown) {
+        return [
+          item.komoditas,
+          item.nama,
+          item.kategoriProduksi || '—',
+          formatNumber(item.saldoSKT || 0),
+          formatNumber(item.saldoSKM || 0),
+          formatNumber(item.saldo)
+        ];
+      }
       return [item.komoditas, item.nama, formatTanggalIndo(item.tanggalTerakhir), formatNumber(item.saldo)];
     });
 
+    const infoLines = [
+      `Filter Bahan: ${filterKomoditas === 'all' ? 'Semua Bahan' : filterKomoditas}`,
+      `Filter Produksi: ${filterProduksi === 'all' ? 'Semua Jalur (SKT + SKM)' : filterProduksi}`,
+      `Jumlah Kode / Grade: ${filteredItems.length} | Total Saldo: ${formatNumber(totalSaldo)} Kg`
+    ];
+
+    if (hasProduksiBreakdown) {
+      infoLines.push(`Rincian Saldo: SKT (Tangan) = ${formatNumber(totalSaldoSKT)} Kg | SKM (Mesin) = ${formatNumber(totalSaldoSKM)} Kg`);
+    }
+
     exportToPdf({
       title,
-      infoLines: [
-        `Filter Bahan: ${filterKomoditas === 'all' ? 'Semua Bahan' : filterKomoditas}`,
-        `Mode Perhitungan: ${isSnapshotMode ? `Historis per Tanggal ${snapshotDate}` : 'Saldo Berjalan Terkini'}`,
-        `Jumlah Kode / Grade: ${filteredItems.length} | Total Saldo: ${formatNumber(totalSaldo)} Kg`
-      ],
+      infoLines,
       head,
       body,
       fileName: `Saldo_Kode_PP1_${isSnapshotMode ? snapshotDate : 'Terkini'}`
@@ -304,29 +372,123 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
             <span className="text-[11px]">Sembunyikan Saldo 0</span>
           </label>
         </div>
+
+        {/* Jalur Produksi Filter Tabs (Muncul otomatis saat data memuat SKT/SKM) */}
+        {hasProduksiBreakdown && (
+          <div className="pt-2 border-t border-slate-200/70 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1">
+              Jalur Produksi:
+            </span>
+            <button
+              onClick={() => setFilterProduksi('all')}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all cursor-pointer ${
+                filterProduksi === 'all'
+                  ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              Semua ({flattenedItems.length})
+            </button>
+            <button
+              onClick={() => setFilterProduksi('SKT')}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
+                filterProduksi === 'SKT'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                  : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span>Murni SKT ({countSKT})</span>
+            </button>
+            <button
+              onClick={() => setFilterProduksi('SKM')}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
+                filterProduksi === 'SKM'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-white text-blue-800 border-blue-300 hover:bg-blue-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              <span>Murni SKM ({countSKM})</span>
+            </button>
+            <button
+              onClick={() => setFilterProduksi('Gabungan')}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
+                filterProduksi === 'Gabungan'
+                  ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
+                  : 'bg-white text-purple-800 border-purple-300 hover:bg-purple-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+              <span>Gabungan SKT &amp; SKM ({countGabungan})</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Summary Card - Compact */}
       <div className="px-4 py-2.5 sm:px-5 sm:py-2.5 bg-slate-50 border-b border-slate-200">
-        <div className="grid grid-cols-2 gap-2 max-w-md">
-          <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-            <span className="text-[10px] font-semibold uppercase text-slate-500 block">
-              Jumlah Kode / Grade
-            </span>
-            <span className="text-sm sm:text-base font-bold text-slate-900 font-mono tabular-nums leading-tight">
-              {filteredItems.length}
-            </span>
-          </div>
+        {hasProduksiBreakdown ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+              <span className="text-[10px] font-semibold uppercase text-slate-500 block">
+                Jumlah Kode
+              </span>
+              <span className="text-sm sm:text-base font-bold text-slate-900 font-mono tabular-nums leading-tight">
+                {filteredItems.length}
+              </span>
+            </div>
 
-          <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-            <span className="text-[10px] font-semibold uppercase text-slate-500 block">
-              Total Akumulasi Saldo
-            </span>
-            <span className="text-sm sm:text-base font-bold text-blue-800 font-mono tabular-nums leading-tight">
-              {formatNumber(totalSaldo)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
-            </span>
+            <div className="bg-white px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50/20">
+              <span className="text-[10px] font-semibold uppercase text-amber-700 block flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                Saldo SKT (Tangan)
+              </span>
+              <span className="text-sm sm:text-base font-bold text-amber-900 font-mono tabular-nums leading-tight">
+                {formatNumber(totalSaldoSKT)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
+              </span>
+            </div>
+
+            <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/20">
+              <span className="text-[10px] font-semibold uppercase text-blue-700 block flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                Saldo SKM (Mesin)
+              </span>
+              <span className="text-sm sm:text-base font-bold text-blue-900 font-mono tabular-nums leading-tight">
+                {formatNumber(totalSaldoSKM)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
+              </span>
+            </div>
+
+            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+              <span className="text-[10px] font-semibold uppercase text-slate-500 block">
+                Total Akumulasi
+              </span>
+              <span className="text-sm sm:text-base font-bold text-slate-900 font-mono tabular-nums leading-tight">
+                {formatNumber(totalSaldo)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 max-w-md">
+            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+              <span className="text-[10px] font-semibold uppercase text-slate-500 block">
+                Jumlah Kode / Grade
+              </span>
+              <span className="text-sm sm:text-base font-bold text-slate-900 font-mono tabular-nums leading-tight">
+                {filteredItems.length}
+              </span>
+            </div>
+
+            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+              <span className="text-[10px] font-semibold uppercase text-slate-500 block">
+                Total Akumulasi Saldo
+              </span>
+              <span className="text-sm sm:text-base font-bold text-blue-800 font-mono tabular-nums leading-tight">
+                {formatNumber(totalSaldo)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
+              </span>
+            </div>
+          </div>
+        )}
 
         {isSnapshotMode && (
           <p className="text-[10.5px] text-slate-500 mt-1.5 flex items-center gap-1">
@@ -345,6 +507,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
             <tr className="bg-slate-100/90 border-b border-slate-200 text-[10.5px] font-semibold text-slate-600 uppercase tracking-wider">
               <th className="py-2 px-3 sm:px-4">Bahan</th>
               <th className="py-2 px-3 sm:px-4">Kode / Grade</th>
+              {hasProduksiBreakdown && <th className="py-2 px-3 sm:px-4">Tipe Produksi</th>}
               {!isSnapshotMode && <th className="py-2 px-3 sm:px-4">Mutasi Terakhir</th>}
               <th className="py-2 px-3 sm:px-4 text-right">Saldo {isSnapshotMode ? 'Snapshot' : 'Terkini'} (Kg)</th>
             </tr>
@@ -352,7 +515,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
           <tbody className="divide-y divide-slate-100 text-xs">
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={isSnapshotMode ? 3 : 4} className="py-8 text-center text-slate-400">
+                <td colSpan={isSnapshotMode ? (hasProduksiBreakdown ? 4 : 3) : (hasProduksiBreakdown ? 5 : 4)} className="py-8 text-center text-slate-400">
                   Tidak ada data kode/grade yang cocok dengan filter.
                 </td>
               </tr>
@@ -365,14 +528,48 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
                   <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap font-bold text-slate-900">
                     {item.nama}
                   </td>
+                  {hasProduksiBreakdown && (
+                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap">
+                      {item.kategoriProduksi === 'Murni SKT' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                          Murni SKT
+                        </span>
+                      ) : item.kategoriProduksi === 'Murni SKM' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                          Murni SKM
+                        </span>
+                      ) : item.kategoriProduksi === 'Gabungan' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-purple-50 text-purple-800 border border-purple-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                          Gabungan
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">—</span>
+                      )}
+                    </td>
+                  )}
                   {!isSnapshotMode && (
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-500 font-medium">
                       {formatTanggalIndo(item.tanggalTerakhir)}
                     </td>
                   )}
-                  <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums font-bold text-slate-900">
-                    {formatNumber(item.saldo)}{' '}
-                    <span className="text-[10px] font-normal text-slate-500">{item.satuan}</span>
+                  <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums">
+                    <div className="font-bold text-slate-900">
+                      {formatNumber(item.saldo)}{' '}
+                      <span className="text-[10px] font-normal text-slate-500">{item.satuan}</span>
+                    </div>
+                    {hasProduksiBreakdown && (item.saldoSKT !== undefined || item.saldoSKM !== undefined) && item.saldo > 0 && (
+                      <div className="text-[10px] text-slate-500 font-mono tracking-tight flex items-center justify-end gap-1 mt-0.5">
+                        <span className="text-amber-800 bg-amber-50/90 px-1 py-0.2 rounded border border-amber-200/60 font-medium">
+                          SKT: {formatNumber(item.saldoSKT || 0)}
+                        </span>
+                        <span className="text-blue-800 bg-blue-50/90 px-1 py-0.2 rounded border border-blue-200/60 font-medium">
+                          SKM: {formatNumber(item.saldoSKM || 0)}
+                        </span>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))

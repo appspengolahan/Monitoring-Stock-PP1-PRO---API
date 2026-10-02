@@ -32,9 +32,14 @@ export interface UserSession {
   loginTime?: string;
 }
 
+export type KategoriProduksi = 'Murni SKT' | 'Murni SKM' | 'Gabungan' | 'Nol';
+
 export interface KodeItem {
   nama: string;
   saldo: number;
+  saldoSKT?: number;
+  saldoSKM?: number;
+  kategoriProduksi?: KategoriProduksi;
   tanggalTerakhir?: string | null;
 }
 
@@ -45,7 +50,13 @@ export interface MutasiItem {
   jenisMutasi: string;
   masuk: number;
   keluar: number;
+  masukSKT?: number;
+  keluarSKT?: number;
+  masukSKM?: number;
+  keluarSKM?: number;
   saldo?: number;
+  saldoSKT?: number;
+  saldoSKM?: number;
   cek: boolean;
 }
 
@@ -53,6 +64,8 @@ export interface KomoditasData {
   komoditas: string;
   satuan: string;
   saldoTotal: number;
+  saldoSKTTotal?: number;
+  saldoSKMTotal?: number;
   masukTotal: number;
   keluarTotal: number;
   entriTotal?: number;

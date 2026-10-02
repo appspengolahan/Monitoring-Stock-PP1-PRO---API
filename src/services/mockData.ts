@@ -72,39 +72,519 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
   {
     komoditas: 'Tembakau & Krosok (Rajang II)',
     satuan: 'Kg',
-    saldoTotal: 112540.2,
-    masukTotal: 418200.0,
-    keluarTotal: 305659.8,
-    entriTotal: 3410,
-    entriTervalidasi: 97.9,
-    jumlahKode: 22,
+    saldoTotal: 28895.4,
+    saldoSKTTotal: 20561.0,
+    saldoSKMTotal: 8334.4,
+    masukTotal: 1431656.7,
+    keluarTotal: 1404925.3,
+    entriTotal: 17273,
+    entriTervalidasi: 35.9,
+    jumlahKode: 62,
     kodeList: [
-      { nama: 'Madura Guluk-Guluk RJ-2', saldo: 16800.0, tanggalTerakhir: '2026-09-26T16:20:00Z' },
-      { nama: 'Bojonegoro Baureno RJ-2', saldo: 14250.0, tanggalTerakhir: '2026-09-26T13:15:00Z' },
-      { nama: 'Temanggung Parakan RJ-2', saldo: 12100.5, tanggalTerakhir: '2026-09-25T15:40:00Z' },
-      { nama: 'Boyolali Selo RJ-2', saldo: 10400.0, tanggalTerakhir: '2026-09-26T10:30:00Z' },
-      { nama: 'Muntilan Sleman RJ-2', saldo: 9550.0, tanggalTerakhir: '2026-09-24T14:00:00Z' },
-      { nama: 'Krosok Jember Na-Oogst RJ-2', saldo: 8200.0, tanggalTerakhir: '2026-09-25T11:00:00Z' },
-      { nama: 'Weleri Kendal RJ-2', saldo: 7420.0, tanggalTerakhir: '2026-09-23T16:10:00Z' },
-      { nama: 'Krosok Vor-Oogst Besuki RJ-2', saldo: 6300.0, tanggalTerakhir: '2026-09-24T09:30:00Z' },
-      { nama: 'Kedu Wonosobo RJ-2', saldo: 5890.0, tanggalTerakhir: '2026-09-25T13:20:00Z' },
-      { nama: 'Krosok Lumajang Virginia RJ-2', saldo: 4950.0, tanggalTerakhir: '2026-09-22T15:00:00Z' },
-      { nama: 'Jombang Ploso RJ-2', saldo: 4120.0, tanggalTerakhir: '2026-09-21T10:45:00Z' },
-      { nama: 'Krosok Tuban RJ-2', saldo: 3680.0, tanggalTerakhir: '2026-09-20T14:15:00Z' },
-      { nama: 'Pamekasan Waru RJ-2', saldo: 2950.0, tanggalTerakhir: '2026-09-19T11:20:00Z' },
-      { nama: 'Sumenep Ganding RJ-2', saldo: 2450.0, tanggalTerakhir: '2026-09-18T09:00:00Z' },
-      { nama: 'Krosok Blitar RJ-2', saldo: 1820.0, tanggalTerakhir: '2026-09-17T16:30:00Z' },
-      { nama: 'Krosok Tulungagung RJ-2', saldo: 1140.0, tanggalTerakhir: '2026-09-16T13:00:00Z' },
-      { nama: 'Pati Juwana RJ-2', saldo: 520.0, tanggalTerakhir: '2026-09-15T10:10:00Z' },
-      { nama: 'Krosok Rembang RJ-2', saldo: 0.0, tanggalTerakhir: '2026-09-14T08:00:00Z' }
+          {
+                nama: "AMERIKA 2024 (BO1)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-07-15T00:00:00.000Z"
+          },
+          {
+                nama: "AMERIKA 2025 (BO1)",
+                saldo: 1394.8,
+                saldoSKT: 1394.8,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "BERINGIN 2023 (ZN)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-04-18T00:00:00.000Z"
+          },
+          {
+                nama: "BERINGIN 2024 (HS)",
+                saldo: 371.1,
+                saldoSKT: 200,
+                saldoSKM: 171.1,
+                kategoriProduksi: "Gabungan",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "BERINGIN GRADE A (2023)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-06-25T00:00:00.000Z"
+          },
+          {
+                nama: "BESUKI 2024 (ZN)",
+                saldo: 124.3,
+                saldoSKT: 124.3,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "BESUKI GRADE B (2022)",
+                saldo: 10,
+                saldoSKT: 10,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-04-17T00:00:00.000Z"
+          },
+          {
+                nama: "BESUKI GRADE B (2023)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-06-20T00:00:00.000Z"
+          },
+          {
+                nama: "BRAZIL 2025 (BOA)",
+                saldo: 798.3,
+                saldoSKT: 0,
+                saldoSKM: 798.3,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "BRAZIL GRADE B (2022)",
+                saldo: 329.4,
+                saldoSKT: 0,
+                saldoSKM: 329.4,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "DIET TRIAL - 1 (2025)",
+                saldo: 245.6,
+                saldoSKT: 0,
+                saldoSKM: 245.6,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "DIET TRIAL - 3 (2026)",
+                saldo: 203.4,
+                saldoSKT: 0,
+                saldoSKM: 203.4,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "EXPANDED STEM - 1B GRADE B (2023)",
+                saldo: 37,
+                saldoSKT: 0,
+                saldoSKM: 37,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-26T00:00:00.000Z"
+          },
+          {
+                nama: "FCV DIET TOBACCO SGI (2024)",
+                saldo: 37.2,
+                saldoSKT: 0,
+                saldoSKM: 37.2,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-26T00:00:00.000Z"
+          },
+          {
+                nama: "GARUT 2024 (FR)",
+                saldo: 200.8,
+                saldoSKT: 200.8,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "GARUT 2025 (FR)",
+                saldo: 201.7,
+                saldoSKT: 201.7,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "HANG BOYOLALI 2024 (FS)",
+                saldo: 194,
+                saldoSKT: 194,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "HANG MADURA 2024 (BAT)",
+                saldo: 147,
+                saldoSKT: 147,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "HANG MADURA GRADE B (2021)",
+                saldo: 40.4,
+                saldoSKT: 40.4,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-26T00:00:00.000Z"
+          },
+          {
+                nama: "IZMIR TOBACCO GRADE B (2022)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-08-11T00:00:00.000Z"
+          },
+          {
+                nama: "JANTURAN BOYOLALI 2024 (VJI)",
+                saldo: 361.1,
+                saldoSKT: 361.1,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "JANTURAN GRADE B (2020)",
+                saldo: 134.1,
+                saldoSKT: 134.1,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "JANTURAN JOMBANG 2024 (MYN)",
+                saldo: 171.7,
+                saldoSKT: 171.7,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "JONING 2024 (AR)",
+                saldo: 92.2,
+                saldoSKT: 92.2,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "KASTURI 2023 (SN)",
+                saldo: 545,
+                saldoSKT: 545,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "KASTURI 2023 (ST)",
+                saldo: 261,
+                saldoSKT: 261,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "KASTURI 2024 (BE) - 1",
+                saldo: 568.1,
+                saldoSKT: 568.1,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-26T00:00:00.000Z"
+          },
+          {
+                nama: "KASTURI GRADE C (2019)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-07-30T00:00:00.000Z"
+          },
+          {
+                nama: "KASTURI Z - AB GRADE B (2022)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-07-07T00:00:00.000Z"
+          },
+          {
+                nama: "KRS. GARUT 2024 (MYN)",
+                saldo: 371.5,
+                saldoSKT: 371.5,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "KRS. GARUT 2025 (MYN)",
+                saldo: 503.9,
+                saldoSKT: 503.9,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "LOMBOK 2024 (BE) - 1",
+                saldo: 791,
+                saldoSKT: 791,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "LOMBOK 2024 (FS) - 1",
+                saldo: 279.1,
+                saldoSKT: 279.1,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "MADURA 2023 (HL) S",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-04-14T00:00:00.000Z"
+          },
+          {
+                nama: "MADURA 2023 HL (R)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: null
+          },
+          {
+                nama: "MADURA 2024 (BAT) R",
+                saldo: 10252.1,
+                saldoSKT: 9616.8,
+                saldoSKM: 635.3,
+                kategoriProduksi: "Gabungan",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "MAESAN 2023 (LIM)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-07-27T00:00:00.000Z"
+          },
+          {
+                nama: "MAESAN 2024 (HS)",
+                saldo: 318.9,
+                saldoSKT: 318.9,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "MAESAN GRADE C (2021)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-09-10T00:00:00.000Z"
+          },
+          {
+                nama: "MRANGGEN 2024 (LL)",
+                saldo: 935.4,
+                saldoSKT: 500,
+                saldoSKM: 435.4,
+                kategoriProduksi: "Gabungan",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "PAITON 2023 (DM)",
+                saldo: 288.3,
+                saldoSKT: 288.3,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-26T00:00:00.000Z"
+          },
+          {
+                nama: "PAITON 2023 (ZN)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-08-27T00:00:00.000Z"
+          },
+          {
+                nama: "PAITON 2024 (BE)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-04-13T00:00:00.000Z"
+          },
+          {
+                nama: "PAITON 2024 (BWN)",
+                saldo: 972.4,
+                saldoSKT: 972.4,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "PAKPIE GRADE B (2019)",
+                saldo: 299.7,
+                saldoSKT: 299.7,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-04-17T00:00:00.000Z"
+          },
+          {
+                nama: "PAKPIE GRADE C (2022)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-08-29T00:00:00.000Z"
+          },
+          {
+                nama: "PLOSO 2023 SH",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2025-09-13T00:00:00.000Z"
+          },
+          {
+                nama: "PLOSO 2024 (MYN)",
+                saldo: 1123.9,
+                saldoSKT: 1123.9,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "RAJANGAN KUNINGAN GRADE A",
+                saldo: 168.5,
+                saldoSKT: 168.5,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-04-17T00:00:00.000Z"
+          },
+          {
+                nama: "SAPUDI 2024 (GF)",
+                saldo: 267.5,
+                saldoSKT: 267.5,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "TBK ESCOT 2024 (BE)",
+                saldo: 141.6,
+                saldoSKT: 141.6,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-09-26T00:00:00.000Z"
+          },
+          {
+                nama: "TEMANGGUNG GRADE C (2017)",
+                saldo: 187.4,
+                saldoSKT: 187.4,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-04-17T00:00:00.000Z"
+          },
+          {
+                nama: "TEMANGGUNG SRINTIL GRADE C (2015)",
+                saldo: 84.3,
+                saldoSKT: 84.3,
+                saldoSKM: 0,
+                kategoriProduksi: "Murni SKT",
+                tanggalTerakhir: "2026-04-17T00:00:00.000Z"
+          },
+          {
+                nama: "WELERI 2023 (FN) NP",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: "2026-06-18T00:00:00.000Z"
+          },
+          {
+                nama: "WELERI 2024 (HK)",
+                saldo: 1351.8,
+                saldoSKT: 0,
+                saldoSKM: 1351.8,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "WELERI GRADE B (2021)",
+                saldo: 102.5,
+                saldoSKT: 0,
+                saldoSKM: 102.5,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "WONOGIRI 2024 (LL)",
+                saldo: 0,
+                saldoSKT: 0,
+                saldoSKM: 0,
+                kategoriProduksi: "Nol",
+                tanggalTerakhir: null
+          },
+          {
+                nama: "ZAMBIA M1L (2023)",
+                saldo: 689.2,
+                saldoSKT: 0,
+                saldoSKM: 689.2,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "ZIMBABWE 2025 (HR) L1OF",
+                saldo: 931.2,
+                saldoSKT: 0,
+                saldoSKM: 931.2,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "ZIMBABWE 2025 (L2OF/P)",
+                saldo: 708.6,
+                saldoSKT: 0,
+                saldoSKM: 708.6,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "ZIMBABWE B1L (2023)",
+                saldo: 1084.8,
+                saldoSKT: 0,
+                saldoSKM: 1084.8,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          },
+          {
+                nama: "ZIMBABWE M1L (2023)",
+                saldo: 573.6,
+                saldoSKT: 0,
+                saldoSKM: 573.6,
+                kategoriProduksi: "Murni SKM",
+                tanggalTerakhir: "2026-09-30T00:00:00.000Z"
+          }
     ],
     mutasiTerbaru: [
-      { id: 'rj2-1', tanggal: '2026-09-26T16:20:00Z', kode: 'Madura Guluk-Guluk RJ-2', jenisMutasi: 'Pemakaian SKM Line 1', masuk: 0, keluar: 1450.0, saldo: 16800.0, cek: true },
-      { id: 'rj2-2', tanggal: '2026-09-26T13:15:00Z', kode: 'Bojonegoro Baureno RJ-2', jenisMutasi: 'Penerimaan Gudang Utama', masuk: 2800.0, keluar: 0, saldo: 14250.0, cek: true },
-      { id: 'rj2-3', tanggal: '2026-09-26T10:30:00Z', kode: 'Boyolali Selo RJ-2', jenisMutasi: 'Pemakaian SKT Line 3', masuk: 0, keluar: 920.0, saldo: 10400.0, cek: true },
-      { id: 'rj2-4', tanggal: '2026-09-25T15:40:00Z', kode: 'Temanggung Parakan RJ-2', jenisMutasi: 'Pemakaian SKT Line 1', masuk: 0, keluar: 1100.0, saldo: 12100.5, cek: true },
-      { id: 'rj2-5', tanggal: '2026-09-25T13:20:00Z', kode: 'Kedu Wonosobo RJ-2', jenisMutasi: 'Transfer Antar Gudang', masuk: 800.0, keluar: 0, saldo: 5890.0, cek: false },
-      { id: 'rj2-6', tanggal: '2026-09-25T11:00:00Z', kode: 'Krosok Jember Na-Oogst RJ-2', jenisMutasi: 'Pemakaian Threshing', masuk: 0, keluar: 750.0, saldo: 8200.0, cek: true }
+      { id: 'rj2-1', tanggal: '2026-09-30T00:00:00Z', kode: 'MADURA 2024 (BAT) R', jenisMutasi: 'Pengeluaran Setoran', masuk: 0, keluar: 576.0, keluarSKT: 576.0, keluarSKM: 0, saldo: 10252.1, saldoSKT: 9616.8, saldoSKM: 635.3, cek: true },
+      { id: 'rj2-2', tanggal: '2026-09-30T00:00:00Z', kode: 'MADURA 2024 (BAT) R', jenisMutasi: 'BSPP Kurang', masuk: 0, keluar: 1.2, keluarSKT: 1.2, keluarSKM: 0, saldo: 10252.1, saldoSKT: 9616.8, saldoSKM: 635.3, cek: true },
+      { id: 'rj2-3', tanggal: '2026-09-28T00:00:00Z', kode: 'MADURA 2024 (BAT) R', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 1631.2, masukSKT: 1631.2, masukSKM: 0, keluar: 0, saldo: 11599.7, cek: true },
+      { id: 'rj2-4', tanggal: '2026-09-26T00:00:00Z', kode: 'MADURA 2024 (BAT) R', jenisMutasi: 'Pengeluaran Setoran', masuk: 0, keluar: 75.0, keluarSKT: 0, keluarSKM: 75.0, saldo: 9969.5, cek: true },
+      { id: 'rj2-5', tanggal: '2026-09-30T00:00:00Z', kode: 'AMERIKA 2025 (BO1)', jenisMutasi: 'Pengeluaran Setoran', masuk: 0, keluar: 420.0, keluarSKT: 420.0, keluarSKM: 0, saldo: 1394.8, cek: true },
+      { id: 'rj2-6', tanggal: '2026-09-30T00:00:00Z', kode: 'WELERI 2024 (HK)', jenisMutasi: 'Pemakaian Mesin SKM', masuk: 0, keluar: 650.0, keluarSKT: 0, keluarSKM: 650.0, saldo: 1351.8, cek: true }
     ]
   },
   {

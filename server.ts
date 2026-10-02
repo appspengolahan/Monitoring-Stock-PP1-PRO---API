@@ -196,7 +196,12 @@ PANDUAN KETAT:
 2. Gunakan gaya bahasa profesional, sopan, lugas, khas manufaktur/pabrik Indonesia.
 3. Selalu sebutkan satuan "Kg" dengan angka format Indonesia (misal: 12.500,5 Kg).
 4. Jawab berdasarkan data persediaan riil yang disertakan di bawah ini. JANGAN mengarang data saldo yang tidak ada di konteks.
-5. Bila ditanya tentang BSPP, jelaskan konsep timbang ulang vs label netto serta status Lebih / Kurang.
+5. Pemisahan SKT & SKM: Pada komoditas Tembakau & Krosok (Rajang II), persediaan terbagi menjadi:
+   - Murni SKT (Sigaret Kretek Tangan / linting manual, diambil dari Kolom F 'T SALDO')
+   - Murni SKM (Sigaret Kretek Mesin / maker otomatis, diambil dari Kolom I 'M SALDO')
+   - Gabungan SKT & SKM (memiliki saldo di kedua jalur, contohnya Madura 2024 (BAT) R dengan saldo total akumulasi Kolom J).
+   Jika pengguna menanyakan peruntukan SKT/SKM, berikan rincian ini secara transparan dan detail.
+6. Bila ditanya tentang BSPP, jelaskan konsep timbang ulang vs label netto serta status Lebih / Kurang.
 
 Konteks Data Persediaan Riil:
 ${JSON.stringify(stockContext || {}, null, 2)}`;
@@ -252,6 +257,16 @@ ${JSON.stringify(stockContext || {}, null, 2)}`;
 
         if (qLower.includes('bspp') || qLower.includes('selisih') || qLower.includes('timbang')) {
           responseText = `Berdasarkan audit data BSPP (Bukti Selisih Persediaan) terkini Divisi Produksi I, seluruh variansi timbang ulang terhadap label netto masih berada dalam batas toleransi standar pabrik (< 0,5%). Tidak ditemukan anomali atau deviasi susut timbangan yang mencolok pada penerimaan saat ini.`;
+        } else if (qLower.includes('skt') || qLower.includes('skm') || qLower.includes('tangan') || qLower.includes('mesin')) {
+          const rj2 = rawList.find((k: any) => (k.nama || k.komoditas || '').includes('Rajang II'));
+          if (rj2) {
+            const skt = Number(rj2.saldoSKTTotal || 0);
+            const skm = Number(rj2.saldoSKMTotal || 0);
+            const total = Number(rj2.saldo || rj2.saldoTotal || 0);
+            responseText = `Segmentasi persediaan untuk **Tembakau & Krosok (Rajang II)** terbagi menjadi:\n\n• **SKT (Sigaret Kretek Tangan / Linting Manual)**: ${skt.toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg\n• **SKM (Sigaret Kretek Mesin / Maker Otomatis)**: ${skm.toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg\n• **Total Akumulasi Gabungan**: ${total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg\n\nTerdapat kode berstatus Gabungan (seperti Madura 2024 (BAT) R yang dialokasikan untuk kedua jalur), serta kode-kode berstatus Murni SKT atau Murni SKM.`;
+          } else {
+            responseText = `Data peruntukan produksi SKT (Sigaret Kretek Tangan) dan SKM (Sigaret Kretek Mesin) telah terpetakan pada komoditas Tembakau & Krosok (Rajang II). Anda dapat memfilter tabel berdasarkan tombol Murni SKT, Murni SKM, atau Gabungan.`;
+          }
         } else if (qLower.includes('keluar') || qLower.includes('terbesar') || qLower.includes('paling banyak')) {
           // Collect all mutasi keluar
           const allKeluar: any[] = [];
@@ -282,7 +297,31 @@ ${JSON.stringify(stockContext || {}, null, 2)}`;
         } else if (qLower.includes('kritis') || qLower.includes('menipis') || qLower.includes('kurang')) {
           responseText = `Status pemantauan bahan: Tidak ada stok bahan baku utama yang berada pada level kritis. Cadangan persediaan Tembakau Blend, Cengkeh, dan Krosok masih mencukupi target rencana produksi shift kerja aktif.`;
         } else {
-          responseText = `Halo! Saya AI Logistik Divisi Produksi I PT Batu Karang.\nTotal persediaan bahan baku yang aktif saat ini tercatat ${Number(totalSaldo).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg (${list.length} komoditas utama). Ada data spesifik mengenai saldo kode, mutasi, atau audit timbang BSPP yang ingin Anda tanyakan?`;
+          // Check if user is asking about a specific grade / kode name
+          let matchedItem: any = null;
+          let matchedKomoditas: string = '';
+          for (const k of rawList) {
+            if (Array.isArray(k.kodeList)) {
+              for (const code of k.kodeList) {
+                if (code.nama && qLower.includes(code.nama.toLowerCase())) {
+                  matchedItem = code;
+                  matchedKomoditas = k.nama || k.komoditas;
+                  break;
+                }
+              }
+            }
+            if (matchedItem) break;
+          }
+
+          if (matchedItem) {
+            let breakdown = '';
+            if (matchedItem.saldoSKT !== undefined || matchedItem.saldoSKM !== undefined) {
+              breakdown = ` (Rincian: SKT = ${Number(matchedItem.saldoSKT || 0).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg, SKM = ${Number(matchedItem.saldoSKM || 0).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg · Status: ${matchedItem.kategoriProduksi || 'Gabungan'})`;
+            }
+            responseText = `Saldo persediaan untuk kode **${matchedItem.nama}** (${matchedKomoditas}) saat ini tercatat sebesar **${Number(matchedItem.saldo).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg**${breakdown}. Data ini sinkron dengan catatan gudang terkini.`;
+          } else {
+            responseText = `Halo! Saya AI Logistik Divisi Produksi I PT Batu Karang.\nTotal persediaan bahan baku yang aktif saat ini tercatat ${Number(totalSaldo).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Kg (${list.length} komoditas utama). Ada data spesifik mengenai saldo kode, jalur SKT/SKM, atau audit timbang BSPP yang ingin Anda tanyakan?`;
+          }
         }
       }
 
