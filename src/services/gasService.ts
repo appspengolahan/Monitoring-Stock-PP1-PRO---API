@@ -4,8 +4,8 @@ import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from 
 export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbytYMPwbydaE_GhoSyhnCqC6MBkaQRyzDnaCWdXyr2q_309-7CPTXQjGwGVkirinbFEyw/exec';
 
 const STORAGE_KEYS = {
-  KOMODITAS: 'stockpp1_komoditas_data_v2',
-  BSPP: 'stockpp1_bspp_data_v2',
+  KOMODITAS: 'stockpp1_komoditas_data_v3',
+  BSPP: 'stockpp1_bspp_data_v3',
   SESSION: 'stockpp1_user_session',
   USER_CONFIGS: 'stockpp1_user_access_configs_v1',
   GAS_URL: 'stockpp1_gas_api_url',
@@ -487,11 +487,36 @@ export class GasService {
   // --- Live Refresh All Data from GAS ---
   public static async syncFromGas(): Promise<{ success: boolean; message: string; data?: { komoditas: KomoditasData[]; bspp: BSPPData[] } }> {
     try {
-      const url = `${this.gasUrl}?action=getDashboardData&t=${Date.now()}`;
-      const res = await this.fetchWithTimeout(url, 30000);
+      let komoditas: KomoditasData[] | null = null;
+      let bspp: BSPPData[] | null = null;
 
-      const komoditas = (res && res.komoditas) || (res && res.data && res.data.komoditas);
-      const bspp = (res && res.bspp) || (res && res.data && res.data.bspp);
+      // 1. Coba getDashboardData (paling cepat jika cache GAS aktif)
+      try {
+        const url = `${this.gasUrl}?action=getDashboardData&t=${Date.now()}`;
+        const res = await this.fetchWithTimeout(url, 20000);
+        komoditas = (res && res.komoditas) || (res && res.data && res.data.komoditas);
+        bspp = (res && res.bspp) || (res && res.data && res.data.bspp);
+      } catch (errDash) {
+        console.warn('getDashboardData lambat atau timeout, beralih ke sinkronisasi bertahap per komoditas...', errDash);
+      }
+
+      // 2. Jika getDashboardData timeout/gagal, ambil tiap komoditas secara bertahap (0: Blend, 1: Cengkeh, 2: Rajang II, 3: Rajang I)
+      if (!komoditas || !Array.isArray(komoditas) || komoditas.length === 0) {
+        const currentList = [...this.getCachedKomoditas()];
+        for (let i = 0; i < 4; i++) {
+          try {
+            const kUrl = `${this.gasUrl}?action=getKomoditasData&index=${i}&t=${Date.now()}`;
+            const kRes = await this.fetchWithTimeout(kUrl, 15000);
+            const kData = (kRes && kRes.data) || kRes;
+            if (kData && kData.komoditas && Array.isArray(kData.kodeList)) {
+              currentList[i] = kData;
+            }
+          } catch (eK) {
+            console.warn(`Gagal menarik komoditas index ${i} secara mandiri:`, eK);
+          }
+        }
+        komoditas = currentList;
+      }
 
       if (komoditas && Array.isArray(komoditas)) {
         this.saveCachedKomoditas(komoditas);
@@ -501,7 +526,7 @@ export class GasService {
         }
         return {
           success: true,
-          message: 'Data berhasil disinkronkan langsung dari Google Sheets via GAS!',
+          message: 'Data 4 Komoditas berhasil disinkronkan langsung dari Google Sheets via GAS!',
           data: {
             komoditas: enrichedKomoditas,
             bspp: bspp || this.getCachedBSPP()
@@ -517,7 +542,7 @@ export class GasService {
       this.saveCachedKomoditas(currentKomoditas);
       return {
         success: false,
-        message: `Menggunakan data cache lokal: ${err.message}`,
+        message: `Menggunakan data terkini: ${err.message}`,
         data: {
           komoditas: currentKomoditas,
           bspp: currentBSPP
