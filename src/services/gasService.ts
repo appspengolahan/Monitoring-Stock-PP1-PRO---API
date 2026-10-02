@@ -1,7 +1,7 @@
 import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig } from '../types';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 
-export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbywAsu-wvbBxWwl2P9YojeZgR13U3BR9cS8THDCGE9EMINUXIIcR1HjoAK59W1Aqm1lYQ/exec';
+export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbytYMPwbydaE_GhoSyhnCqC6MBkaQRyzDnaCWdXyr2q_309-7CPTXQjGwGVkirinbFEyw/exec';
 
 const STORAGE_KEYS = {
   KOMODITAS: 'stockpp1_komoditas_data_v2',
