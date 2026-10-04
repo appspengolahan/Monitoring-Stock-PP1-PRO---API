@@ -495,9 +495,22 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     }
   });
 
-  // Attach Vite middleware in development mode
+  // Handle favicon requests cleanly without falling through to index.html
+  app.get('/favicon.ico', (_req, res) => {
+    const iconPath = path.resolve(__dirname, 'public', 'icon.svg');
+    if (fs.existsSync(iconPath)) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+      return fs.createReadStream(iconPath).pipe(res);
+    }
+    res.status(204).end();
+  });
+
+  // Attach Vite middleware in development mode with HMR disabled to avoid iframe WebSocket errors
   const vite = await createViteServer({
-    server: { middlewareMode: true },
+    server: { 
+      middlewareMode: true,
+      hmr: false
+    },
     appType: 'custom'
   });
 
@@ -506,6 +519,11 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
   // Serve index.html transformed by Vite for any client-side routes
   app.use('*', async (req, res, next) => {
     const url = req.originalUrl;
+    // Skip index.html for static assets or files with extensions
+    if (url.includes('.') && !url.endsWith('.html')) {
+      return next();
+    }
+
     try {
       const templatePath = path.resolve(__dirname, 'index.html');
       if (!fs.existsSync(templatePath)) {

@@ -11,7 +11,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon.png'],
+        includeAssets: ['icon.svg'],
         manifest: {
           id: '/',
           name: 'Monitoring Stock Persediaan - PP1',
@@ -84,9 +84,9 @@ export default defineConfig(() => {
     },
     server: {
       port: 3000,
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // HMR is disabled in AI Studio preview iframe environment to prevent WebSocket connection errors
+      hmr: false,
+      watch: null,
       allowedHosts: true as true,
     },
   };
