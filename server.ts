@@ -456,12 +456,27 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     }
   });
 
+  // In-memory micro-cache for GAS proxy to accelerate repeat calls and reduce latency to < 5ms
+  const proxyMemoryCache = new Map<string, { data: any; expiry: number }>();
+  const PROXY_CACHE_TTL_MS = 30000; // 30 seconds cache for rapid repeat queries
+
   // Proxy API endpoint to bypass browser CORS and follow 302 redirect transparently
   app.get('/api/gas-proxy', async (req, res) => {
     try {
       const targetUrl = req.query.url as string;
+      const noCache = req.query.noCache === 'true';
+
       if (!targetUrl) {
         return res.status(400).json({ ok: false, error: 'Target URL is required' });
+      }
+
+      const now = Date.now();
+      if (!noCache) {
+        const cached = proxyMemoryCache.get(targetUrl);
+        if (cached && cached.expiry > now) {
+          res.setHeader('X-Cache', 'HIT');
+          return res.json(cached.data);
+        }
       }
 
       // Fetch with redirect: 'follow'
@@ -473,19 +488,32 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
       });
 
       const contentType = response.headers.get('content-type') || '';
+      let resultData: any;
 
       if (contentType.includes('application/json')) {
-        const data = await response.json();
-        return res.json(data);
+        resultData = await response.json();
       } else {
         const text = await response.text();
         try {
-          const json = JSON.parse(text);
-          return res.json(json);
+          resultData = JSON.parse(text);
         } catch {
-          return res.send(text);
+          resultData = text;
         }
       }
+
+      // Cache successful response in memory
+      if (typeof resultData === 'object' && resultData !== null) {
+        proxyMemoryCache.set(targetUrl, { data: resultData, expiry: now + PROXY_CACHE_TTL_MS });
+        // Periodically purge expired cache entries
+        if (proxyMemoryCache.size > 60) {
+          for (const [k, v] of proxyMemoryCache.entries()) {
+            if (v.expiry < now) proxyMemoryCache.delete(k);
+          }
+        }
+      }
+
+      res.setHeader('X-Cache', 'MISS');
+      return res.json(resultData);
     } catch (err: any) {
       console.error('GAS Proxy Error:', err.message);
       return res.status(500).json({

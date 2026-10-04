@@ -168,9 +168,11 @@ export default function App() {
   // 6. Manual Refresh Handler
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    setSyncStatusNotice(null);
+    setSyncStatusNotice('Menarik data 4 spreadsheet komoditas secara paralel...');
     try {
-      const res = await GasService.syncFromGas();
+      const res = await GasService.syncFromGas((stage) => {
+        setSyncStatusNotice(stage);
+      });
       if (res.data) {
         setKomoditasList(res.data.komoditas);
         setBsppList(res.data.bspp);
