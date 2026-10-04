@@ -76,7 +76,10 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 <strong>Pembaruan Data (Refresh):</strong> Klik tombol <strong>"Refresh"</strong> di pojok kanan atas untuk mengambil data transaksi terbaru dari spreadsheet.
               </li>
               <li>
-                <strong>Tab Mutasi Terbaru:</strong> Menampilkan pergerakan stok lintas bahan. Dilengkapi filter hierarkis Bahan &rarr; Kode/Grade &rarr; Jenis Mutasi &rarr; Rentang Tanggal, serta opsi sembunyikan mutasi 0.
+                <strong>Tab Mutasi Terbaru &amp; Pemisahan SKT/SKM:</strong> Menampilkan pergerakan stok lintas bahan lengkap dengan pemisahan jalur produksi SKT (Tangan) dan SKM (Mesin). Dilengkapi filter hierarkis Bahan &rarr; Kode/Grade &rarr; Jenis Mutasi &rarr; Rentang Tanggal, serta opsi sembunyikan mutasi 0.
+              </li>
+              <li>
+                <strong>Kelola Jenis Mutasi Tambahan (Aman &amp; Non-Destruktif):</strong> Anda dapat menambah opsi jenis mutasi kustom langsung di web app (seperti <em>Sample Laboratorium / QC</em>, <em>Retur Pemakaian Produksi</em>, <em>Koreksi Fisik Stock Opname</em>, dll) dan memberi label pada transaksi. Fitur ini bekerja pada lapisan aplikasi sehingga <strong>100% aman dan tidak merusak rumus ataupun data Google Spreadsheet asli</strong>.
               </li>
               <li>
                 <strong>Tab Saldo Kode / Grade:</strong> Memiliki dua mode: mode <em>Saldo Terkini</em> dan mode <em>Saldo Snapshot per Tanggal Tertentu</em> untuk audit dan rekonsiliasi data historis.

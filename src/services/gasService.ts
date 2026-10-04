@@ -1,4 +1,4 @@
-import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig } from '../types';
+import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem } from '../types';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 
 export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbytYMPwbydaE_GhoSyhnCqC6MBkaQRyzDnaCWdXyr2q_309-7CPTXQjGwGVkirinbFEyw/exec';
@@ -69,6 +69,152 @@ export class GasService {
     localStorage.setItem('stockpp1_skt_skm_config_v1', JSON.stringify(config));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('stockpp1_skt_skm_config_changed', { detail: config }));
+    }
+  }
+
+  // --- Custom Jenis Mutasi Management (100% Safe - Read-only Google Sheets guarantee) ---
+  public static getCustomJenisMutasiList(): CustomJenisMutasiItem[] {
+    const stored = localStorage.getItem('stockpp1_custom_jenis_mutasi_v2');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Ensure BSPP item is present
+          if (!parsed.some((p: any) => p.nama && p.nama.toUpperCase() === 'BSPP')) {
+            parsed.unshift({
+              id: 'cjm-bspp-gabungan',
+              nama: 'BSPP',
+              komoditas: 'all',
+              kategoriArus: 'netral',
+              keterangan: 'Bukti Selisih Persediaan (Gabungan selisih lebih (+) dan selisih kurang (-))',
+              isCustom: true,
+              createdAt: '2026-10-01T00:00:00.000Z'
+            });
+            localStorage.setItem('stockpp1_custom_jenis_mutasi_v2', JSON.stringify(parsed));
+          }
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    // Default operational options commonly needed in cigarette manufacturing logistics
+    const defaultList: CustomJenisMutasiItem[] = [
+      {
+        id: 'cjm-bspp-gabungan',
+        nama: 'BSPP',
+        komoditas: 'all',
+        kategoriArus: 'netral',
+        keterangan: 'Bukti Selisih Persediaan (Gabungan selisih lebih (+) dan selisih kurang (-))',
+        isCustom: true,
+        createdAt: '2026-10-01T00:00:00.000Z'
+      },
+      {
+        id: 'cjm-sample-qc',
+        nama: 'Sample Laboratorium / QC',
+        komoditas: 'all',
+        kategoriArus: 'keluar',
+        keterangan: 'Pengambilan sampel uji organoleptik, kadar air & uji bakar tim QC',
+        isCustom: true,
+        createdAt: '2026-10-01T00:00:00.000Z'
+      },
+      {
+        id: 'cjm-retur-lantai',
+        nama: 'Retur Pemakaian Produksi',
+        komoditas: 'all',
+        kategoriArus: 'masuk',
+        keterangan: 'Pengembalian sisa bahan dari lantai giling/linting/maker ke gudang persediaan',
+        isCustom: true,
+        createdAt: '2026-10-01T00:00:00.000Z'
+      },
+      {
+        id: 'cjm-koreksi-audit',
+        nama: 'Koreksi Fisik Stock Opname',
+        komoditas: 'all',
+        kategoriArus: 'netral',
+        keterangan: 'Penyesuaian administratif berdasarkan hasil rekonsiliasi audit timbang fisik',
+        isCustom: true,
+        createdAt: '2026-10-01T00:00:00.000Z'
+      },
+      {
+        id: 'cjm-sortir-afkir',
+        nama: 'Afkir / Sortir Kualitas',
+        komoditas: 'all',
+        kategoriArus: 'keluar',
+        keterangan: 'Pemisahan bahan tidak layak giling sesuai pedoman mutu Divisi Produksi I',
+        isCustom: true,
+        createdAt: '2026-10-01T00:00:00.000Z'
+      },
+      {
+        id: 'cjm-mutasi-antardepo',
+        nama: 'Mutasi Antar Gudang / Depo',
+        komoditas: 'all',
+        kategoriArus: 'netral',
+        keterangan: 'Perpindahan fisik antar gudang primer dan gudang transit penyangga',
+        isCustom: true,
+        createdAt: '2026-10-01T00:00:00.000Z'
+      }
+    ];
+
+    try {
+      localStorage.setItem('stockpp1_custom_jenis_mutasi_v2', JSON.stringify(defaultList));
+    } catch (e) {}
+    return defaultList;
+  }
+
+  public static addCustomJenisMutasi(item: Omit<CustomJenisMutasiItem, 'id' | 'createdAt' | 'isCustom'>): CustomJenisMutasiItem {
+    const list = this.getCustomJenisMutasiList();
+    const newItem: CustomJenisMutasiItem = {
+      ...item,
+      id: `cjm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      isCustom: true,
+      createdAt: new Date().toISOString()
+    };
+    list.push(newItem);
+    localStorage.setItem('stockpp1_custom_jenis_mutasi_v2', JSON.stringify(list));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('stockpp1_custom_jenis_mutasi_changed', { detail: list }));
+    }
+    return newItem;
+  }
+
+  public static deleteCustomJenisMutasi(id: string): void {
+    let list = this.getCustomJenisMutasiList();
+    list = list.filter(item => item.id !== id);
+    localStorage.setItem('stockpp1_custom_jenis_mutasi_v2', JSON.stringify(list));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('stockpp1_custom_jenis_mutasi_changed', { detail: list }));
+    }
+  }
+
+  public static resetCustomJenisMutasi(): void {
+    localStorage.removeItem('stockpp1_custom_jenis_mutasi_v2');
+    const resetList = this.getCustomJenisMutasiList();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('stockpp1_custom_jenis_mutasi_changed', { detail: resetList }));
+    }
+  }
+
+  // --- Mutasi Row Custom Tagging (100% Safe client layer without altering sheets) ---
+  public static getMutasiTagsMap(): Record<string, string> {
+    const stored = localStorage.getItem('stockpp1_mutasi_tags_v1');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object') return parsed;
+      } catch (e) {}
+    }
+    return {};
+  }
+
+  public static setMutasiTag(mutasiKey: string, jenisNama: string | null): void {
+    const map = this.getMutasiTagsMap();
+    if (!jenisNama) {
+      delete map[mutasiKey];
+    } else {
+      map[mutasiKey] = jenisNama;
+    }
+    localStorage.setItem('stockpp1_mutasi_tags_v1', JSON.stringify(map));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('stockpp1_mutasi_tags_changed', { detail: map }));
     }
   }
 

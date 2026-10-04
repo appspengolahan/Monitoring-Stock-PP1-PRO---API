@@ -121,3 +121,13 @@ export interface AuditLog {
   role: UserRole;
   details: string;
 }
+
+export interface CustomJenisMutasiItem {
+  id: string;
+  nama: string;
+  komoditas: string; // 'all' atau nama spesifik komoditas
+  kategoriArus: 'masuk' | 'keluar' | 'netral';
+  keterangan?: string;
+  isCustom: true;
+  createdAt: string;
+}

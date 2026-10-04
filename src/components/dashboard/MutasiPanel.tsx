@@ -11,11 +11,16 @@ import {
   FileText,
   Layers,
   Sparkles,
-  Sliders
+  Sliders,
+  PlusCircle,
+  Tag,
+  Scale,
+  X
 } from 'lucide-react';
 import { exportToPdf } from '../../services/pdfExport';
 import { GasService } from '../../services/gasService';
 import { SktSkmSettingsModal } from '../modals/SktSkmSettingsModal';
+import { KelolaJenisMutasiModal } from '../modals/KelolaJenisMutasiModal';
 
 interface MutasiPanelProps {
   data: KomoditasData[];
@@ -24,6 +29,7 @@ interface MutasiPanelProps {
 }
 
 interface FlattenedMutasi {
+  id: string;
   komoditas: string;
   satuan: string;
   mutasi: MutasiItem;
@@ -50,6 +56,10 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
   const [filterHideZero, setFilterHideZero] = useState<boolean>(false);
   const [isSktSkmModalOpen, setIsSktSkmModalOpen] = useState<boolean>(false);
   const [sktSkmVersion, setSktSkmVersion] = useState<number>(0);
+  const [isKelolaJenisModalOpen, setIsKelolaJenisModalOpen] = useState<boolean>(false);
+  const [customJenisVersion, setCustomJenisVersion] = useState<number>(0);
+  const [mutasiTags, setMutasiTags] = useState<Record<string, string>>(() => GasService.getMutasiTagsMap());
+  const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<string | null>(null);
 
   // Sync initialCommodity if parent changes it
   useEffect(() => {
@@ -63,6 +73,20 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
     const handleConfigChange = () => setSktSkmVersion(v => v + 1);
     window.addEventListener('stockpp1_skt_skm_config_changed', handleConfigChange);
     return () => window.removeEventListener('stockpp1_skt_skm_config_changed', handleConfigChange);
+  }, []);
+
+  // Listen to Custom Jenis Mutasi updates
+  useEffect(() => {
+    const handleCustomChange = () => setCustomJenisVersion(v => v + 1);
+    window.addEventListener('stockpp1_custom_jenis_mutasi_changed', handleCustomChange);
+    return () => window.removeEventListener('stockpp1_custom_jenis_mutasi_changed', handleCustomChange);
+  }, []);
+
+  // Listen to Mutasi custom tags updates
+  useEffect(() => {
+    const handleTagsChange = () => setMutasiTags(GasService.getMutasiTagsMap());
+    window.addEventListener('stockpp1_mutasi_tags_changed', handleTagsChange);
+    return () => window.removeEventListener('stockpp1_mutasi_tags_changed', handleTagsChange);
   }, []);
 
   // Check if current view has SKT / SKM data breakdown active
@@ -133,7 +157,9 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
           }
         }
 
+        const rowId = m.id || `${k.komoditas}_${m.tanggal || ''}_${m.kode}_${m.masuk || 0}_${m.keluar || 0}_${list.length}`;
         list.push({
+          id: rowId,
           komoditas: k.komoditas,
           satuan: k.satuan,
           mutasi: m,
@@ -166,15 +192,35 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
     return target ? [{ komoditas: target.komoditas, kodes: target.kodeList.map(i => i.nama) }] : [];
   }, [data, filterKomoditas]);
 
-  // Unique Jenis Mutasi filtered by selected Bahan (Komoditas) and Kode
+  // Custom mutation types list filtered by active commodity (exclude BSPP since it has dedicated group)
+  const customJenisList = useMemo(() => {
+    const list = GasService.getCustomJenisMutasiList().filter(c => c.nama.toUpperCase() !== 'BSPP');
+    if (filterKomoditas === 'all') return list;
+    return list.filter(c => c.komoditas === 'all' || c.komoditas === filterKomoditas);
+  }, [filterKomoditas, customJenisVersion]);
+
+  // All unique original mutation types from the raw Google Sheets
+  const originalJenisList = useMemo(() => {
+    const set = new Set<string>();
+    data.forEach(k => {
+      k.mutasiTerbaru.forEach(m => {
+        if (m.jenisMutasi) set.add(m.jenisMutasi);
+      });
+    });
+    return Array.from(set).sort();
+  }, [data]);
+
+  // Unique Jenis Mutasi filtered by selected Bahan (Komoditas) and Kode (excluding BSPP which has dedicated group)
   const jenisOptions = useMemo(() => {
+    const isBsppName = (name: string) => name.toUpperCase().includes('BSPP');
+
     // If specific Bahan is selected
     if (filterKomoditas !== 'all') {
       const targetKomoditas = data.find(k => k.komoditas === filterKomoditas);
       const set = new Set<string>();
       if (targetKomoditas) {
         targetKomoditas.mutasiTerbaru.forEach(m => {
-          if (m.jenisMutasi) {
+          if (m.jenisMutasi && !isBsppName(m.jenisMutasi)) {
             // Also filter by selected Kode if any
             if (filterKode === 'all' || m.kode === filterKode) {
               set.add(m.jenisMutasi);
@@ -188,7 +234,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
     // If 'Semua Bahan' is selected, collect all unique mutasi across dataset
     const set = new Set<string>();
     allMutasi.forEach(e => {
-      if (e.mutasi.jenisMutasi) {
+      if (e.mutasi.jenisMutasi && !isBsppName(e.mutasi.jenisMutasi)) {
         if (filterKode === 'all' || e.mutasi.kode === filterKode) {
           set.add(e.mutasi.jenisMutasi);
         }
@@ -200,11 +246,12 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
   // Grouped Jenis Mutasi for categorized display when 'Semua Bahan' is selected
   const groupedJenisOptions = useMemo(() => {
     if (filterKomoditas !== 'all') return null;
+    const isBsppName = (name: string) => name.toUpperCase().includes('BSPP');
 
     return data.map(k => {
       const set = new Set<string>();
       k.mutasiTerbaru.forEach(m => {
-        if (m.jenisMutasi) {
+        if (m.jenisMutasi && !isBsppName(m.jenisMutasi)) {
           if (filterKode === 'all' || m.kode === filterKode) {
             set.add(m.jenisMutasi);
           }
@@ -217,12 +264,47 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
     }).filter(g => g.jenisList.length > 0);
   }, [data, filterKomoditas, filterKode]);
 
-  // Automatically reset filterJenis if it's no longer present in available jenisOptions
-  React.useEffect(() => {
-    if (filterJenis !== 'all' && !jenisOptions.includes(filterJenis)) {
-      setFilterJenis('all');
+  // Automatically reset filterJenis if it's no longer present in available options, custom list, or BSPP special options
+  useEffect(() => {
+    if (filterJenis !== 'all') {
+      const inOriginal = jenisOptions.includes(filterJenis);
+      const inCustom = customJenisList.some(c => c.nama === filterJenis);
+      const isBsppSpecial = ['BSPP', 'BSPP Lebih', 'BSPP Kurang'].includes(filterJenis);
+      if (!inOriginal && !inCustom && !isBsppSpecial) {
+        setFilterJenis('all');
+      }
     }
-  }, [filterKomoditas, filterKode, jenisOptions, filterJenis]);
+  }, [filterKomoditas, filterKode, jenisOptions, customJenisList, filterJenis]);
+
+  // Counts for BSPP mutation categories
+  const countBSPP = useMemo(() => {
+    return allMutasi.filter(e => {
+      if (filterKomoditas !== 'all' && e.komoditas !== filterKomoditas) return false;
+      const jUpper = (e.mutasi.jenisMutasi || '').toUpperCase();
+      const tagUpper = (mutasiTags[e.id] || '').toUpperCase();
+      return jUpper.includes('BSPP') || tagUpper.includes('BSPP');
+    }).length;
+  }, [allMutasi, filterKomoditas, mutasiTags]);
+
+  const countBSPPLebih = useMemo(() => {
+    return allMutasi.filter(e => {
+      if (filterKomoditas !== 'all' && e.komoditas !== filterKomoditas) return false;
+      const jUpper = (e.mutasi.jenisMutasi || '').toUpperCase();
+      const tagUpper = (mutasiTags[e.id] || '').toUpperCase();
+      if (tagUpper === 'BSPP LEBIH') return true;
+      return jUpper.includes('BSPP') && (jUpper.includes('LEBIH') || ((e.mutasi.masuk || 0) > 0 && !(e.mutasi.keluar || 0)));
+    }).length;
+  }, [allMutasi, filterKomoditas, mutasiTags]);
+
+  const countBSPPKurang = useMemo(() => {
+    return allMutasi.filter(e => {
+      if (filterKomoditas !== 'all' && e.komoditas !== filterKomoditas) return false;
+      const jUpper = (e.mutasi.jenisMutasi || '').toUpperCase();
+      const tagUpper = (mutasiTags[e.id] || '').toUpperCase();
+      if (tagUpper === 'BSPP KURANG') return true;
+      return jUpper.includes('BSPP') && (jUpper.includes('KURANG') || ((e.mutasi.keluar || 0) > 0 && !(e.mutasi.masuk || 0)));
+    }).length;
+  }, [allMutasi, filterKomoditas, mutasiTags]);
 
   // Filtered mutasi items
   const filteredEntries = useMemo(() => {
@@ -239,9 +321,51 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
         return false;
       }
 
-      // Filter Jenis Mutasi
-      if (filterJenis !== 'all' && m.jenisMutasi !== filterJenis) {
-        return false;
+      // Filter Jenis Mutasi (Original Sheet, Custom Web Type, or BSPP Special)
+      if (filterJenis !== 'all') {
+        const userTag = mutasiTags[e.id];
+        const fUpper = filterJenis.trim().toUpperCase();
+        const jUpper = (m.jenisMutasi || '').trim().toUpperCase();
+        const tagUpper = (userTag || '').trim().toUpperCase();
+
+        // 1. Special Case: BSPP (menampilkan jenis yang nilainya plus DAN minus)
+        if (fUpper === 'BSPP' || fUpper === 'BSPP (SEMUA)') {
+          const isBspp = jUpper.includes('BSPP') || tagUpper.includes('BSPP');
+          if (!isBspp) return false;
+        }
+        // 2. Special Case: BSPP LEBIH (menampilkan jenis yang nilainya plus / masuk)
+        else if (fUpper === 'BSPP LEBIH' || (fUpper.includes('BSPP') && fUpper.includes('LEBIH'))) {
+          const matchTag = tagUpper === 'BSPP LEBIH' || tagUpper.includes('LEBIH');
+          const matchSheet = jUpper.includes('BSPP') && (jUpper.includes('LEBIH') || ((m.masuk || 0) > 0 && !(m.keluar || 0)));
+          if (!matchTag && !matchSheet) return false;
+        }
+        // 3. Special Case: BSPP KURANG (menampilkan jenis yang nilainya minus / keluar)
+        else if (fUpper === 'BSPP KURANG' || (fUpper.includes('BSPP') && (fUpper.includes('KURANG') || fUpper.includes('SUSUT')))) {
+          const matchTag = tagUpper === 'BSPP KURANG' || tagUpper.includes('KURANG');
+          const matchSheet = jUpper.includes('BSPP') && (jUpper.includes('KURANG') || ((m.keluar || 0) > 0 && !(m.masuk || 0)));
+          if (!matchTag && !matchSheet) return false;
+        }
+        // 4. Custom & Sheet general matching
+        else {
+          if (userTag === filterJenis) {
+            // Perfectly matched by custom web tag!
+          } else {
+            const isCustomSelected = customJenisList.some(c => c.nama === filterJenis);
+            if (isCustomSelected) {
+              const targetCustom = customJenisList.find(c => c.nama === filterJenis);
+              const q = (targetCustom?.nama || filterJenis).toLowerCase();
+              const matchDirect = m.jenisMutasi === filterJenis;
+              const matchPartial = (m.jenisMutasi || '').toLowerCase().includes(q) || (m.kode || '').toLowerCase().includes(q);
+              if (!matchDirect && !matchPartial) {
+                return false;
+              }
+            } else {
+              if (m.jenisMutasi !== filterJenis && userTag !== filterJenis) {
+                return false;
+              }
+            }
+          }
+        }
       }
 
       // Filter Zero entries
@@ -291,7 +415,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
 
       return true;
     });
-  }, [allMutasi, filterKomoditas, filterKode, filterJenis, filterProduksi, filterHideZero, filterFrom, filterTo, searchQuery, sktSkmVersion]);
+  }, [allMutasi, filterKomoditas, filterKode, filterJenis, filterProduksi, filterHideZero, filterFrom, filterTo, searchQuery, sktSkmVersion, mutasiTags]);
 
   // Totals for filtered data
   const totalMasuk = useMemo(() => {
@@ -393,7 +517,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
       title: 'Laporan Mutasi Terkini Lintas Bahan',
       infoLines: [
         `Filter Bahan: ${filterKomoditas === 'all' ? 'Semua Bahan' : filterKomoditas} | Kode: ${filterKode === 'all' ? 'Semua Kode' : filterKode}${hasProduksiBreakdown ? ` | Jalur: ${filterProduksi}` : ''}`,
-        `Jenis Mutasi: ${filterJenis === 'all' ? 'Semua Jenis' : filterJenis} | Periode: ${filterFrom || 'Awal'} s/d ${filterTo || 'Sekarang'}`,
+        `Jenis Mutasi: ${filterJenis === 'all' ? 'Semua Jenis' : filterJenis === 'BSPP' ? 'BSPP (Semua: Nilai Plus & Minus)' : filterJenis === 'BSPP Lebih' ? 'BSPP Lebih (Nilai Plus +)' : filterJenis === 'BSPP Kurang' ? 'BSPP Kurang (Nilai Minus -)' : filterJenis} | Periode: ${filterFrom || 'Awal'} s/d ${filterTo || 'Sekarang'}`,
         `Jumlah Mutasi: ${filteredEntries.length} entri | Total Masuk: ${formatNumber(totalMasuk)} Kg | Total Keluar: ${formatNumber(totalKeluar)} Kg`
       ],
       head,
@@ -424,6 +548,16 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
             <Sliders className="w-3.5 h-3.5 text-amber-700" />
             <span className="hidden sm:inline">Pengaturan Jalur SKT/SKM</span>
             <span className="sm:hidden">SKT/SKM</span>
+          </button>
+
+          <button
+            onClick={() => setIsKelolaJenisModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300/80 transition-colors cursor-pointer"
+            title="Kelola & Tambah Jenis Mutasi di Web App (100% Aman & Tanpa Merusak Sheet Asli)"
+          >
+            <Tag className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="hidden sm:inline">Kelola Jenis Mutasi</span>
+            <span className="sm:hidden">Jenis Mutasi</span>
           </button>
 
           <button
@@ -492,25 +626,44 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                 Jenis Mutasi
               </label>
-              {filterKomoditas !== 'all' && (
-                <span className="text-[9.5px] font-medium text-blue-600">
-                  {filterKomoditas}
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={() => setIsKelolaJenisModalOpen(true)}
+                className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold inline-flex items-center gap-0.5 cursor-pointer transition-colors"
+                title="Tambah atau kelola opsi jenis mutasi (100% aman tanpa merusak Google Sheets asli)"
+              >
+                <PlusCircle className="w-3 h-3 text-indigo-600" />
+                <span>+ Tambah / Kelola</span>
+              </button>
             </div>
             <select
               value={filterJenis}
               onChange={e => setFilterJenis(e.target.value)}
-              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500 font-medium"
             >
               <option value="all">
                 {filterKomoditas === 'all' 
                   ? 'Semua Jenis Mutasi' 
                   : `Semua Mutasi (${filterKomoditas})`}
               </option>
+
+              {/* Opsi Khusus BSPP (Bukti Selisih Persediaan) */}
+              <optgroup label="⚖️ Mutasi BSPP (Selisih Timbangan)">
+                <option value="BSPP">
+                  ⚖️ BSPP (Semua: Nilai Plus &amp; Minus) {countBSPP > 0 ? `(${countBSPP})` : ''}
+                </option>
+                <option value="BSPP Lebih">
+                  ➕ BSPP Lebih (Hanya Nilai Plus / Masuk) {countBSPPLebih > 0 ? `(${countBSPPLebih})` : ''}
+                </option>
+                <option value="BSPP Kurang">
+                  ➖ BSPP Kurang (Hanya Nilai Minus / Keluar) {countBSPPKurang > 0 ? `(${countBSPPKurang})` : ''}
+                </option>
+              </optgroup>
+              
+              {/* Opsi Asli dari Google Spreadsheet */}
               {filterKomoditas === 'all' && groupedJenisOptions ? (
                 groupedJenisOptions.map(group => (
-                  <optgroup key={group.komoditas} label={group.komoditas}>
+                  <optgroup key={group.komoditas} label={`📋 Sheet ${group.komoditas}`}>
                     {group.jenisList.map(j => (
                       <option key={`${group.komoditas}-${j}`} value={j}>
                         {j}
@@ -519,11 +672,24 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
                   </optgroup>
                 ))
               ) : (
-                jenisOptions.map(j => (
-                  <option key={j} value={j}>
-                    {j}
-                  </option>
-                ))
+                <optgroup label={filterKomoditas === 'all' ? "📋 Bawaan Sheet Asli" : `📋 Sheet Asli (${filterKomoditas})`}>
+                  {jenisOptions.map(j => (
+                    <option key={j} value={j}>
+                      {j}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+
+              {/* Opsi Tambahan Web Apps (Aman / Non-destruktif) */}
+              {customJenisList.length > 0 && (
+                <optgroup label="✨ Jenis Tambahan Web App (Aman / Non-destruktif)">
+                  {customJenisList.map(c => (
+                    <option key={c.id} value={c.nama}>
+                      ⭐ {c.nama} ({c.kategoriArus === 'masuk' ? '+ Masuk' : c.kategoriArus === 'keluar' ? '- Keluar' : 'Netral'})
+                    </option>
+                  ))}
+                </optgroup>
               )}
             </select>
           </div>
@@ -590,6 +756,71 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
           </label>
         </div>
 
+        {/* Quick Filter Pintas BSPP */}
+        <div className="pt-2 border-t border-slate-200/70 flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1 flex items-center gap-1">
+            <Scale className="w-3 h-3 text-indigo-600" />
+            <span>Filter Cepat BSPP:</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setFilterJenis(filterJenis === 'BSPP' ? 'all' : 'BSPP')}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
+              filterJenis === 'BSPP'
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-bold'
+                : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+            }`}
+            title="Tampilkan seluruh mutasi BSPP (nilai plus & minus)"
+          >
+            <span>⚖️ BSPP (Plus &amp; Minus)</span>
+            <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${filterJenis === 'BSPP' ? 'bg-indigo-700/80 text-white' : 'bg-indigo-50 text-indigo-700'}`}>
+              {countBSPP}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterJenis(filterJenis === 'BSPP Lebih' ? 'all' : 'BSPP Lebih')}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
+              filterJenis === 'BSPP Lebih'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-bold'
+                : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+            }`}
+            title="Tampilkan hanya mutasi BSPP Lebih (nilai plus / masuk)"
+          >
+            <span>➕ BSPP Lebih (Plus)</span>
+            <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${filterJenis === 'BSPP Lebih' ? 'bg-emerald-700/80 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
+              {countBSPPLebih}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterJenis(filterJenis === 'BSPP Kurang' ? 'all' : 'BSPP Kurang')}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
+              filterJenis === 'BSPP Kurang'
+                ? 'bg-rose-600 text-white border-rose-600 shadow-2xs font-bold'
+                : 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50'
+            }`}
+            title="Tampilkan hanya mutasi BSPP Kurang (nilai minus / keluar)"
+          >
+            <span>➖ BSPP Kurang (Minus)</span>
+            <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${filterJenis === 'BSPP Kurang' ? 'bg-rose-700/80 text-white' : 'bg-rose-50 text-rose-700'}`}>
+              {countBSPPKurang}
+            </span>
+          </button>
+
+          {['BSPP', 'BSPP Lebih', 'BSPP Kurang'].includes(filterJenis) && (
+            <button
+              type="button"
+              onClick={() => setFilterJenis('all')}
+              className="text-[10.5px] text-slate-500 hover:text-slate-800 underline ml-1 cursor-pointer font-medium"
+            >
+              Reset ke Semua
+            </button>
+          )}
+        </div>
+
         {/* Jalur Produksi Filter Tabs (Muncul otomatis saat data memuat SKT/SKM) */}
         {hasProduksiBreakdown && (
           <div className="pt-2 border-t border-slate-200/70 flex flex-wrap items-center gap-1.5">
@@ -646,9 +877,26 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
       {/* Summary Box (Streamlined Compact) */}
       <div className="px-4 py-2.5 sm:px-5 sm:py-2.5 bg-blue-50/50 border-b border-slate-200">
         <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-[11px] font-bold text-blue-900 tracking-tight">
-            Ringkasan Filter Aktif
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-bold text-blue-900 tracking-tight">
+              Ringkasan Filter Aktif
+            </span>
+            {filterJenis === 'BSPP' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-2xs">
+                ⚖️ Mode BSPP (Menampilkan Nilai Plus [+] &amp; Minus [-])
+              </span>
+            )}
+            {filterJenis === 'BSPP Lebih' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+                ➕ Mode BSPP Lebih (Hanya Nilai Plus [+])
+              </span>
+            )}
+            {filterJenis === 'BSPP Kurang' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs">
+                ➖ Mode BSPP Kurang (Hanya Nilai Minus [-])
+              </span>
+            )}
+          </div>
           <span className="text-[10.5px] text-slate-500 font-mono">
             {filterFrom || filterTo ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}` : 'Semua Periode'}
           </span>
@@ -802,8 +1050,99 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
                         )}
                       </td>
                     )}
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-600">
-                      {m.jenisMutasi}
+                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-700">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-slate-800 text-xs">
+                          {m.jenisMutasi || '—'}
+                        </span>
+
+                        {/* Custom Tag Badge if assigned in web app */}
+                        {mutasiTags[e.id] && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            <span>⭐ {mutasiTags[e.id]}</span>
+                            <button
+                              type="button"
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                GasService.setMutasiTag(e.id, null);
+                              }}
+                              className="text-indigo-400 hover:text-rose-600 transition-colors cursor-pointer"
+                              title="Hapus label kustom"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </span>
+                        )}
+
+                        {/* Quick Tag Button */}
+                        <div className="relative inline-block">
+                          <button
+                            type="button"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setActiveTagDropdownKey(activeTagDropdownKey === e.id ? null : e.id);
+                            }}
+                            className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors cursor-pointer"
+                            title="Beri label jenis mutasi kustom web (100% aman, sheet asli tidak diubah)"
+                          >
+                            <Tag className="w-3 h-3" />
+                          </button>
+
+                          {activeTagDropdownKey === e.id && (
+                            <div 
+                              onClick={ev => ev.stopPropagation()}
+                              className="absolute left-0 mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 text-left animate-in fade-in"
+                            >
+                              <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                                <span>Pilih Label Kustom</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveTagDropdownKey(null)}
+                                  className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <div className="max-h-48 overflow-y-auto py-1">
+                                {customJenisList.map(c => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => {
+                                      GasService.setMutasiTag(e.id, c.nama);
+                                      setActiveTagDropdownKey(null);
+                                    }}
+                                    className={`w-full text-left px-2.5 py-1.5 text-xs hover:bg-indigo-50 flex items-center justify-between cursor-pointer ${
+                                      mutasiTags[e.id] === c.nama ? 'font-bold text-indigo-700 bg-indigo-50/60' : 'text-slate-700'
+                                    }`}
+                                  >
+                                    <span className="truncate">{c.nama}</span>
+                                    {mutasiTags[e.id] === c.nama && <Check className="w-3 h-3 text-indigo-600 shrink-0" />}
+                                  </button>
+                                ))}
+                                {customJenisList.length === 0 && (
+                                  <div className="px-2.5 py-2 text-[11px] text-slate-400 text-center">
+                                    Belum ada jenis kustom
+                                  </div>
+                                )}
+                              </div>
+                              <div className="border-t border-slate-100 pt-1 px-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveTagDropdownKey(null);
+                                    setIsKelolaJenisModalOpen(true);
+                                  }}
+                                  className="w-full text-left px-2 py-1 text-[11px] text-indigo-600 font-semibold hover:bg-slate-50 rounded flex items-center gap-1 cursor-pointer"
+                                >
+                                  <PlusCircle className="w-3 h-3" />
+                                  <span>Kelola Jenis Baru</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums">
                       <div className="font-semibold text-emerald-700">
@@ -868,6 +1207,14 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
       <SktSkmSettingsModal
         isOpen={isSktSkmModalOpen}
         onClose={() => setIsSktSkmModalOpen(false)}
+      />
+
+      {/* KelolaJenisMutasiModal for adding custom mutation types without altering raw sheets */}
+      <KelolaJenisMutasiModal
+        isOpen={isKelolaJenisModalOpen}
+        onClose={() => setIsKelolaJenisModalOpen(false)}
+        originalJenisList={originalJenisList}
+        komoditasList={data.map(k => k.komoditas)}
       />
     </div>
   );
