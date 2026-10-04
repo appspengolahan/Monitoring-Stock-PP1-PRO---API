@@ -65,6 +65,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   }, [session.allowedKomoditas]);
 
+  const hasAIAccess = React.useMemo(() => {
+    if (!session || !session.role) return false;
+    const roleLower = session.role.toLowerCase();
+    return !roleLower.includes('staff');
+  }, [session?.role]);
+
   const menuItems = [
     {
       id: 'ringkasan',
@@ -95,7 +101,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Analisa & Ringkasan',
       desc: 'Pergerakan & Validasi',
       icon: BarChart3
-    }
+    },
+    ...(hasAIAccess ? [{
+      id: 'ai_logistik',
+      label: 'AI Logistik & Prediksi',
+      desc: 'Runout, ROP & Audit Susut',
+      icon: Sparkles
+    }] : [])
   ];
 
   return (

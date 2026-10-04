@@ -90,6 +90,16 @@ export const AISmartInsights: React.FC<AISmartInsightsProps> = ({
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-center">
+          <button
+            onClick={() => onNavigateTab('ai_logistik')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200/90 rounded-lg transition-all shadow-2xs cursor-pointer"
+            title="Buka Pusat Intelijen & Prediksi AI Logistik"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
+            <span>Buka AI Logistik</span>
+            <ArrowRight className="w-3 h-3 text-indigo-500" />
+          </button>
+
           {lastUpdated && (
             <span className="text-[11px] text-slate-400 font-medium">
               Update {lastUpdated}

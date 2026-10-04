@@ -31,6 +31,7 @@ interface NavbarProps {
   onOpenUserManagement?: () => void;
   onOpenChangePassword?: () => void;
   onOpenAIBot?: () => void;
+  onOpenAILogistik?: () => void;
   onOpenSktSkmSettings?: () => void;
   onLogout: () => void;
   isSidebarCollapsed?: boolean;
@@ -54,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenUserManagement,
   onOpenChangePassword,
   onOpenAIBot,
+  onOpenAILogistik,
   onOpenSktSkmSettings,
   onLogout,
   isSidebarCollapsed = false,
@@ -133,6 +135,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Layers className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span className="whitespace-nowrap">Switch Board</span>
           </button>
+
+          {/* AI Logistik Tab link */}
+          {onOpenAILogistik && (
+            <button
+              onClick={onOpenAILogistik}
+              className="hidden lg:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-900 bg-indigo-50 hover:bg-indigo-100/90 border border-indigo-200 transition-all shadow-2xs cursor-pointer"
+              title="Pusat Intelijen Logistik & Prediksi AI"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600 animate-pulse shrink-0" />
+              <span className="whitespace-nowrap">AI Logistik</span>
+            </button>
+          )}
 
           {/* Pengaturan Jalur SKT/SKM */}
           {onOpenSktSkmSettings && (

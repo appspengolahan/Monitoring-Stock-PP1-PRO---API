@@ -12,7 +12,11 @@ import {
   Layers, 
   ArrowLeftRight,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { AIChatMessage, AIService } from '../../services/aiService';
 import { UserSession } from '../../types';
@@ -40,7 +44,7 @@ export const AIBotModal: React.FC<AIBotModalProps> = ({
 
 Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allowedKomoditas?.includes('*') ? 'Semua Komoditas' : session.allowedKomoditas?.join(', ')}), mendeteksi anomali timbangan BSPP, maupun mencari riwayat mutasi terbaru.
 
-Silakan pilih pertanyaan cepat di bawah atau ketik langsung kebutuhan Anda!`,
+💡 *Tips: Anda dapat menekan tombol mikrofon 🎙️ untuk berbicara langsung tanpa mengetik!*`,
       timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -48,7 +52,10 @@ Silakan pilih pertanyaan cepat di bawah atau ketik langsung kebutuhan Anda!`,
   const [input, setInput] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,7 +67,81 @@ Silakan pilih pertanyaan cepat di bawah atau ketik langsung kebutuhan Anda!`,
     }
   }, [isOpen, messages, isLoading]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+      setIsListening(false);
+      setSpeakingId(null);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  // Voice Input Speech Recognition
+  const handleToggleVoice = () => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert('Input suara tidak didukung oleh browser ini. Disarankan menggunakan Google Chrome atau Microsoft Edge.');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const rec = new SpeechRecognition();
+      rec.lang = 'id-ID';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+
+      rec.onstart = () => setIsListening(true);
+      rec.onresult = (evt: any) => {
+        const transcript = evt.results?.[0]?.[0]?.transcript;
+        if (transcript) {
+          setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
+        }
+      };
+      rec.onerror = () => setIsListening(false);
+      rec.onend = () => setIsListening(false);
+
+      recognitionRef.current = rec;
+      rec.start();
+    } catch {
+      setIsListening(false);
+    }
+  };
+
+  // Text to Speech
+  const handleToggleSpeak = (id: string, text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    if (speakingId === id) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const clean = text.replace(/[*#•_`]/g, '').slice(0, 300);
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.lang = 'id-ID';
+    utt.rate = 1.05;
+    utt.onend = () => setSpeakingId(null);
+    utt.onerror = () => setSpeakingId(null);
+
+    setSpeakingId(id);
+    window.speechSynthesis.speak(utt);
+  };
 
   // Build stock context matching user permissions
   const stockContext = {
@@ -96,6 +177,11 @@ Silakan pilih pertanyaan cepat di bawah atau ketik langsung kebutuhan Anda!`,
   const handleSend = async (textToSend?: string) => {
     const q = textToSend || input;
     if (!q.trim() || isLoading) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    }
 
     const userMsg: AIChatMessage = {
       id: `usr-${Date.now()}`,
@@ -144,10 +230,11 @@ Silakan pilih pertanyaan cepat di bawah atau ketik langsung kebutuhan Anda!`,
   };
 
   const quickPrompts = [
-    { label: '📊 Ringkasan Stok Hari Ini', prompt: 'Berikan ringkasan eksekutif saldo stok bahan baku saat ini secara singkat dan jelas.' },
-    { label: '⚖️ Cek Selisih Timbang BSPP', prompt: 'Apakah ada selisih timbangan (BSPP) yang mencolok atau melebihi batas wajar pada data terbaru?' },
-    { label: '⚠️ Deteksi Bahan Kritis / Menipis', prompt: 'Apakah ada kode atau komoditas yang mutasinya tinggi atau saldo stoknya mulai menipis?' },
-    { label: '🚚 Mutasi Keluar Terbesar', prompt: 'Tampilkan 3 transaksi pengeluaran stok terbesar dan komoditas apa yang paling banyak dipakai?' }
+    { label: '🎯 Prediksi Sisa Hari', prompt: 'Berapa hari sisa persediaan (Days of Inventory) untuk grade yang mendekati level kritis?' },
+    { label: '⚖️ Cek Susut BSPP', prompt: 'Apakah ada selisih timbangan (BSPP) yang mencolok atau melebihi batas 0,5% pada data terbaru?' },
+    { label: '📦 Stok Mengendap', prompt: 'Tampilkan grade atau komoditas yang tidak ada mutasi keluar lebih dari 25 hari (stok mengendap).' },
+    { label: '📊 Ringkasan Saldo', prompt: 'Berikan ringkasan eksekutif saldo stok bahan baku saat ini secara singkat dan jelas.' },
+    { label: '🚚 Mutasi Terbesar', prompt: 'Tampilkan 3 transaksi pengeluaran stok terbesar dan komoditas apa yang paling banyak dipakai?' }
   ];
 
   return (
@@ -228,12 +315,30 @@ Silakan pilih pertanyaan cepat di bawah atau ketik langsung kebutuhan Anda!`,
                 }`}
               >
                 <div className="whitespace-pre-wrap">{msg.text}</div>
-                <div
-                  className={`mt-1 text-[9.5px] text-right ${
-                    msg.role === 'user' ? 'text-blue-100' : 'text-slate-400'
-                  }`}
-                >
-                  {msg.timestamp}
+                <div className="mt-1.5 flex items-center justify-between gap-3 text-[10px] border-t border-slate-100/80 pt-1">
+                  {msg.role === 'assistant' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSpeak(msg.id, msg.text)}
+                      className="text-slate-500 hover:text-blue-600 flex items-center gap-1 cursor-pointer transition-colors"
+                      title={speakingId === msg.id ? "Hentikan Suara" : "Dengarkan Jawaban (Audio TTS)"}
+                    >
+                      {speakingId === msg.id ? (
+                        <>
+                          <VolumeX className="w-3 h-3 text-rose-500" />
+                          <span className="text-[9.5px] text-rose-500 font-medium">Hentikan</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="w-3 h-3 text-blue-600" />
+                          <span className="text-[9.5px]">Dengarkan</span>
+                        </>
+                      )}
+                    </button>
+                  ) : <span />}
+                  <span className={msg.role === 'user' ? 'text-blue-100 text-[9.5px]' : 'text-slate-400 text-[9.5px]'}>
+                    {msg.timestamp}
+                  </span>
                 </div>
               </div>
 
@@ -277,18 +382,34 @@ Silakan pilih pertanyaan cepat di bawah atau ketik langsung kebutuhan Anda!`,
           }}
           className="p-3 border-t border-slate-200 bg-white flex items-center gap-2"
         >
+          {/* Voice Input Microphone Button */}
+          <button
+            type="button"
+            onClick={handleToggleVoice}
+            className={`p-2.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
+              isListening
+                ? 'bg-rose-600 text-white border-rose-600 animate-pulse shadow-md ring-2 ring-rose-400'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200'
+            }`}
+            title={isListening ? "Sedang mendengarkan... Klik untuk berhenti" : "Bicara dengan suara (Voice Input)"}
+          >
+            {isListening ? <MicOff className="w-4 h-4 text-white" /> : <Mic className="w-4 h-4 text-blue-600" />}
+          </button>
+
           <input
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Tanyakan stok, mutasi, atau BSPP (misal: 'Berapa saldo Cengkeh hari ini?')..."
-            className="flex-1 px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 placeholder:text-slate-400"
+            placeholder={isListening ? "Mendengarkan suara Anda... Silakan berbicara..." : "Tanyakan stok, mutasi, atau BSPP (misal: 'Berapa saldo Cengkeh hari ini?')..."}
+            className={`flex-1 px-3.5 py-2.5 text-xs rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 placeholder:text-slate-400 ${
+              isListening ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-slate-50 border-slate-200'
+            }`}
             disabled={isLoading}
           />
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer"
+            className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer shrink-0"
             title="Kirim Pesan"
           >
             <Send className="w-4 h-4" />

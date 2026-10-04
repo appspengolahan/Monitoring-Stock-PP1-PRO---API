@@ -14,6 +14,7 @@ import { MutasiPanel } from './components/dashboard/MutasiPanel';
 import { SaldoKodePanel } from './components/dashboard/SaldoKodePanel';
 import { BSPPPanel } from './components/dashboard/BSPPPanel';
 import { AnalyticsCharts } from './components/dashboard/AnalyticsCharts';
+import { AILogistikPanel } from './components/dashboard/AILogistikPanel';
 import { HelpModal } from './components/modals/HelpModal';
 import { GasMigrationModal } from './components/modals/GasMigrationModal';
 import { SwitchAppModal } from './components/modals/SwitchAppModal';
@@ -218,6 +219,7 @@ export default function App() {
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
+        onOpenAILogistik={hasAIAccess ? () => { setCurrentTab('ai_logistik'); setTargetCommodityFilter('all'); } : undefined}
         onOpenSktSkmSettings={() => setIsSktSkmOpen(true)}
         onLogout={() => setIsLoginOpen(true)}
         isSidebarCollapsed={isSidebarCollapsed}
@@ -316,6 +318,17 @@ export default function App() {
             >
               Analisa
             </button>
+            {hasAIAccess && (
+              <button
+                onClick={() => setCurrentTab('ai_logistik')}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  currentTab === 'ai_logistik' ? 'bg-indigo-600 text-white shadow-2xs font-bold' : 'text-indigo-700 bg-indigo-50 font-semibold'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                <span>AI Logistik</span>
+              </button>
+            )}
             {session.hasDevAccess && (
               <button
                 onClick={() => setIsMigrationOpen(true)}
@@ -372,6 +385,16 @@ export default function App() {
 
           {currentTab === 'analisa' && (
             <AnalyticsCharts data={visibleKomoditasList} />
+          )}
+
+          {currentTab === 'ai_logistik' && hasAIAccess && (
+            <AILogistikPanel
+              komoditasList={visibleKomoditasList}
+              bsppList={visibleBsppList}
+              session={session}
+              onOpenAIBot={() => setIsAIBotOpen(true)}
+              onSelectCommodity={handleSelectCommodityFromCard}
+            />
           )}
 
           {/* Institutional Footer */}
@@ -436,6 +459,27 @@ export default function App() {
                 <span className="text-[11px] font-normal text-slate-500">HP &amp; Tablet</span>
               </button>
 
+              {/* AI Logistik Module Option in Mobile Menu (Hanya non-staff) */}
+              {hasAIAccess && (
+                <button
+                  onClick={() => { setCurrentTab('ai_logistik'); setIsMobileMenuOpen(false); }}
+                  className="w-full text-left p-3 rounded-xl bg-gradient-to-r from-indigo-900 to-blue-900 text-white flex items-center justify-between font-bold shadow-xs cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-indigo-500/40 border border-indigo-400/40 text-amber-300 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold leading-tight">Pusat AI Logistik &amp; Prediksi</div>
+                      <div className="text-[10px] text-indigo-200 font-normal">Sisa Hari, ROP &amp; Audit Susut</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] bg-amber-400 text-slate-950 font-bold px-2 py-0.5 rounded-full font-mono">
+                    AI Modul
+                  </span>
+                </button>
+              )}
+
               {/* AI Stock Assistant Option in Mobile Menu (Hanya non-staff) */}
               {hasAIAccess && (
                 <button
@@ -444,12 +488,12 @@ export default function App() {
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-5 h-5 rounded-md bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <Bot className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <span>AI Stock Assistant (Gemini)</span>
+                    <span>AI Stock Assistant (Gemini Bot)</span>
                   </div>
                   <span className="text-[10px] bg-indigo-200/80 text-indigo-950 px-2 py-0.5 rounded-full font-mono">
-                    Smart Bot
+                    Voice Bot
                   </span>
                 </button>
               )}

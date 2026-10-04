@@ -91,3 +91,93 @@ export function exportToPdf(options: PdfExportOptions): void {
     doc.save(cleanFileName);
   }
 }
+
+export function exportExecutiveReportPdf(title: string, reportMarkdown: string, fileName?: string): void {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // Header Title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(15, 23, 42);
+  doc.text(APP_NAME, 40, 40);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Laporan Eksekutif Logistik & Persediaan AI (Gemini 3.8 Flash)', 40, 56);
+  doc.text(`Tanggal Terbit: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}`, 40, 70);
+
+  // Line separator
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(1);
+  doc.line(40, 80, pageWidth - 40, 80);
+
+  let y = 100;
+  const lines = reportMarkdown.split('\n');
+
+  lines.forEach(line => {
+    if (y > pageHeight - 50) {
+      doc.addPage();
+      y = 45;
+    }
+
+    const trimmed = line.trim();
+    if (!trimmed) {
+      y += 8;
+      return;
+    }
+
+    if (trimmed.startsWith('# ')) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(15, 23, 42);
+      doc.text(trimmed.replace(/^#\s*/, ''), 40, y);
+      y += 18;
+    } else if (trimmed.startsWith('## ') || trimmed.startsWith('### ')) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(30, 58, 138); // blue-900
+      doc.text(trimmed.replace(/^#{2,3}\s*/, ''), 40, y);
+      y += 16;
+    } else if (trimmed.startsWith('* ') || trimmed.startsWith('• ') || trimmed.startsWith('- ')) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(51, 65, 85);
+      const bulletText = '• ' + trimmed.replace(/^[\*\•\-]\s*/, '').replace(/\*\*/g, '');
+      const wrapped = doc.splitTextToSize(bulletText, pageWidth - 90);
+      doc.text(wrapped, 50, y);
+      y += wrapped.length * 12 + 2;
+    } else if (/^\d+\.\s/.test(trimmed)) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(51, 65, 85);
+      const cleaned = trimmed.replace(/\*\*/g, '');
+      const wrapped = doc.splitTextToSize(cleaned, pageWidth - 90);
+      doc.text(wrapped, 50, y);
+      y += wrapped.length * 12 + 2;
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(51, 65, 85);
+      const cleaned = trimmed.replace(/\*\*/g, '');
+      const wrapped = doc.splitTextToSize(cleaned, pageWidth - 80);
+      doc.text(wrapped, 40, y);
+      y += wrapped.length * 12 + 3;
+    }
+  });
+
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Divisi Produksi I - PT Batu Karang | Dicetak: ${new Date().toLocaleDateString('id-ID')}`, 40, pageHeight - 20);
+    doc.text(`Hal. ${i} / ${pageCount}`, pageWidth - 40, pageHeight - 20, { align: 'right' });
+  }
+
+  const cleanName = (fileName || 'Laporan_Eksekutif_Logistik_PP1').replace(/[\\/:*?"<>|]/g, '-') + '.pdf';
+  doc.save(cleanName);
+}
+
