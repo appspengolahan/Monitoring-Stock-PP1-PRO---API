@@ -23,6 +23,7 @@ import { UserManagementModal } from './components/modals/UserManagementModal';
 import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { AISmartInsights } from './components/dashboard/AISmartInsights';
 import { AIBotModal } from './components/modals/AIBotModal';
+import { SktSkmSettingsModal } from './components/modals/SktSkmSettingsModal';
 import { useFullscreen } from './hooks/useFullscreen';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { 
@@ -85,6 +86,7 @@ export default function App() {
   const [isUserManagementOpen, setIsUserManagementOpen] = useState<boolean>(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
   const [isAIBotOpen, setIsAIBotOpen] = useState<boolean>(false);
+  const [isSktSkmOpen, setIsSktSkmOpen] = useState<boolean>(false);
 
   // Auto-detect ?page=admin query param to open login modal
   useEffect(() => {
@@ -216,6 +218,7 @@ export default function App() {
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
+        onOpenSktSkmSettings={() => setIsSktSkmOpen(true)}
         onLogout={() => setIsLoginOpen(true)}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebarCollapse={handleToggleSidebar}
@@ -241,6 +244,7 @@ export default function App() {
             onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
             onOpenUserManagement={() => setIsUserManagementOpen(true)}
             onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
+            onOpenSktSkmSettings={() => setIsSktSkmOpen(true)}
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={handleToggleSidebar}
             isFullscreen={isFullscreen}
@@ -581,6 +585,11 @@ export default function App() {
           setIsLoginOpen(false);
         }}
         onClose={() => setIsLoginOpen(false)}
+      />
+
+      <SktSkmSettingsModal
+        isOpen={isSktSkmOpen}
+        onClose={() => setIsSktSkmOpen(false)}
       />
 
       {/* AI Logistik & Stock Bot Modal (Hanya jika berhak akses) */}

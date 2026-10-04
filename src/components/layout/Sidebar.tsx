@@ -17,7 +17,8 @@ import {
   Smartphone,
   Users,
   Bot,
-  Sparkles
+  Sparkles,
+  Sliders
 } from 'lucide-react';
 import { UserSession } from '../../types';
 
@@ -29,6 +30,7 @@ interface SidebarProps {
   onOpenSwitchApp: () => void;
   onOpenUserManagement?: () => void;
   onOpenAIBot?: () => void;
+  onOpenSktSkmSettings?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isFullscreen?: boolean;
@@ -45,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSwitchApp,
   onOpenUserManagement,
   onOpenAIBot,
+  onOpenSktSkmSettings,
   isCollapsed = false,
   onToggleCollapse,
   isFullscreen = false,
@@ -324,6 +327,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
                 <div className="font-semibold text-blue-200">Hak Akses Staf</div>
                 <div className="text-[10px] text-slate-400">Atur Pembatasan Bahan Baku</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Jalur SKT & SKM Configuration Tab */}
+        {onOpenSktSkmSettings && (
+          <div className="relative group">
+            <button
+              onClick={onOpenSktSkmSettings}
+              className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
+                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+              } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
+              title={isCollapsed ? "Pengaturan Jalur SKT & SKM per Bahan" : undefined}
+            >
+              <Sliders className="w-5 h-5 text-amber-400 shrink-0" />
+              {!isCollapsed && (
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold truncate leading-tight text-amber-200">
+                    Jalur SKT &amp; SKM
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 truncate">
+                    Checklist Bahan Aktif / Pasif
+                  </div>
+                </div>
+              )}
+            </button>
+            {isCollapsed && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                <div className="font-semibold text-amber-200">Jalur SKT &amp; SKM</div>
+                <div className="text-[10px] text-slate-400">Checklist Bahan Aktif / Pasif</div>
               </div>
             )}
           </div>

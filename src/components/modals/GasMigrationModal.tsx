@@ -30,7 +30,8 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
   const [isTesting, setIsTesting] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; latencyMs: number; message: string } | null>(null);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
-  const [activeSubTab, setActiveSubTab] = useState<'review' | 'code' | 'deploy'>('review');
+  const [activeSubTab, setActiveSubTab] = useState<'review' | 'code' | 'deploy' | 'skt_skm'>('review');
+  const [sktConfig, setSktConfig] = useState<Record<string, boolean>>(() => GasService.getSktSkmConfig());
 
   if (!isOpen) return null;
 
@@ -112,6 +113,19 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
             }`}
           >
             3. Panduan Deploy Vercel (White-Label)
+          </button>
+          <button
+            onClick={() => {
+              setSktConfig(GasService.getSktSkmConfig());
+              setActiveSubTab('skt_skm');
+            }}
+            className={`pb-2.5 border-b-2 transition-all ${
+              activeSubTab === 'skt_skm'
+                ? 'border-amber-600 text-amber-700 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            4. Checklist SKT &amp; SKM
           </button>
         </div>
 
@@ -320,6 +334,112 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                     Klik <strong>Deploy</strong>. Dalam 30 detik web app live dengan SSL otomatis, PWA installable, dan tanpa banner pihak ketiga.
                   </p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: CHECKLIST FITUR SKT & SKM */}
+          {activeSubTab === 'skt_skm' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Pengaturan Checklist Fitur SKT &amp; SKM per Bahan Baku
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Centang bahan yang menerapkan pemisahan Sigaret Kretek Tangan &amp; Sigaret Kretek Mesin di spreadsheet.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-xl text-xs text-amber-950 space-y-1">
+                <strong>Catatan Operasional:</strong>
+                <p className="text-amber-900 leading-relaxed">
+                  Secara default, hanya <strong>Tembakau &amp; Krosok (Rajang II)</strong> yang memiliki kolom terpisah untuk SKT &amp; SKM.
+                  Untuk <strong>Tembakau Blend</strong> dan <strong>Tembakau &amp; Krosok (Rajang I)</strong>, fitur SKT &amp; SKM disembunyikan sementara agar tidak menimbulkan kebingungan data.
+                </p>
+              </div>
+
+              <div className="space-y-2.5">
+                {[
+                  {
+                    name: 'Tembakau & Krosok (Rajang II)',
+                    desc: 'Dual-Lane: Membaca kolom F (T Saldo) dan kolom I (M Saldo).'
+                  },
+                  {
+                    name: 'Tembakau Blend',
+                    desc: 'Single-Lane: Format satu saldo akumulatif persediaan blend.'
+                  },
+                  {
+                    name: 'Tembakau & Krosok (Rajang I)',
+                    desc: 'Single-Lane: Format satu saldo kartu persediaan rajang 1.'
+                  },
+                  {
+                    name: 'Cengkeh',
+                    desc: 'Single-Lane: Format persediaan gudang cengkeh.'
+                  }
+                ].map(c => {
+                  const isActive = !!sktConfig[c.name];
+                  return (
+                    <div
+                      key={c.name}
+                      onClick={() => {
+                        const nextVal = !sktConfig[c.name];
+                        const nextConfig = { ...sktConfig, [c.name]: nextVal };
+                        setSktConfig(nextConfig);
+                        GasService.setSktSkmActiveForKomoditas(c.name, nextVal);
+                      }}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
+                        isActive
+                          ? 'bg-amber-50/70 border-amber-300 shadow-2xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="mt-0.5 shrink-0">
+                        {isActive ? (
+                          <div className="w-5 h-5 rounded-md bg-amber-600 text-white flex items-center justify-center">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </div>
+                        ) : (
+                          <div className="w-5 h-5 rounded-md border-2 border-slate-300 bg-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900">
+                            {c.name}
+                          </span>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            isActive ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {isActive ? 'SKT & SKM Aktif' : 'Nonaktif (Single-Lane)'}
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-slate-500">
+                          {c.desc}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-2 flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    const defaultVal = {
+                      'Tembakau & Krosok (Rajang II)': true,
+                      'Tembakau Blend': false,
+                      'Cengkeh': false,
+                      'Tembakau & Krosok (Rajang I)': false
+                    };
+                    for (const [key, val] of Object.entries(defaultVal)) {
+                      GasService.setSktSkmActiveForKomoditas(key, val);
+                    }
+                    setSktConfig(defaultVal);
+                  }}
+                  className="text-xs text-slate-600 hover:text-slate-900 underline font-medium cursor-pointer"
+                >
+                  Kembalikan ke Default (Hanya Rajang II)
+                </button>
               </div>
             </div>
           )}

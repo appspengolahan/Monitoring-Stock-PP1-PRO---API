@@ -1,5 +1,6 @@
 import React from 'react';
 import { KomoditasData } from '../../types';
+import { GasService } from '../../services/gasService';
 import { 
   PieChart, 
   BarChart3, 
@@ -16,6 +17,14 @@ interface AnalyticsChartsProps {
 }
 
 export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ data }) => {
+  const [, setSktSkmVersion] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    const handleConfigChange = () => setSktSkmVersion(v => v + 1);
+    window.addEventListener('stockpp1_skt_skm_config_changed', handleConfigChange);
+    return () => window.removeEventListener('stockpp1_skt_skm_config_changed', handleConfigChange);
+  }, []);
+
   const formatNumber = (n: number): string => {
     return Number(n).toLocaleString('id-ID', {
       minimumFractionDigits: 1,
@@ -152,8 +161,8 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ data }) => {
         </div>
       </div>
 
-      {/* Segmentasi Jalur Produksi (SKT vs SKM) untuk Tembakau & Krosok Rajang II */}
-      {data.filter(k => k.saldoSKTTotal !== undefined && k.saldoSKMTotal !== undefined && (k.saldoSKTTotal > 0 || k.saldoSKMTotal > 0)).map(item => {
+      {/* Segmentasi Jalur Produksi (SKT vs SKM) untuk Bahan yang Aktif */}
+      {data.filter(k => GasService.isSktSkmActiveForKomoditas(k.komoditas) && k.saldoSKTTotal !== undefined && k.saldoSKMTotal !== undefined && (k.saldoSKTTotal > 0 || k.saldoSKMTotal > 0)).map(item => {
         const total = (item.saldoSKTTotal || 0) + (item.saldoSKMTotal || 0);
         const pctSKT = total > 0 ? ((item.saldoSKTTotal || 0) / total) * 100 : 0;
         const pctSKM = total > 0 ? ((item.saldoSKMTotal || 0) / total) * 100 : 0;

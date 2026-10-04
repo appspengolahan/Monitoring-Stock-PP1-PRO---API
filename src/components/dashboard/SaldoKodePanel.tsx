@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { KomoditasData } from '../../types';
 import { 
   Search, 
@@ -9,10 +9,12 @@ import {
   Download, 
   Sparkles,
   HelpCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Sliders
 } from 'lucide-react';
 import { GasService } from '../../services/gasService';
 import { exportToPdf } from '../../services/pdfExport';
+import { SktSkmSettingsModal } from '../modals/SktSkmSettingsModal';
 
 interface SaldoKodePanelProps {
   data: KomoditasData[];
@@ -41,9 +43,18 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
   const [isSnapshotMode, setIsSnapshotMode] = useState<boolean>(false);
   const [snapshotDate, setSnapshotDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [hideZero, setHideZero] = useState<boolean>(false);
+  const [isSktSkmModalOpen, setIsSktSkmModalOpen] = useState<boolean>(false);
+  const [sktSkmVersion, setSktSkmVersion] = useState<number>(0);
+
+  // Listen to SKT/SKM config changes from anywhere in the app
+  useEffect(() => {
+    const handleConfigChange = () => setSktSkmVersion(v => v + 1);
+    window.addEventListener('stockpp1_skt_skm_config_changed', handleConfigChange);
+    return () => window.removeEventListener('stockpp1_skt_skm_config_changed', handleConfigChange);
+  }, []);
 
   // Sync initialCommodity if parent updates
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialCommodity) {
       setFilterKomoditas(initialCommodity);
     }
@@ -104,10 +115,13 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
     return list;
   }, [data, filterKomoditas, isSnapshotMode, snapshotDate]);
 
-  // Check if current view has SKT / SKM data breakdown
+  // Check if current view has SKT / SKM data breakdown active
   const hasProduksiBreakdown = useMemo(() => {
-    return flattenedItems.some(i => i.kategoriProduksi || i.saldoSKT !== undefined || i.saldoSKM !== undefined);
-  }, [flattenedItems]);
+    if (filterKomoditas !== 'all') {
+      return GasService.isSktSkmActiveForKomoditas(filterKomoditas);
+    }
+    return flattenedItems.some(i => GasService.isSktSkmActiveForKomoditas(i.komoditas));
+  }, [flattenedItems, filterKomoditas, sktSkmVersion]);
 
   // Filter items
   const filteredItems = useMemo(() => {
@@ -121,6 +135,9 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
       }
 
       if (filterProduksi !== 'all') {
+        if (!GasService.isSktSkmActiveForKomoditas(item.komoditas)) {
+          return false;
+        }
         if (filterProduksi === 'SKT') {
           if (item.kategoriProduksi !== 'Murni SKT' && !(item.saldoSKT && item.saldoSKT > 0 && !item.saldoSKM)) {
             return false;
@@ -145,7 +162,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 
       return true;
     });
-  }, [flattenedItems, filterGrade, filterProduksi, hideZero, searchQuery]);
+  }, [flattenedItems, filterGrade, filterProduksi, hideZero, searchQuery, sktSkmVersion]);
 
   // Aggregate totals
   const totalSaldo = useMemo(() => {
@@ -153,24 +170,30 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
   }, [filteredItems]);
 
   const totalSaldoSKT = useMemo(() => {
-    return filteredItems.reduce((acc, curr) => acc + (curr.saldoSKT || 0), 0);
-  }, [filteredItems]);
+    return filteredItems.reduce((acc, curr) => {
+      if (!GasService.isSktSkmActiveForKomoditas(curr.komoditas)) return acc;
+      return acc + (curr.saldoSKT || 0);
+    }, 0);
+  }, [filteredItems, sktSkmVersion]);
 
   const totalSaldoSKM = useMemo(() => {
-    return filteredItems.reduce((acc, curr) => acc + (curr.saldoSKM || 0), 0);
-  }, [filteredItems]);
+    return filteredItems.reduce((acc, curr) => {
+      if (!GasService.isSktSkmActiveForKomoditas(curr.komoditas)) return acc;
+      return acc + (curr.saldoSKM || 0);
+    }, 0);
+  }, [filteredItems, sktSkmVersion]);
 
   const countSKT = useMemo(() => {
-    return flattenedItems.filter(i => i.kategoriProduksi === 'Murni SKT' || (i.saldoSKT && i.saldoSKT > 0 && !i.saldoSKM)).length;
-  }, [flattenedItems]);
+    return flattenedItems.filter(i => GasService.isSktSkmActiveForKomoditas(i.komoditas) && (i.kategoriProduksi === 'Murni SKT' || (i.saldoSKT && i.saldoSKT > 0 && !i.saldoSKM))).length;
+  }, [flattenedItems, sktSkmVersion]);
 
   const countSKM = useMemo(() => {
-    return flattenedItems.filter(i => i.kategoriProduksi === 'Murni SKM' || (i.saldoSKM && i.saldoSKM > 0 && !i.saldoSKT)).length;
-  }, [flattenedItems]);
+    return flattenedItems.filter(i => GasService.isSktSkmActiveForKomoditas(i.komoditas) && (i.kategoriProduksi === 'Murni SKM' || (i.saldoSKM && i.saldoSKM > 0 && !i.saldoSKT))).length;
+  }, [flattenedItems, sktSkmVersion]);
 
   const countGabungan = useMemo(() => {
-    return flattenedItems.filter(i => i.kategoriProduksi === 'Gabungan' || (i.saldoSKT && i.saldoSKT > 0 && i.saldoSKM && i.saldoSKM > 0)).length;
-  }, [flattenedItems]);
+    return flattenedItems.filter(i => GasService.isSktSkmActiveForKomoditas(i.komoditas) && (i.kategoriProduksi === 'Gabungan' || (i.saldoSKT && i.saldoSKT > 0 && i.saldoSKM && i.saldoSKM > 0))).length;
+  }, [flattenedItems, sktSkmVersion]);
 
   const formatNumber = (num: number): string => {
     return Number(num).toLocaleString('id-ID', {
@@ -259,14 +282,25 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleExportPdf}
-          disabled={filteredItems.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 transition-colors shrink-0"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Export PDF Saldo</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setIsSktSkmModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300/80 transition-colors shrink-0 cursor-pointer"
+            title="Atur bahan baku mana saja yang mengaktifkan fitur pemisahan SKT & SKM"
+          >
+            <Sliders className="w-3.5 h-3.5 text-amber-700" />
+            <span>Pengaturan SKT / SKM</span>
+          </button>
+
+          <button
+            onClick={handleExportPdf}
+            disabled={filteredItems.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 transition-colors shrink-0 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export PDF Saldo</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar - Compact */}
@@ -530,17 +564,17 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
                   </td>
                   {hasProduksiBreakdown && (
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap">
-                      {item.kategoriProduksi === 'Murni SKT' ? (
+                      {GasService.isSktSkmActiveForKomoditas(item.komoditas) && item.kategoriProduksi === 'Murni SKT' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                           Murni SKT
                         </span>
-                      ) : item.kategoriProduksi === 'Murni SKM' ? (
+                      ) : GasService.isSktSkmActiveForKomoditas(item.komoditas) && item.kategoriProduksi === 'Murni SKM' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                           Murni SKM
                         </span>
-                      ) : item.kategoriProduksi === 'Gabungan' ? (
+                      ) : GasService.isSktSkmActiveForKomoditas(item.komoditas) && item.kategoriProduksi === 'Gabungan' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-purple-50 text-purple-800 border border-purple-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
                           Gabungan
@@ -560,7 +594,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
                       {formatNumber(item.saldo)}{' '}
                       <span className="text-[10px] font-normal text-slate-500">{item.satuan}</span>
                     </div>
-                    {hasProduksiBreakdown && (item.saldoSKT !== undefined || item.saldoSKM !== undefined) && item.saldo > 0 && (
+                    {hasProduksiBreakdown && GasService.isSktSkmActiveForKomoditas(item.komoditas) && (item.saldoSKT !== undefined || item.saldoSKM !== undefined) && item.saldo > 0 && (
                       <div className="text-[10px] text-slate-500 font-mono tracking-tight flex items-center justify-end gap-1 mt-0.5">
                         <span className="text-amber-800 bg-amber-50/90 px-1 py-0.2 rounded border border-amber-200/60 font-medium">
                           SKT: {formatNumber(item.saldoSKT || 0)}
@@ -577,6 +611,13 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Modal Pengaturan SKT/SKM */}
+      <SktSkmSettingsModal
+        isOpen={isSktSkmModalOpen}
+        onClose={() => setIsSktSkmModalOpen(false)}
+        onConfigChanged={() => setSktSkmVersion(v => v + 1)}
+      />
     </div>
   );
 };

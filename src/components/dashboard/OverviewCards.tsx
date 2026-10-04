@@ -1,5 +1,6 @@
 import React from 'react';
 import { KomoditasData } from '../../types';
+import { GasService } from '../../services/gasService';
 import { 
   Package, 
   TrendingUp, 
@@ -21,6 +22,14 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
   data,
   onSelectCommodity
 }) => {
+  const [, setSktSkmVersion] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    const handleConfigChange = () => setSktSkmVersion(v => v + 1);
+    window.addEventListener('stockpp1_skt_skm_config_changed', handleConfigChange);
+    return () => window.removeEventListener('stockpp1_skt_skm_config_changed', handleConfigChange);
+  }, []);
+
   const formatNumber = (num: number): string => {
     return Number(num).toLocaleString('id-ID', {
       minimumFractionDigits: 1,
@@ -139,7 +148,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
                     {formatNumber(item.saldoTotal)}{' '}
                     <span className="text-xs font-semibold text-slate-500">{item.satuan}</span>
                   </div>
-                  {item.saldoSKTTotal !== undefined && item.saldoSKMTotal !== undefined && (item.saldoSKTTotal > 0 || item.saldoSKMTotal > 0) && (
+                  {GasService.isSktSkmActiveForKomoditas(item.komoditas) && item.saldoSKTTotal !== undefined && item.saldoSKMTotal !== undefined && (item.saldoSKTTotal > 0 || item.saldoSKMTotal > 0) && (
                     <div className="mt-2 pt-2 border-t border-slate-200/80 flex items-center justify-between text-[10.5px] font-mono">
                       <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-medium">
                         SKT: {formatNumber(item.saldoSKTTotal)}

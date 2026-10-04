@@ -14,7 +14,8 @@ import {
   PanelLeftOpen,
   Users,
   KeyRound,
-  Sparkles
+  Sparkles,
+  Sliders
 } from 'lucide-react';
 import { UserSession, UserRole } from '../../types';
 
@@ -30,6 +31,7 @@ interface NavbarProps {
   onOpenUserManagement?: () => void;
   onOpenChangePassword?: () => void;
   onOpenAIBot?: () => void;
+  onOpenSktSkmSettings?: () => void;
   onLogout: () => void;
   isSidebarCollapsed?: boolean;
   onToggleSidebarCollapse?: () => void;
@@ -52,6 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenUserManagement,
   onOpenChangePassword,
   onOpenAIBot,
+  onOpenSktSkmSettings,
   onLogout,
   isSidebarCollapsed = false,
   onToggleSidebarCollapse,
@@ -130,6 +133,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Layers className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span className="whitespace-nowrap">Switch Board</span>
           </button>
+
+          {/* Pengaturan Jalur SKT/SKM */}
+          {onOpenSktSkmSettings && (
+            <button
+              onClick={onOpenSktSkmSettings}
+              className="hidden lg:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100/80 border border-amber-300/80 transition-all shadow-2xs cursor-pointer"
+              title="Pengaturan Fitur Jalur SKT & SKM per Bahan Baku"
+            >
+              <Sliders className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span className="whitespace-nowrap">Jalur SKT/SKM</span>
+            </button>
+          )}
         </div>
 
         {/* Zone 3: Actions & Controls */}

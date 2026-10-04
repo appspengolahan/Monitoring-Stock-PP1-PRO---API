@@ -31,6 +31,47 @@ export class GasService {
     localStorage.setItem(STORAGE_KEYS.GAS_URL, DEFAULT_GAS_URL);
   }
 
+  // --- SKT & SKM Features Configuration per Komoditas ---
+  public static getSktSkmConfig(): Record<string, boolean> {
+    const defaultVal: Record<string, boolean> = {
+      'Tembakau & Krosok (Rajang II)': true,
+      'Tembakau Blend': false,
+      'Cengkeh': false,
+      'Tembakau & Krosok (Rajang I)': false
+    };
+    const stored = localStorage.getItem('stockpp1_skt_skm_config_v1');
+    if (!stored) return defaultVal;
+    try {
+      return { ...defaultVal, ...JSON.parse(stored) };
+    } catch {
+      return defaultVal;
+    }
+  }
+
+  public static isSktSkmActiveForKomoditas(komoditasName?: string): boolean {
+    if (!komoditasName) return false;
+    const config = this.getSktSkmConfig();
+    const cleanName = komoditasName.toLowerCase().trim();
+
+    for (const [key, active] of Object.entries(config)) {
+      const cleanKey = key.toLowerCase().trim();
+      if (cleanName.includes(cleanKey) || cleanKey.includes(cleanName)) {
+        return active;
+      }
+    }
+    // Only Rajang II defaults to true if not explicitly set
+    return cleanName.includes('rajang ii');
+  }
+
+  public static setSktSkmActiveForKomoditas(komoditasName: string, active: boolean): void {
+    const config = this.getSktSkmConfig();
+    config[komoditasName] = active;
+    localStorage.setItem('stockpp1_skt_skm_config_v1', JSON.stringify(config));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('stockpp1_skt_skm_config_changed', { detail: config }));
+    }
+  }
+
   // --- User Access Configs Management (Opsi B: Local/Client Cache) ---
   public static getUserConfigs(): UserAccessConfig[] {
     const stored = localStorage.getItem(STORAGE_KEYS.USER_CONFIGS);
@@ -903,7 +944,8 @@ function parseDataRows_(values, format) {
       keluar = Number(row[3]) || 0;
       saldo = Number(row[4]) || 0;
       cek = !!row[6] || !!row[7];
-      tSaldo = saldo; // single dianggap alur utama
+      tSaldo = 0;
+      mSaldo = 0;
     } else {
       tMasuk = Number(row[2]) || 0;
       tKeluar = Number(row[3]) || 0;
@@ -955,13 +997,16 @@ function getSaldoTerkiniObj_(rows, format) {
     }
   }
 
-  var kat = 'Nol';
+  var kat = undefined;
   if (format === 'dual') {
     if (sSKT > 0 && sSKM > 0) kat = 'Gabungan';
     else if (sSKT > 0 && sSKM <= 0) kat = 'Murni SKT';
     else if (sSKM > 0 && sSKT <= 0) kat = 'Murni SKM';
+    else kat = 'Nol';
   } else {
-    kat = sTotal > 0 ? 'Murni SKT' : 'Nol';
+    sSKT = 0;
+    sSKM = 0;
+    kat = undefined;
   }
 
   return {
@@ -978,6 +1023,7 @@ function getSaldoTerkiniObj_(rows, format) {
 function buildKomoditasSummary_(source) {
   var ss = SpreadsheetApp.openById(source.spreadsheetId);
   var sheetNames = ss.getSheets().map(function(s) { return s.getName(); });
+  var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1;
 
   var valueRanges = fetchAllSheetsData_(source.spreadsheetId, sheetNames);
 
@@ -1015,8 +1061,10 @@ function buildKomoditasSummary_(source) {
 
     var saldoObj = getSaldoTerkiniObj_(rows, headerInfo.format);
     saldoTotal += saldoObj.saldo;
-    saldoSKTTotal += saldoObj.saldoSKT;
-    saldoSKMTotal += saldoObj.saldoSKM;
+    if (isDualKomoditas && headerInfo.format === 'dual') {
+      saldoSKTTotal += saldoObj.saldoSKT;
+      saldoSKMTotal += saldoObj.saldoSKM;
+    }
 
     var tanggalTerakhir = null;
     for (var j = rows.length - 1; j >= 0; j--) {
@@ -1035,9 +1083,9 @@ function buildKomoditasSummary_(source) {
     kodeList.push({
       nama: sheetNames[idx],
       saldo: saldoObj.saldo,
-      saldoSKT: saldoObj.saldoSKT,
-      saldoSKM: saldoObj.saldoSKM,
-      kategoriProduksi: saldoObj.kategoriProduksi,
+      saldoSKT: (isDualKomoditas && headerInfo.format === 'dual') ? saldoObj.saldoSKT : undefined,
+      saldoSKM: (isDualKomoditas && headerInfo.format === 'dual') ? saldoObj.saldoSKM : undefined,
+      kategoriProduksi: (isDualKomoditas && headerInfo.format === 'dual') ? saldoObj.kategoriProduksi : undefined,
       tanggalTerakhir: tanggalTerakhir
     });
 
@@ -1072,8 +1120,8 @@ function buildKomoditasSummary_(source) {
     komoditas: source.komoditas,
     satuan: source.satuan,
     saldoTotal: round1_(saldoTotal),
-    saldoSKTTotal: round1_(saldoSKTTotal),
-    saldoSKMTotal: round1_(saldoSKMTotal),
+    saldoSKTTotal: isDualKomoditas ? round1_(saldoSKTTotal) : undefined,
+    saldoSKMTotal: isDualKomoditas ? round1_(saldoSKMTotal) : undefined,
     masukTotal: round1_(masukTotal),
     keluarTotal: round1_(keluarTotal),
     entriTotal: entriTotal,
@@ -1275,25 +1323,29 @@ function getSaldoPerTanggal(index, tanggalISO) {
       }
     }
 
-    var kat = 'Nol';
-    if (headerInfo.format === 'dual') {
+    var kat = undefined;
+    var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1;
+    if (isDualKomoditas && headerInfo.format === 'dual') {
       if (saldoSKT > 0 && saldoSKM > 0) kat = 'Gabungan';
       else if (saldoSKT > 0 && saldoSKM <= 0) kat = 'Murni SKT';
       else if (saldoSKM > 0 && saldoSKT <= 0) kat = 'Murni SKM';
+      else kat = 'Nol';
+      totalSKTCutoff += saldoSKT;
+      totalSKMCutoff += saldoSKM;
     } else {
-      kat = saldo > 0 ? 'Murni SKT' : 'Nol';
+      saldoSKT = 0;
+      saldoSKM = 0;
+      kat = undefined;
     }
 
     totalSaldoCutoff += saldo;
-    totalSKTCutoff += saldoSKT;
-    totalSKMCutoff += saldoSKM;
 
     kodeList.push({
       nama: sheetNames[idx],
       saldo: round1_(saldo),
-      saldoSKT: round1_(saldoSKT),
-      saldoSKM: round1_(saldoSKM),
-      kategoriProduksi: kat
+      saldoSKT: (isDualKomoditas && headerInfo.format === 'dual') ? round1_(saldoSKT) : undefined,
+      saldoSKM: (isDualKomoditas && headerInfo.format === 'dual') ? round1_(saldoSKM) : undefined,
+      kategoriProduksi: (isDualKomoditas && headerInfo.format === 'dual') ? kat : undefined
     });
   }
 
@@ -1302,8 +1354,8 @@ function getSaldoPerTanggal(index, tanggalISO) {
     satuan: source.satuan,
     tanggal: tanggalISO,
     saldoTotal: round1_(totalSaldoCutoff),
-    saldoSKTTotal: round1_(totalSKTCutoff),
-    saldoSKMTotal: round1_(totalSKMCutoff),
+    saldoSKTTotal: isDualKomoditas ? round1_(totalSKTCutoff) : undefined,
+    saldoSKMTotal: isDualKomoditas ? round1_(totalSKMCutoff) : undefined,
     kodeList: kodeList.sort(function(a, b) { return a.nama.localeCompare(b.nama, 'id'); })
   };
 }
