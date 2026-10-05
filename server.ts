@@ -544,11 +544,17 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
 
   app.use(vite.middlewares);
 
-  // Serve index.html transformed by Vite for any client-side routes
-  app.use('*', async (req, res, next) => {
+  // Serve index.html transformed by Vite for any client-side routes (GET only)
+  app.get('*', async (req, res, next) => {
     const url = req.originalUrl;
-    // Skip index.html for static assets or files with extensions
-    if (url.includes('.') && !url.endsWith('.html')) {
+    // Skip index.html for API requests, internal Vite paths, source files, and static files with extensions
+    if (
+      url.startsWith('/api') ||
+      url.startsWith('/@') ||
+      url.startsWith('/node_modules') ||
+      url.startsWith('/src') ||
+      (url.includes('.') && !url.endsWith('.html'))
+    ) {
       return next();
     }
 

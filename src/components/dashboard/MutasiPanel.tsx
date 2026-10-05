@@ -54,6 +54,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
   const [filterTo, setFilterTo] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterHideZero, setFilterHideZero] = useState<boolean>(false);
+  const [showSummary, setShowSummary] = useState<boolean>(true);
   const [isSktSkmModalOpen, setIsSktSkmModalOpen] = useState<boolean>(false);
   const [sktSkmVersion, setSktSkmVersion] = useState<number>(0);
   const [isKelolaJenisModalOpen, setIsKelolaJenisModalOpen] = useState<boolean>(false);
@@ -551,19 +552,9 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
           </button>
 
           <button
-            onClick={() => setIsKelolaJenisModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300/80 transition-colors cursor-pointer"
-            title="Kelola & Tambah Jenis Mutasi di Web App (100% Aman & Tanpa Merusak Sheet Asli)"
-          >
-            <Tag className="w-3.5 h-3.5 text-indigo-600" />
-            <span className="hidden sm:inline">Kelola Jenis Mutasi</span>
-            <span className="sm:hidden">Jenis Mutasi</span>
-          </button>
-
-          <button
             onClick={handleExportPdf}
             disabled={filteredEntries.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 transition-colors shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 transition-colors shrink-0 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export PDF Laporan</span>
@@ -571,7 +562,63 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
         </div>
       </div>
 
-      {/* Filter Controls Bar - Compact */}
+      {/* 1. Tab Navigasi Bahan Baku (Pemisahan per Komoditas agar data terorganisir & tidak tercampur aduk) */}
+      <div className="bg-slate-100/90 border-b border-slate-200 px-3 sm:px-5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1 hidden md:inline">
+          Pilih Bahan:
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setFilterKomoditas('all');
+            setFilterKode('all');
+            setFilterJenis('all');
+          }}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            filterKomoditas === 'all'
+              ? 'bg-blue-600 text-white shadow-xs font-bold'
+              : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>Semua Bahan</span>
+          <span className={`text-[10.5px] px-1.5 py-0.2 rounded-full font-mono ${
+            filterKomoditas === 'all' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'
+          }`}>
+            {allMutasi.length}
+          </span>
+        </button>
+
+        {data.map(k => {
+          const isSelected = filterKomoditas === k.komoditas;
+          const count = k.mutasiTerbaru.length;
+          return (
+            <button
+              key={k.komoditas}
+              type="button"
+              onClick={() => {
+                setFilterKomoditas(k.komoditas);
+                setFilterKode('all');
+                setFilterJenis('all');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                isSelected
+                  ? 'bg-blue-600 text-white shadow-xs font-bold'
+                  : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
+              }`}
+            >
+              <span>{k.komoditas}</span>
+              <span className={`text-[10.5px] px-1.5 py-0.2 rounded-full font-mono ${
+                isSelected ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 2. Filter Controls Bar - Compact & Efisien */}
       <div className="px-4 py-3 sm:px-5 sm:py-3 bg-slate-50/70 border-b border-slate-200 space-y-2.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           {/* Bahan Filter */}
@@ -588,10 +635,10 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
               }}
               className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
-              <option value="all">Semua Bahan</option>
+              <option value="all">Semua Bahan ({allMutasi.length})</option>
               {data.map(k => (
                 <option key={k.komoditas} value={k.komoditas}>
-                  {k.komoditas}
+                  {k.komoditas} ({k.mutasiTerbaru.length})
                 </option>
               ))}
             </select>
@@ -620,22 +667,11 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
             </select>
           </div>
 
-          {/* Jenis Mutasi Filter */}
+          {/* Jenis Mutasi Filter (Bawaan Sheet + BSPP Saja, Jenis Tambahan Web App Disembunyikan) */}
           <div>
-            <div className="flex items-center justify-between mb-0.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Jenis Mutasi
-              </label>
-              <button
-                type="button"
-                onClick={() => setIsKelolaJenisModalOpen(true)}
-                className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold inline-flex items-center gap-0.5 cursor-pointer transition-colors"
-                title="Tambah atau kelola opsi jenis mutasi (100% aman tanpa merusak Google Sheets asli)"
-              >
-                <PlusCircle className="w-3 h-3 text-indigo-600" />
-                <span>+ Tambah / Kelola</span>
-              </button>
-            </div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+              Jenis Mutasi
+            </label>
             <select
               value={filterJenis}
               onChange={e => setFilterJenis(e.target.value)}
@@ -680,17 +716,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
                   ))}
                 </optgroup>
               )}
-
-              {/* Opsi Tambahan Web Apps (Aman / Non-destruktif) */}
-              {customJenisList.length > 0 && (
-                <optgroup label="✨ Jenis Tambahan Web App (Aman / Non-destruktif)">
-                  {customJenisList.map(c => (
-                    <option key={c.id} value={c.nama}>
-                      ⭐ {c.nama} ({c.kategoriArus === 'masuk' ? '+ Masuk' : c.kategoriArus === 'keluar' ? '- Keluar' : 'Netral'})
-                    </option>
-                  ))}
-                </optgroup>
-              )}
             </select>
           </div>
 
@@ -712,296 +737,257 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
           </div>
         </div>
 
-        {/* Date Ranges & Toggle Zero - Compact */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
-              <Calendar className="w-3 h-3 text-slate-500" />
-              <span>Rentang:</span>
-            </span>
-            <input
-              type="date"
-              value={filterFrom}
-              onChange={e => setFilterFrom(e.target.value)}
-              className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
-              title="Dari tanggal"
-            />
-            <span className="text-[11px] text-slate-400">s/d</span>
-            <input
-              type="date"
-              value={filterTo}
-              onChange={e => setFilterTo(e.target.value)}
-              className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
-              title="Sampai tanggal"
-            />
+        {/* Baris 2: Rentang Tanggal, Jalur Produksi Compact, dan Aksi Utilitas */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-200/70">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Rentang Tanggal */}
+            <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg px-2.5 py-1 shadow-2xs">
+              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <input
+                type="date"
+                value={filterFrom}
+                onChange={e => setFilterFrom(e.target.value)}
+                className="text-xs text-slate-700 bg-transparent focus:outline-hidden"
+                title="Dari tanggal"
+              />
+              <span className="text-[11px] text-slate-400">s/d</span>
+              <input
+                type="date"
+                value={filterTo}
+                onChange={e => setFilterTo(e.target.value)}
+                className="text-xs text-slate-700 bg-transparent focus:outline-hidden"
+                title="Sampai tanggal"
+              />
+              {(filterFrom || filterTo) && (
+                <button
+                  type="button"
+                  onClick={() => { setFilterFrom(''); setFilterTo(''); }}
+                  className="text-[10px] text-blue-600 hover:text-blue-800 font-bold ml-1 cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
 
-            {(filterFrom || filterTo) && (
+            {/* Jalur Produksi compact pills if dual breakdown is active */}
+            {hasProduksiBreakdown && (
+              <div className="flex items-center gap-1 bg-slate-200/60 p-0.5 rounded-lg text-xs">
+                <button
+                  type="button"
+                  onClick={() => setFilterProduksi('all')}
+                  className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                    filterProduksi === 'all' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Semua ({allMutasi.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterProduksi('SKT')}
+                  className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    filterProduksi === 'SKT' ? 'bg-amber-600 text-white shadow-2xs font-bold' : 'text-amber-800 hover:text-amber-900'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  SKT ({countSKT})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterProduksi('SKM')}
+                  className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    filterProduksi === 'SKM' ? 'bg-blue-600 text-white shadow-2xs font-bold' : 'text-blue-800 hover:text-blue-900'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                  SKM ({countSKM})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterProduksi('Gabungan')}
+                  className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    filterProduksi === 'Gabungan' ? 'bg-purple-600 text-white shadow-2xs font-bold' : 'text-purple-800 hover:text-purple-900'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                  Gabungan ({countGabungan})
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={filterHideZero}
+                onChange={e => setFilterHideZero(e.target.checked)}
+                className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+              />
+              <span className="text-[11px]">Sembunyikan nilai 0</span>
+            </label>
+
+            {/* Toggle Summary Bar */}
+            <button
+              type="button"
+              onClick={() => setShowSummary(prev => !prev)}
+              className="text-[11px] text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-2 py-1 rounded-md font-medium cursor-pointer shadow-2xs"
+            >
+              {showSummary ? 'Sembunyikan Ringkasan' : 'Tampilkan Ringkasan'}
+            </button>
+
+            {/* Reset All Filters button if any filter is active */}
+            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || filterProduksi !== 'all' || filterFrom || filterTo || searchQuery || filterHideZero) && (
               <button
-                onClick={() => { setFilterFrom(''); setFilterTo(''); }}
-                className="text-[10.5px] text-blue-700 hover:underline px-1"
+                type="button"
+                onClick={() => {
+                  setFilterKomoditas('all');
+                  setFilterKode('all');
+                  setFilterJenis('all');
+                  setFilterProduksi('all');
+                  setFilterFrom('');
+                  setFilterTo('');
+                  setSearchQuery('');
+                  setFilterHideZero(false);
+                }}
+                className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold cursor-pointer underline"
               >
-                Reset
+                Reset Filter
               </button>
             )}
           </div>
-
-          <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={filterHideZero}
-              onChange={e => setFilterHideZero(e.target.checked)}
-              className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
-            />
-            <span className="text-[11px]">Sembunyikan mutasi bernilai 0</span>
-          </label>
         </div>
+      </div>
 
-        {/* Quick Filter Pintas BSPP */}
-        <div className="pt-2 border-t border-slate-200/70 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1 flex items-center gap-1">
-            <Scale className="w-3 h-3 text-indigo-600" />
-            <span>Filter Cepat BSPP:</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setFilterJenis(filterJenis === 'BSPP' ? 'all' : 'BSPP')}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterJenis === 'BSPP'
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-bold'
-                : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
-            }`}
-            title="Tampilkan seluruh mutasi BSPP (nilai plus & minus)"
-          >
-            <span>⚖️ BSPP (Plus &amp; Minus)</span>
-            <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${filterJenis === 'BSPP' ? 'bg-indigo-700/80 text-white' : 'bg-indigo-50 text-indigo-700'}`}>
-              {countBSPP}
+      {/* 3. Summary Box (Streamlined Compact & Collapsible) */}
+      {showSummary && (
+        <div className="px-4 py-2 sm:px-5 sm:py-2.5 bg-blue-50/50 border-b border-slate-200 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-blue-900 tracking-tight">
+                Ringkasan Filter Aktif
+              </span>
+              {filterJenis === 'BSPP' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-2xs">
+                  ⚖️ Mode BSPP (Menampilkan Nilai Plus [+] &amp; Minus [-])
+                </span>
+              )}
+              {filterJenis === 'BSPP Lebih' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+                  ➕ Mode BSPP Lebih (Hanya Nilai Plus [+])
+                </span>
+              )}
+              {filterJenis === 'BSPP Kurang' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs">
+                  ➖ Mode BSPP Kurang (Hanya Nilai Minus [-])
+                </span>
+              )}
+            </div>
+            <span className="text-[10.5px] text-slate-500 font-mono">
+              {filterFrom || filterTo ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}` : 'Semua Periode'}
             </span>
-          </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setFilterJenis(filterJenis === 'BSPP Lebih' ? 'all' : 'BSPP Lebih')}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterJenis === 'BSPP Lebih'
-                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-bold'
-                : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
-            }`}
-            title="Tampilkan hanya mutasi BSPP Lebih (nilai plus / masuk)"
-          >
-            <span>➕ BSPP Lebih (Plus)</span>
-            <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${filterJenis === 'BSPP Lebih' ? 'bg-emerald-700/80 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
-              {countBSPPLebih}
-            </span>
-          </button>
+          {hasProduksiBreakdown ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase text-slate-500 block">
+                  Jumlah Entri
+                </span>
+                <span className="text-sm sm:text-base font-bold text-slate-900 font-mono tabular-nums leading-tight">
+                  {filteredEntries.length}
+                </span>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setFilterJenis(filterJenis === 'BSPP Kurang' ? 'all' : 'BSPP Kurang')}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterJenis === 'BSPP Kurang'
-                ? 'bg-rose-600 text-white border-rose-600 shadow-2xs font-bold'
-                : 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50'
-            }`}
-            title="Tampilkan hanya mutasi BSPP Kurang (nilai minus / keluar)"
-          >
-            <span>➖ BSPP Kurang (Minus)</span>
-            <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${filterJenis === 'BSPP Kurang' ? 'bg-rose-700/80 text-white' : 'bg-rose-50 text-rose-700'}`}>
-              {countBSPPKurang}
-            </span>
-          </button>
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50/20 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase text-amber-700 block flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Mutasi SKT (Tangan)
+                </span>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-xs sm:text-sm font-bold text-emerald-700 font-mono tabular-nums">
+                    +{formatNumber(totalMasukSKT)}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-rose-700 font-mono tabular-nums">
+                    -{formatNumber(totalKeluarSKT)}
+                  </span>
+                </div>
+              </div>
 
-          {['BSPP', 'BSPP Lebih', 'BSPP Kurang'].includes(filterJenis) && (
-            <button
-              type="button"
-              onClick={() => setFilterJenis('all')}
-              className="text-[10.5px] text-slate-500 hover:text-slate-800 underline ml-1 cursor-pointer font-medium"
-            >
-              Reset ke Semua
-            </button>
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/20 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase text-blue-700 block flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                  Mutasi SKM (Mesin)
+                </span>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-xs sm:text-sm font-bold text-emerald-700 font-mono tabular-nums">
+                    +{formatNumber(totalMasukSKM)}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-rose-700 font-mono tabular-nums">
+                    -{formatNumber(totalKeluarSKM)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase text-slate-500 block">
+                  Total Akumulasi
+                </span>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-xs sm:text-sm font-bold text-emerald-700 font-mono tabular-nums">
+                    +{formatNumber(totalMasuk)}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-rose-700 font-mono tabular-nums">
+                    -{formatNumber(totalKeluar)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-100 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase text-slate-500 block">
+                  Jumlah Entri
+                </span>
+                <span className="text-sm sm:text-base font-bold text-slate-900 font-mono tabular-nums leading-tight">
+                  {filteredEntries.length}
+                </span>
+              </div>
+
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-100 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase text-slate-500 block">
+                  Total Masuk
+                </span>
+                <span className="text-sm sm:text-base font-bold text-emerald-700 font-mono tabular-nums leading-tight">
+                  +{formatNumber(totalMasuk)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
+                </span>
+              </div>
+
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-100 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase text-slate-500 block">
+                  Total Keluar
+                </span>
+                <span className="text-sm sm:text-base font-bold text-rose-700 font-mono tabular-nums leading-tight">
+                  -{formatNumber(totalKeluar)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
+                </span>
+              </div>
+            </div>
           )}
         </div>
+      )}
 
-        {/* Jalur Produksi Filter Tabs (Muncul otomatis saat data memuat SKT/SKM) */}
-        {hasProduksiBreakdown && (
-          <div className="pt-2 border-t border-slate-200/70 flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1">
-              Jalur Produksi:
-            </span>
-            <button
-              onClick={() => setFilterProduksi('all')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all cursor-pointer ${
-                filterProduksi === 'all'
-                  ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              Semua ({allMutasi.length})
-            </button>
-            <button
-              onClick={() => setFilterProduksi('SKT')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
-                filterProduksi === 'SKT'
-                  ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                  : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              <span>Murni SKT ({countSKT})</span>
-            </button>
-            <button
-              onClick={() => setFilterProduksi('SKM')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
-                filterProduksi === 'SKM'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                  : 'bg-white text-blue-800 border-blue-300 hover:bg-blue-50'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              <span>Murni SKM ({countSKM})</span>
-            </button>
-            <button
-              onClick={() => setFilterProduksi('Gabungan')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
-                filterProduksi === 'Gabungan'
-                  ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
-                  : 'bg-white text-purple-800 border-purple-300 hover:bg-purple-50'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-              <span>Gabungan SKT &amp; SKM ({countGabungan})</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Summary Box (Streamlined Compact) */}
-      <div className="px-4 py-2.5 sm:px-5 sm:py-2.5 bg-blue-50/50 border-b border-slate-200">
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-bold text-blue-900 tracking-tight">
-              Ringkasan Filter Aktif
-            </span>
-            {filterJenis === 'BSPP' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-2xs">
-                ⚖️ Mode BSPP (Menampilkan Nilai Plus [+] &amp; Minus [-])
-              </span>
-            )}
-            {filterJenis === 'BSPP Lebih' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
-                ➕ Mode BSPP Lebih (Hanya Nilai Plus [+])
-              </span>
-            )}
-            {filterJenis === 'BSPP Kurang' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs">
-                ➖ Mode BSPP Kurang (Hanya Nilai Minus [-])
-              </span>
-            )}
-          </div>
-          <span className="text-[10.5px] text-slate-500 font-mono">
-            {filterFrom || filterTo ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}` : 'Semua Periode'}
-          </span>
-        </div>
-
-        {hasProduksiBreakdown ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-semibold uppercase text-slate-500 block">
-                Jumlah Entri
-              </span>
-              <span className="text-sm sm:text-base font-bold text-slate-900 font-mono tabular-nums leading-tight">
-                {filteredEntries.length}
-              </span>
-            </div>
-
-            <div className="bg-white px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50/20 shadow-2xs">
-              <span className="text-[10px] font-semibold uppercase text-amber-700 block flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                Mutasi SKT (Tangan)
-              </span>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-xs sm:text-sm font-bold text-emerald-700 font-mono tabular-nums">
-                  +{formatNumber(totalMasukSKT)}
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-rose-700 font-mono tabular-nums">
-                  -{formatNumber(totalKeluarSKT)}
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/20 shadow-2xs">
-              <span className="text-[10px] font-semibold uppercase text-blue-700 block flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                Mutasi SKM (Mesin)
-              </span>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-xs sm:text-sm font-bold text-emerald-700 font-mono tabular-nums">
-                  +{formatNumber(totalMasukSKM)}
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-rose-700 font-mono tabular-nums">
-                  -{formatNumber(totalKeluarSKM)}
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-semibold uppercase text-slate-500 block">
-                Total Akumulasi
-              </span>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-xs sm:text-sm font-bold text-emerald-700 font-mono tabular-nums">
-                  +{formatNumber(totalMasuk)}
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-rose-700 font-mono tabular-nums">
-                  -{formatNumber(totalKeluar)}
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-100 shadow-2xs">
-              <span className="text-[10px] font-semibold uppercase text-slate-500 block">
-                Jumlah Entri
-              </span>
-              <span className="text-sm sm:text-base font-bold text-slate-900 font-mono tabular-nums leading-tight">
-                {filteredEntries.length}
-              </span>
-            </div>
-
-            <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-100 shadow-2xs">
-              <span className="text-[10px] font-semibold uppercase text-slate-500 block">
-                Total Masuk
-              </span>
-              <span className="text-sm sm:text-base font-bold text-emerald-700 font-mono tabular-nums leading-tight">
-                +{formatNumber(totalMasuk)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
-              </span>
-            </div>
-
-            <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-100 shadow-2xs">
-              <span className="text-[10px] font-semibold uppercase text-slate-500 block">
-                Total Keluar
-              </span>
-              <span className="text-sm sm:text-base font-bold text-rose-700 font-mono tabular-nums leading-tight">
-                -{formatNumber(totalKeluar)} <span className="text-[10px] font-normal text-slate-500">Kg</span>
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Table Data - Compact Row Density */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+      {/* 4. Table Data - Compact Row Density with Full Width & Horizontal Scroll */}
+      <div className="overflow-x-auto w-full border-t border-slate-200">
+        <table className="w-full text-left border-collapse min-w-[960px]">
           <thead>
-            <tr className="bg-slate-100/90 border-b border-slate-200 text-[10.5px] font-semibold text-slate-600 uppercase tracking-wider">
-              <th className="py-2 px-3 sm:px-4">Tanggal</th>
-              <th className="py-2 px-3 sm:px-4">Bahan</th>
-              <th className="py-2 px-3 sm:px-4">Kode / Grade</th>
-              {hasProduksiBreakdown && <th className="py-2 px-3 sm:px-4">Tipe Produksi</th>}
-              <th className="py-2 px-3 sm:px-4">Jenis Mutasi</th>
-              <th className="py-2 px-3 sm:px-4 text-right">Masuk (Kg)</th>
-              <th className="py-2 px-3 sm:px-4 text-right">Keluar (Kg)</th>
-              <th className="py-2 px-3 sm:px-4 text-center">Cek</th>
+            <tr className="bg-slate-100/90 border-b border-slate-200 text-[10.5px] font-semibold text-slate-600 uppercase tracking-wider sticky top-0 z-10">
+              <th className="py-2 px-3 sm:px-4 w-28 whitespace-nowrap">Tanggal</th>
+              <th className="py-2 px-3 sm:px-4 w-40 whitespace-nowrap">Bahan</th>
+              <th className="py-2 px-3 sm:px-4 min-w-[130px] whitespace-nowrap">Kode / Grade</th>
+              {hasProduksiBreakdown && <th className="py-2 px-3 sm:px-4 w-28 whitespace-nowrap">Tipe Produksi</th>}
+              <th className="py-2 px-3 sm:px-4 min-w-[150px] whitespace-nowrap">Jenis Mutasi</th>
+              <th className="py-2 px-3 sm:px-4 text-right w-32 whitespace-nowrap">Masuk (Kg)</th>
+              <th className="py-2 px-3 sm:px-4 text-right w-32 whitespace-nowrap">Keluar (Kg)</th>
+              <th className="py-2 px-3 sm:px-4 text-center w-20 whitespace-nowrap pr-6 sm:pr-8">Cek</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-xs">
@@ -1022,7 +1008,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-700 font-medium">
                       {formatTanggalIndo(m.tanggal || '')}
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-600">
+                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-600 font-medium">
                       {e.komoditas}
                     </td>
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap font-bold text-slate-900">
@@ -1051,100 +1037,11 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
                       </td>
                     )}
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-700">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-slate-800 text-xs">
-                          {m.jenisMutasi || '—'}
-                        </span>
-
-                        {/* Custom Tag Badge if assigned in web app */}
-                        {mutasiTags[e.id] && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            <span>⭐ {mutasiTags[e.id]}</span>
-                            <button
-                              type="button"
-                              onClick={(ev) => {
-                                ev.stopPropagation();
-                                GasService.setMutasiTag(e.id, null);
-                              }}
-                              className="text-indigo-400 hover:text-rose-600 transition-colors cursor-pointer"
-                              title="Hapus label kustom"
-                            >
-                              <X className="w-2.5 h-2.5" />
-                            </button>
-                          </span>
-                        )}
-
-                        {/* Quick Tag Button */}
-                        <div className="relative inline-block">
-                          <button
-                            type="button"
-                            onClick={(ev) => {
-                              ev.stopPropagation();
-                              setActiveTagDropdownKey(activeTagDropdownKey === e.id ? null : e.id);
-                            }}
-                            className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors cursor-pointer"
-                            title="Beri label jenis mutasi kustom web (100% aman, sheet asli tidak diubah)"
-                          >
-                            <Tag className="w-3 h-3" />
-                          </button>
-
-                          {activeTagDropdownKey === e.id && (
-                            <div 
-                              onClick={ev => ev.stopPropagation()}
-                              className="absolute left-0 mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 text-left animate-in fade-in"
-                            >
-                              <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
-                                <span>Pilih Label Kustom</span>
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveTagDropdownKey(null)}
-                                  className="text-slate-400 hover:text-slate-700 cursor-pointer"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                              <div className="max-h-48 overflow-y-auto py-1">
-                                {customJenisList.map(c => (
-                                  <button
-                                    key={c.id}
-                                    type="button"
-                                    onClick={() => {
-                                      GasService.setMutasiTag(e.id, c.nama);
-                                      setActiveTagDropdownKey(null);
-                                    }}
-                                    className={`w-full text-left px-2.5 py-1.5 text-xs hover:bg-indigo-50 flex items-center justify-between cursor-pointer ${
-                                      mutasiTags[e.id] === c.nama ? 'font-bold text-indigo-700 bg-indigo-50/60' : 'text-slate-700'
-                                    }`}
-                                  >
-                                    <span className="truncate">{c.nama}</span>
-                                    {mutasiTags[e.id] === c.nama && <Check className="w-3 h-3 text-indigo-600 shrink-0" />}
-                                  </button>
-                                ))}
-                                {customJenisList.length === 0 && (
-                                  <div className="px-2.5 py-2 text-[11px] text-slate-400 text-center">
-                                    Belum ada jenis kustom
-                                  </div>
-                                )}
-                              </div>
-                              <div className="border-t border-slate-100 pt-1 px-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveTagDropdownKey(null);
-                                    setIsKelolaJenisModalOpen(true);
-                                  }}
-                                  className="w-full text-left px-2 py-1 text-[11px] text-indigo-600 font-semibold hover:bg-slate-50 rounded flex items-center gap-1 cursor-pointer"
-                                >
-                                  <PlusCircle className="w-3 h-3" />
-                                  <span>Kelola Jenis Baru</span>
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <span className="font-medium text-slate-800 text-xs">
+                        {m.jenisMutasi || '—'}
+                      </span>
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums">
+                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums w-32">
                       <div className="font-semibold text-emerald-700">
                         {m.masuk ? `+${formatNumber(m.masuk)}` : '—'}
                       </div>
@@ -1163,7 +1060,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums">
+                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums w-32">
                       <div className="font-semibold text-rose-700">
                         {m.keluar ? `-${formatNumber(m.keluar)}` : '—'}
                       </div>
@@ -1182,10 +1079,10 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 text-center">
+                    <td className="py-1.5 px-3 sm:px-4 text-center whitespace-nowrap w-20 pr-6 sm:pr-8">
                       <button
                         onClick={() => onToggleCek(e.komoditas, m.id || `${e.komoditas}-${index}`, m.cek)}
-                        className={`inline-flex items-center justify-center w-5 h-5 rounded-md transition-all ${
+                        className={`inline-flex items-center justify-center w-5 h-5 rounded-md transition-all cursor-pointer ${
                           m.cek
                             ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                             : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
@@ -1209,13 +1106,15 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
         onClose={() => setIsSktSkmModalOpen(false)}
       />
 
-      {/* KelolaJenisMutasiModal for adding custom mutation types without altering raw sheets */}
-      <KelolaJenisMutasiModal
-        isOpen={isKelolaJenisModalOpen}
-        onClose={() => setIsKelolaJenisModalOpen(false)}
-        originalJenisList={originalJenisList}
-        komoditasList={data.map(k => k.komoditas)}
-      />
+      {/* KelolaJenisMutasiModal (Hanya dibuka jika dipanggil) */}
+      {isKelolaJenisModalOpen && (
+        <KelolaJenisMutasiModal
+          isOpen={isKelolaJenisModalOpen}
+          onClose={() => setIsKelolaJenisModalOpen(false)}
+          originalJenisList={originalJenisList}
+          komoditasList={data.map(k => k.komoditas)}
+        />
+      )}
     </div>
   );
 };

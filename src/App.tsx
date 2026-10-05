@@ -259,7 +259,7 @@ export default function App() {
         </div>
 
         {/* Content Area (Scrolls independently) */}
-        <main className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-5 lg:px-6 py-3 sm:py-4 pb-20 lg:pb-10 max-w-7xl mx-auto w-full select-text">
+        <main className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-5 lg:px-6 py-3 sm:py-4 pb-28 lg:pb-20 max-w-[1680px] mx-auto w-full select-text">
           {/* Sync notification toast */}
           {syncStatusNotice && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-xs sm:text-sm flex items-center justify-between shadow-2xs animate-in fade-in duration-200">
@@ -649,25 +649,22 @@ export default function App() {
         />
       )}
 
-      {/* Floating AI Stock Assistant Trigger Button (Bottom Right - Hanya non-staff) */}
+      {/* Floating AI Stock Assistant Trigger Button (Bottom Right - Hanya non-staff, compact circular FAB) */}
       {hasAIAccess && (
-        <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-40">
+        <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-30">
           <button
             onClick={() => setIsAIBotOpen(true)}
-            className="group flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-full shadow-xl hover:shadow-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
-            title="Tanya Jawab AI Bot & Ringkasan Stok"
+            className="group flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-full shadow-lg hover:shadow-xl border border-white/20 transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer relative"
+            title="Tanya Jawab AI Bot (Gemini)"
+            aria-label="Buka AI Stock Assistant"
           >
-            <div className="relative">
-              <Bot className="w-5 h-5 text-white" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-indigo-700 animate-pulse"></span>
-            </div>
-            <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-bold leading-tight flex items-center gap-1">
-                <span>AI Stock Bot</span>
-                <Sparkles className="w-3 h-3 text-amber-300" />
-              </span>
-              <span className="text-[10px] text-blue-100 font-medium">Tanya Stok &amp; BSPP</span>
-            </div>
+            <Bot className="w-5 h-5 text-white" />
+            <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-indigo-700 animate-pulse"></span>
+            
+            {/* Tooltip on hover (desktop) */}
+            <span className="absolute right-full mr-2.5 px-2.5 py-1 bg-slate-900 text-white text-[11px] font-semibold rounded-lg shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden sm:block">
+              AI Stock Bot
+            </span>
           </button>
         </div>
       )}
