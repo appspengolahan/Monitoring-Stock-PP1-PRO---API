@@ -15,7 +15,9 @@ import {
   Globe,
   Gauge,
   Loader2,
-  TrendingUp
+  TrendingUp,
+  RotateCcw,
+  Wrench
 } from 'lucide-react';
 
 interface GasMigrationModalProps {
@@ -63,8 +65,33 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
 
   const handleSaveUrl = () => {
     GasService.setGasUrl(gasUrl);
+    setGasUrl(GasService.getGasUrl());
     onRefreshData();
     handleTestConnection();
+  };
+
+  const handleResetDefaultUrl = async () => {
+    GasService.resetGasUrl();
+    const defaultUrl = GasService.getGasUrl();
+    setGasUrl(defaultUrl);
+    onRefreshData();
+    setIsTesting(true);
+    setTestResult(null);
+    const result = await GasService.testGasConnection(defaultUrl);
+    setTestResult(result);
+    setIsTesting(false);
+  };
+
+  const handleFixUrl = async () => {
+    const { normalized } = GasService.normalizeGasUrl(gasUrl);
+    setGasUrl(normalized);
+    GasService.setGasUrl(normalized);
+    onRefreshData();
+    setIsTesting(true);
+    setTestResult(null);
+    const result = await GasService.testGasConnection(normalized);
+    setTestResult(result);
+    setIsTesting(false);
   };
 
   const handleCopyCode = () => {
@@ -186,19 +213,29 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                     placeholder="https://script.google.com/macros/s/.../exec"
                     className="flex-1 px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 flex-wrap">
                     <button
                       onClick={handleSaveUrl}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors"
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer"
+                      title="Simpan URL ini sebagai sumber data aktif"
                     >
                       Simpan
                     </button>
                     <button
                       onClick={handleTestConnection}
                       disabled={isTesting}
-                      className="px-3 py-2 bg-slate-800 text-white rounded-lg text-xs font-semibold hover:bg-slate-900 transition-colors disabled:opacity-50"
+                      className="px-3 py-2 bg-slate-800 text-white rounded-lg text-xs font-semibold hover:bg-slate-900 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {isTesting ? 'Menguji...' : 'Test Ping'}
+                    </button>
+                    <button
+                      onClick={handleResetDefaultUrl}
+                      disabled={isTesting}
+                      className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Kembalikan ke URL Google Apps Script Bawaan (Default Asli yang Terverifikasi)"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
+                      <span className="hidden sm:inline">Reset Default</span>
                     </button>
                   </div>
                 </div>
@@ -213,35 +250,53 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                       ) : (
                         <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       )}
-                      <div>
-                        <p className="font-semibold">{testResult.message}</p>
+                      <div className="flex-1">
+                        <p className="font-semibold text-xs sm:text-[13px]">{testResult.message}</p>
                         <p className="text-[11px] text-slate-500 mt-0.5 font-mono">
-                          Latensi: {testResult.latencyMs} ms {testResult.ok ? '· Status: LIVE OK' : '· Mode fallback local cache'}
+                          Latensi: {testResult.latencyMs} ms {testResult.ok ? '· Status: LIVE ONLINE' : '· Mode fallback local cache'}
                         </p>
                       </div>
                     </div>
 
                     {!testResult.ok && (
-                      <div className="mt-2 pt-2 border-t border-amber-200/80 text-[11.5px] text-amber-900 space-y-1">
-                        <strong className="block">💡 3 Penyebab Umum "Failed to fetch" pada Google Apps Script:</strong>
-                        <ul className="list-disc pl-4 space-y-1">
+                      <div className="mt-2.5 pt-2.5 border-t border-amber-200/80 text-[11.5px] text-amber-900 space-y-2">
+                        {/* Quick 1-click rescue buttons */}
+                        <div className="p-2.5 bg-amber-100/70 border border-amber-300/80 rounded-lg flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-bold text-[11.5px] text-amber-950">
+                            Solusi Cepat Pemulihan:
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {gasUrl && !gasUrl.endsWith('/exec') && gasUrl.includes('/macros/s/') && (
+                              <button
+                                type="button"
+                                onClick={handleFixUrl}
+                                className="px-2.5 py-1 bg-amber-700 hover:bg-amber-800 text-white rounded-md text-[11px] font-bold flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
+                              >
+                                <Wrench className="w-3 h-3" />
+                                <span>Perbaiki URL (Tambah /exec)</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={handleResetDefaultUrl}
+                              className="px-2.5 py-1 bg-blue-700 hover:bg-blue-800 text-white rounded-md text-[11px] font-bold flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Pulihkan URL Bawaan (Online)</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <strong className="block font-bold mt-1">💡 Panduan Penyelesaian:</strong>
+                        <ul className="list-disc pl-4 space-y-1 text-slate-700">
                           <li>
                             <strong>Akses Web App belum "Anyone" (Siapa saja):</strong> Di Apps Script &gt; <em>Deploy &gt; Manage deployments</em>, pastikan kolom <strong>"Who has access"</strong> diset ke <strong>"Anyone" (Siapa saja)</strong>, bukan "Only myself".
                           </li>
                           <li>
-                            <strong>Belum deploy versi baru:</strong> Setelah menempelkan kode baru, wajib klik <em>Deploy &gt; Manage deployments &gt; Edit (pensil) &gt; Version: New version &gt; Deploy</em>.
+                            <strong>Akhiran URL wajib berakhiran <code>/exec</code>:</strong> Pastikan URL bukan link editor sheets melainkan link web app yang berakhiran <code>/exec</code>.
                           </li>
                           <li>
-                            <strong>Tes langsung di tab baru browser:</strong> Coba klik link uji coba ini:{' '}
-                            <a
-                              href={`${gasUrl}?action=ping`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-bold underline text-blue-700"
-                            >
-                              Buka {gasUrl.slice(0, 45)}...?action=ping ↗
-                            </a>
-                            . Jika di tab baru muncul teks JSON <code>{`{"ok":true,"status":"online"}`}</code>, artinya Apps Script Anda sudah 100% aktif dan berhasil!
+                            <strong>Belum deploy versi baru:</strong> Setelah menempelkan kode dari Tab 2, wajib klik <em>Deploy &gt; Manage deployments &gt; Edit (pensil) &gt; Version: New version &gt; Deploy</em>.
                           </li>
                         </ul>
                       </div>

@@ -497,8 +497,27 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
         try {
           resultData = JSON.parse(text);
         } catch {
+          // If the response is HTML, Google Apps Script returned a login or error page
+          if (text.trim().startsWith('<') || contentType.includes('text/html')) {
+            return res.status(502).json({
+              ok: false,
+              isHtml: true,
+              error: 'Google Apps Script mengembalikan halaman HTML (bukan data JSON). Pastikan deployment Web App disetel ke "Anyone" (Siapa saja) dan URL berakhiran "/exec".',
+              httpStatus: response.status
+            });
+          }
           resultData = text;
         }
+      }
+
+      // Check if resultData is HTML string
+      if (typeof resultData === 'string' && resultData.trim().startsWith('<')) {
+        return res.status(502).json({
+          ok: false,
+          isHtml: true,
+          error: 'Google Apps Script mengembalikan halaman HTML (bukan data JSON). Pastikan deployment Web App disetel ke "Anyone" (Siapa saja) dan URL berakhiran "/exec".',
+          httpStatus: response.status
+        });
       }
 
       // Cache successful response in memory

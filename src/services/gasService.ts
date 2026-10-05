@@ -21,8 +21,36 @@ export class GasService {
     return this.gasUrl;
   }
 
+  public static normalizeGasUrl(rawUrl: string): { normalized: string; warning?: string } {
+    let url = (rawUrl || '').trim();
+    if (!url) {
+      return { normalized: DEFAULT_GAS_URL };
+    }
+    // Check if user accidentally pasted a Google Sheets or Script Editor URL
+    if (url.includes('/edit') || url.includes('macros/d/')) {
+      return {
+        normalized: url,
+        warning: 'URL ini tampaknya link Editor Apps Script, bukan Web App Deployment. Silakan buka Apps Script > Deploy > Manage deployments > salin URL Web App yang berakhiran /exec.'
+      };
+    }
+    // Strip trailing query parameters like ?action=...
+    if (url.includes('?')) {
+      url = url.split('?')[0];
+    }
+    // Strip trailing slash
+    while (url.endsWith('/')) {
+      url = url.slice(0, -1);
+    }
+    // If it is a Google Apps Script deployment URL missing /exec, auto-append /exec
+    if (url.includes('/macros/s/') && !url.endsWith('/exec')) {
+      url = `${url}/exec`;
+    }
+    return { normalized: url };
+  }
+
   public static setGasUrl(url: string): void {
-    this.gasUrl = url.trim();
+    const { normalized } = this.normalizeGasUrl(url);
+    this.gasUrl = normalized;
     localStorage.setItem(STORAGE_KEYS.GAS_URL, this.gasUrl);
   }
 
@@ -622,11 +650,15 @@ export class GasService {
           }
         });
         clearTimeout(id);
-        if (response.ok) {
-          return await response.json();
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && !contentType.includes('text/html')) {
+          const data = await response.json();
+          if (data && typeof data === 'object') {
+            return data;
+          }
         }
       } catch {
-        // Direct fetch failed (e.g. CORS or network restriction), continue to proxy fallback
+        // Direct fetch failed (e.g. CORS, network restriction, or HTML response), continue to proxy fallback
       }
     }
 
@@ -637,8 +669,11 @@ export class GasService {
     try {
       const res = await fetch(proxyUrl, { signal: controller.signal });
       clearTimeout(id);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
+      const data = await res.json();
+      if (!res.ok || (data && data.isHtml)) {
+        throw new Error(data.error || `HTTP ${res.status}: Respon server tidak valid`);
+      }
+      return data;
     } catch (err: any) {
       clearTimeout(id);
       throw err;
@@ -646,27 +681,67 @@ export class GasService {
   }
 
   // --- Test GAS Connectivity ---
-  public static async testGasConnection(urlToTest?: string): Promise<{ ok: boolean; latencyMs: number; message: string; details?: any }> {
-    const targetUrl = urlToTest || this.gasUrl;
+  public static async testGasConnection(urlToTest?: string): Promise<{ ok: boolean; latencyMs: number; message: string; details?: any; isHtml?: boolean; normalizedUrl?: string }> {
+    const rawTarget = urlToTest || this.gasUrl;
+    const { normalized, warning } = this.normalizeGasUrl(rawTarget);
     const start = performance.now();
+
+    if (warning) {
+      return {
+        ok: false,
+        latencyMs: 0,
+        message: warning,
+        details: null,
+        normalizedUrl: normalized
+      };
+    }
+
     try {
       // GAS doGet testing ping action
-      const pingUrl = `${targetUrl}?action=ping&t=${Date.now()}`;
-      const res = await this.fetchWithTimeout(pingUrl, 8000);
+      const pingUrl = `${normalized}?action=ping&t=${Date.now()}`;
+      const res = await this.fetchWithTimeout(pingUrl, 9000);
       const latencyMs = Math.round(performance.now() - start);
+
+      if (res && (res.ok === true || res.status === 'online' || res.data || res.komoditas)) {
+        return {
+          ok: true,
+          latencyMs,
+          message: 'Koneksi ke Google Apps Script REST API Berhasil!',
+          details: res,
+          normalizedUrl: normalized
+        };
+      } else if (res && res.error) {
+        return {
+          ok: false,
+          latencyMs,
+          message: res.error,
+          details: res,
+          normalizedUrl: normalized
+        };
+      }
       return {
         ok: true,
         latencyMs,
-        message: 'Koneksi ke Google Apps Script REST API Berhasil!',
-        details: res
+        message: 'Endpoint Google Apps Script aktif dan merespons.',
+        details: res,
+        normalizedUrl: normalized
       };
     } catch (err: any) {
       const latencyMs = Math.round(performance.now() - start);
+      const rawMsg = err.message || '';
+      const isHtml = rawMsg.includes('HTML') || rawMsg.includes('<!doctype') || rawMsg.includes('Unexpected token');
+      
+      const userFriendlyMessage = isHtml
+        ? 'Google Apps Script mengembalikan halaman HTML (bukan JSON). Pastikan Web App disetel "Who has access: Anyone" dan URL berakhiran "/exec".'
+        : `Tidak dapat memanggil GAS endpoint (${rawMsg}). Periksa koneksi internet atau deployment Code.gs.`;
+
       return {
         ok: false,
         latencyMs,
-        message: `Tidak dapat memanggil GAS endpoint (${err.message || 'CORS / Network Error'}). Periksa apakah Code.gs sudah di-update dengan handler doGet REST API.`,
-        details: err.toString()
+        message: userFriendlyMessage,
+        details: err.toString(),
+        isHtml,
+        normalizedUrl: normalized
       };
     }
   }
