@@ -206,6 +206,12 @@ export default function App() {
     setCurrentTab('mutasi');
   }, []);
 
+  // 10. Fast tab selection handler
+  const handleSelectTab = useCallback((tab: string) => {
+    setCurrentTab(tab);
+    if (tab !== 'mutasi') setTargetCommodityFilter('all');
+  }, []);
+
   return (
     <div className="h-screen h-[100dvh] bg-slate-50 text-slate-900 flex flex-col font-sans select-none overflow-hidden">
       {/* Top Navigation */}
@@ -239,10 +245,7 @@ export default function App() {
         <div className="hidden lg:flex shrink-0 h-full min-h-0 z-20">
           <Sidebar
             currentTab={currentTab}
-            onSelectTab={tab => {
-              setCurrentTab(tab);
-              if (tab !== 'mutasi') setTargetCommodityFilter('all');
-            }}
+            onSelectTab={handleSelectTab}
             session={session}
             onOpenMigration={() => setIsMigrationOpen(true)}
             onOpenSwitchApp={() => setIsSwitchAppOpen(true)}

@@ -39,7 +39,7 @@ interface SidebarProps {
   isInstalled?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
+export const Sidebar: React.FC<SidebarProps> = React.memo(({
   currentTab,
   onSelectTab,
   session,
@@ -513,4 +513,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
     </aside>
   );
-};
+});

@@ -43,7 +43,7 @@ interface NavbarProps {
   isInstalled?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({
+export const Navbar: React.FC<NavbarProps> = React.memo(({
   session,
   onChangeRole,
   onRefresh,
@@ -307,4 +307,4 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
     </header>
   );
-};
+});

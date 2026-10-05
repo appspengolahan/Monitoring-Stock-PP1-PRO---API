@@ -40,7 +40,7 @@ interface FlattenedMutasi {
   keluarSKM?: number;
 }
 
-export const MutasiPanel: React.FC<MutasiPanelProps> = ({
+export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   data,
   onToggleCek,
   initialCommodity = 'all'
@@ -54,6 +54,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
   const [filterTo, setFilterTo] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterHideZero, setFilterHideZero] = useState<boolean>(false);
+  const [showAllDates, setShowAllDates] = useState<boolean>(false);
   const [isSktSkmModalOpen, setIsSktSkmModalOpen] = useState<boolean>(false);
   const [sktSkmVersion, setSktSkmVersion] = useState<number>(0);
   const [isKelolaJenisModalOpen, setIsKelolaJenisModalOpen] = useState<boolean>(false);
@@ -179,6 +180,22 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
       return dateB - dateA;
     });
   }, [data, sktSkmVersion]);
+
+  // Tanggal terbaru yang tercatat pada mutasi (format YYYY-MM-DD)
+  const latestTanggal = useMemo(() => {
+    let maxDate = '';
+    const pool = filterKomoditas === 'all' 
+      ? allMutasi 
+      : allMutasi.filter(e => e.komoditas === filterKomoditas);
+
+    for (const item of pool) {
+      const d = (item.mutasi.tanggal || '').slice(0, 10);
+      if (d && d > maxDate) {
+        maxDate = d;
+      }
+    }
+    return maxDate;
+  }, [allMutasi, filterKomoditas]);
 
   // Available Kode options based on selected Komoditas
   const kodeOptions = useMemo(() => {
@@ -393,12 +410,15 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
         }
       }
 
-      // Filter Date Range
-      if (filterFrom && m.tanggal) {
-        if (m.tanggal < filterFrom) return false;
-      }
-      if (filterTo && m.tanggal) {
-        if (m.tanggal > filterTo) return false;
+      // Filter Date Range:
+      // Request: Tampilkan hanya mutasi tanggal terbaru secara default. Jika ingin mencari data tertentu, gunakan rentang periode.
+      const itemDate = (m.tanggal || '').slice(0, 10);
+      if (filterFrom || filterTo) {
+        if (filterFrom && itemDate < filterFrom) return false;
+        if (filterTo && itemDate > filterTo) return false;
+      } else if (!showAllDates && latestTanggal) {
+        // Mode default mutasi terbaru: hanya tanggal terkini
+        if (itemDate !== latestTanggal) return false;
       }
 
       // Text search
@@ -415,7 +435,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
 
       return true;
     });
-  }, [allMutasi, filterKomoditas, filterKode, filterJenis, filterProduksi, filterHideZero, filterFrom, filterTo, searchQuery, sktSkmVersion, mutasiTags]);
+  }, [allMutasi, filterKomoditas, filterKode, filterJenis, filterProduksi, filterHideZero, filterFrom, filterTo, showAllDates, latestTanggal, searchQuery, sktSkmVersion, mutasiTags]);
 
   // Totals for filtered data
   const totalMasuk = useMemo(() => {
@@ -728,12 +748,15 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
               <Calendar className="w-3 h-3 text-slate-500" />
-              <span>Rentang:</span>
+              <span>Cari Periode:</span>
             </span>
             <input
               type="date"
               value={filterFrom}
-              onChange={e => setFilterFrom(e.target.value)}
+              onChange={e => {
+                setFilterFrom(e.target.value);
+                setShowAllDates(false);
+              }}
               className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
               title="Dari tanggal"
             />
@@ -741,18 +764,41 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
             <input
               type="date"
               value={filterTo}
-              onChange={e => setFilterTo(e.target.value)}
+              onChange={e => {
+                setFilterTo(e.target.value);
+                setShowAllDates(false);
+              }}
               className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
               title="Sampai tanggal"
             />
 
-            {(filterFrom || filterTo) && (
+            {(filterFrom || filterTo || showAllDates) && (
               <button
-                onClick={() => { setFilterFrom(''); setFilterTo(''); }}
-                className="text-[10.5px] text-blue-700 hover:underline px-1"
+                type="button"
+                onClick={() => {
+                  setFilterFrom('');
+                  setFilterTo('');
+                  setShowAllDates(false);
+                }}
+                className="text-[10.5px] text-blue-700 hover:text-blue-900 underline px-1 font-semibold flex items-center gap-0.5 cursor-pointer"
+                title="Kembalikan ke tampilan mutasi tanggal terbaru saja"
               >
-                Reset
+                ↺ Tanggal Terbaru
               </button>
+            )}
+
+            {!filterFrom && !filterTo && !showAllDates && latestTanggal && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-900 border border-blue-200 rounded text-[11px] font-semibold">
+                <span>⚡ Menampilkan Tanggal Terbaru ({formatTanggalIndo(latestTanggal)})</span>
+                <button
+                  type="button"
+                  onClick={() => setShowAllDates(true)}
+                  className="text-[10px] text-blue-600 hover:text-blue-900 underline font-normal cursor-pointer"
+                  title="Lihat seluruh mutasi dari semua tanggal"
+                >
+                  Semua Tanggal
+                </button>
+              </span>
             )}
           </div>
 
@@ -903,8 +949,12 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
           )}
         </div>
 
-        <span className="text-[11px] text-slate-400 font-mono">
-          {filterFrom || filterTo ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}` : 'Semua Periode'}
+        <span className="text-[11px] text-slate-500 font-mono">
+          {filterFrom || filterTo 
+            ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}` 
+            : !showAllDates && latestTanggal 
+              ? `Tanggal: ${formatTanggalIndo(latestTanggal)}` 
+              : 'Semua Periode'}
         </span>
       </div>
 
@@ -1064,4 +1114,4 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = ({
       />
     </div>
   );
-};
+});
