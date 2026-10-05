@@ -112,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside 
-      className={`bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none transition-all duration-300 ease-in-out relative ${
+      className={`h-full bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none transition-all duration-300 ease-in-out relative ${
         isCollapsed ? 'w-18' : 'w-64 xl:w-72'
       }`}
     >
@@ -189,7 +189,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation List */}
-      <div className={`flex-1 py-4 space-y-1.5 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-3'}`}>
+      <div className={`flex-1 py-4 space-y-1.5 overflow-y-auto min-h-0 ${isCollapsed ? 'px-2' : 'px-3'}`}>
         {!isCollapsed && (
           <div className="px-3 pb-2 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
             Modul Operasional
@@ -472,7 +472,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer Info or Expand Toggle when collapsed */}
-      <div className="p-3 border-t border-slate-800 text-[11px] text-slate-500">
+      <div className="p-3 border-t border-slate-800 text-[11px] text-slate-500 shrink-0">
         {!isCollapsed ? (
           <div className="space-y-1">
             <div className="flex items-center justify-between">

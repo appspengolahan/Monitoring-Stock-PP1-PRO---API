@@ -207,7 +207,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans select-none">
+    <div className="h-screen h-[100dvh] bg-slate-50 text-slate-900 flex flex-col font-sans select-none overflow-hidden">
       {/* Top Navigation */}
       <Navbar
         session={session}
@@ -234,9 +234,9 @@ export default function App() {
       />
 
       {/* Main Workspace: Sidebar + Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:flex shrink-0">
+      <div className="flex-1 flex overflow-hidden min-h-0 relative">
+        {/* Desktop Sidebar (Locked in place) */}
+        <div className="hidden lg:flex shrink-0 h-full min-h-0 z-20">
           <Sidebar
             currentTab={currentTab}
             onSelectTab={tab => {
@@ -258,8 +258,8 @@ export default function App() {
           />
         </div>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto px-3 sm:px-5 lg:px-6 py-3 sm:py-4 pb-20 lg:pb-10 max-w-7xl mx-auto w-full select-text">
+        {/* Content Area (Scrolls independently) */}
+        <main className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-5 lg:px-6 py-3 sm:py-4 pb-20 lg:pb-10 max-w-7xl mx-auto w-full select-text">
           {/* Sync notification toast */}
           {syncStatusNotice && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-xs sm:text-sm flex items-center justify-between shadow-2xs animate-in fade-in duration-200">

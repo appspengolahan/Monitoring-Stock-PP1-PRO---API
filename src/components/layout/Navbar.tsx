@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-3 sm:px-4 lg:px-6 py-2.5 transition-colors shadow-xs">
+    <header className="shrink-0 sticky top-0 z-30 bg-white border-b border-slate-200 px-3 sm:px-4 lg:px-6 py-2.5 transition-colors shadow-xs">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         {/* Zone 1: Brand & Sidebar Toggle */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">

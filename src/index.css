@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
 @layer base {
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
   html {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 17.2px; /* ~17px - 17.5px base typography for field mobile and laptop legibility */
