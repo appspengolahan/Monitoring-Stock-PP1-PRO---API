@@ -536,38 +536,26 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
               <span>Bulan Berjalan</span>
             </button>
           )}
-        </div>
-      </div>
 
-      {/* Status Bar Periode Aktif */}
-      <div className="px-4 py-2 sm:px-5 bg-slate-100/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs select-none">
-        <div className="flex items-center gap-2">
-          {filterPeriod === 'bulan_berjalan' && latestMonthLabel ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-900 border border-blue-200 font-semibold text-[11px]">
-              <span>⚡ Menampilkan Data Bulan Berjalan:</span>
-              <span className="font-bold">{latestMonthLabel}</span>
-              <span className="font-mono text-blue-700">({filteredEntries.length} entri)</span>
-            </span>
-          ) : filterFrom || filterTo ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-900 border border-indigo-200 font-semibold text-[11px]">
-              <span>📅 Rentang Tanggal:</span>
-              <span className="font-bold">{filterFrom || 'Awal'} s/d {filterTo || 'Sekarang'}</span>
-              <span className="font-mono text-indigo-700">({filteredEntries.length} entri)</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white text-slate-800 border border-slate-200 font-semibold text-[11px]">
-              <span>🌐 Menampilkan Semua Periode:</span>
-              <span className="font-mono text-slate-700">({filteredEntries.length} entri)</span>
-            </span>
-          )}
-
-          <span className="text-[10.5px] px-2 py-0.5 rounded bg-white border border-slate-200 font-medium text-slate-600 hidden md:inline">
-            Mode Grafik: <span className="font-bold text-blue-700">{filterGranularity === 'bulan' ? 'Per Bulan' : 'Per Entri Transaksi'}</span>
-          </span>
-        </div>
-
-        <div className="text-[11px] text-slate-500 font-mono">
-          Tabel data: <span className="font-semibold text-slate-700">Tanggal Terbaru di Atas</span>
+          {/* Status Badge Sejajar di Baris Filter (Tidak memakan baris sendiri) */}
+          <div className="flex items-center gap-2 shrink-0 select-none ml-auto">
+            {filterPeriod === 'bulan_berjalan' && latestMonthLabel ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 border border-blue-200 font-semibold text-[11px] shadow-2xs">
+                <span>⚡ {latestMonthLabel}</span>
+                <span className="font-mono text-blue-700 font-bold">({filteredEntries.length} entri)</span>
+              </span>
+            ) : filterFrom || filterTo ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200 font-semibold text-[11px] shadow-2xs">
+                <span>📅 {filterFrom || 'Awal'} s/d {filterTo || 'Sekarang'}</span>
+                <span className="font-mono text-indigo-700 font-bold">({filteredEntries.length} entri)</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white text-slate-800 border border-slate-200 font-semibold text-[11px] shadow-2xs">
+                <span>🌐 Semua Periode</span>
+                <span className="font-mono text-slate-700 font-bold">({filteredEntries.length} entri)</span>
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
