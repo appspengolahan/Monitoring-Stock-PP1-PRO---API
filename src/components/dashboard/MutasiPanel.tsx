@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { KomoditasData, MutasiItem, KategoriProduksi } from '../../types';
 import { 
   Search, 
-  Filter, 
   Calendar, 
   Check, 
   Minus, 
@@ -474,18 +473,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     }, 0);
   }, [filteredEntries, sktSkmVersion]);
 
-  const countSKT = useMemo(() => {
-    return allMutasi.filter(e => GasService.isSktSkmActiveForKomoditas(e.komoditas) && (e.kategoriProduksi === 'Murni SKT' || (e.masukSKT && e.masukSKT > 0 && !e.masukSKM) || (e.keluarSKT && e.keluarSKT > 0 && !e.keluarSKM))).length;
-  }, [allMutasi, sktSkmVersion]);
-
-  const countSKM = useMemo(() => {
-    return allMutasi.filter(e => GasService.isSktSkmActiveForKomoditas(e.komoditas) && (e.kategoriProduksi === 'Murni SKM' || (e.masukSKM && e.masukSKM > 0 && !e.masukSKT) || (e.keluarSKM && e.keluarSKM > 0 && !e.keluarSKT))).length;
-  }, [allMutasi, sktSkmVersion]);
-
-  const countGabungan = useMemo(() => {
-    return allMutasi.filter(e => GasService.isSktSkmActiveForKomoditas(e.komoditas) && e.kategoriProduksi === 'Gabungan').length;
-  }, [allMutasi, sktSkmVersion]);
-
   const formatNumber = (num: number): string => {
     return Number(num).toLocaleString('id-ID', {
       minimumFractionDigits: 1,
@@ -578,50 +565,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
             <span>Export PDF</span>
           </button>
         </div>
-      </div>
-
-      {/* Segment Tab Bahan (Memisahkan data per komoditas agar tidak campur aduk) */}
-      <div className="px-4 py-2 sm:px-5 bg-slate-100/70 border-b border-slate-200 flex items-center gap-1.5 overflow-x-auto text-xs select-none">
-        <button
-          type="button"
-          onClick={() => {
-            setFilterKomoditas('all');
-            setFilterKode('all');
-          }}
-          className={`px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all cursor-pointer ${
-            filterKomoditas === 'all'
-              ? 'bg-slate-900 text-white shadow-2xs'
-              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-200/70'
-          }`}
-        >
-          Semua Bahan ({allMutasi.length})
-        </button>
-        {data.map(k => {
-          const count = allMutasi.filter(m => m.komoditas === k.komoditas).length;
-          const isSelected = filterKomoditas === k.komoditas;
-          return (
-            <button
-              key={k.komoditas}
-              type="button"
-              onClick={() => {
-                setFilterKomoditas(k.komoditas);
-                setFilterKode('all');
-              }}
-              className={`px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                isSelected
-                  ? 'bg-blue-600 text-white shadow-2xs'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-200/70'
-              }`}
-            >
-              <span>{k.komoditas}</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                isSelected ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'
-              }`}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
       </div>
 
       {/* Filter Controls Bar - Compact */}
@@ -800,6 +743,22 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                 </button>
               </span>
             )}
+            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterKomoditas('all');
+                  setFilterKode('all');
+                  setFilterJenis('all');
+                  setSearchQuery('');
+                  setFilterHideZero(false);
+                }}
+                className="text-[10.5px] text-slate-500 hover:text-slate-800 underline px-1 font-medium flex items-center gap-0.5 cursor-pointer"
+                title="Reset semua filter ke default"
+              >
+                Reset Filter
+              </button>
+            )}
           </div>
 
           <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer select-none">
@@ -811,108 +770,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
             />
             <span className="text-[11px]">Sembunyikan mutasi bernilai 0</span>
           </label>
-        </div>
-
-        {/* Quick Filter Pintas BSPP & Jalur Produksi (Compact Inline) */}
-        <div className="pt-2 border-t border-slate-200/70 flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1 flex items-center gap-1">
-            <Filter className="w-3 h-3 text-slate-400" />
-            <span>Pintas:</span>
-          </span>
-
-          {/* BSPP Filter Chips */}
-          <button
-            type="button"
-            onClick={() => setFilterJenis(filterJenis === 'BSPP' ? 'all' : 'BSPP')}
-            className={`px-2 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1 cursor-pointer ${
-              filterJenis === 'BSPP'
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-bold'
-                : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
-            }`}
-            title="Tampilkan seluruh mutasi BSPP (nilai plus & minus)"
-          >
-            <span>⚖️ BSPP Semua</span>
-            <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${filterJenis === 'BSPP' ? 'bg-indigo-700 text-white' : 'bg-indigo-50 text-indigo-700'}`}>
-              {countBSPP}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilterJenis(filterJenis === 'BSPP Lebih' ? 'all' : 'BSPP Lebih')}
-            className={`px-2 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1 cursor-pointer ${
-              filterJenis === 'BSPP Lebih'
-                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-bold'
-                : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
-            }`}
-            title="Tampilkan hanya mutasi BSPP Lebih (nilai plus / masuk)"
-          >
-            <span>➕ BSPP Lebih</span>
-            <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${filterJenis === 'BSPP Lebih' ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
-              {countBSPPLebih}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilterJenis(filterJenis === 'BSPP Kurang' ? 'all' : 'BSPP Kurang')}
-            className={`px-2 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1 cursor-pointer ${
-              filterJenis === 'BSPP Kurang'
-                ? 'bg-rose-600 text-white border-rose-600 shadow-2xs font-bold'
-                : 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50'
-            }`}
-            title="Tampilkan hanya mutasi BSPP Kurang (nilai minus / keluar)"
-          >
-            <span>➖ BSPP Kurang</span>
-            <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${filterJenis === 'BSPP Kurang' ? 'bg-rose-700 text-white' : 'bg-rose-50 text-rose-700'}`}>
-              {countBSPPKurang}
-            </span>
-          </button>
-
-          {/* Jalur Filter Chips (Bila relevan) */}
-          {hasProduksiBreakdown && (
-            <>
-              <span className="text-slate-300 mx-1">|</span>
-              <button
-                type="button"
-                onClick={() => setFilterProduksi(filterProduksi === 'SKT' ? 'all' : 'SKT')}
-                className={`px-2 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1 cursor-pointer ${
-                  filterProduksi === 'SKT'
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-2xs font-bold'
-                    : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                <span>SKT ({countSKT})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFilterProduksi(filterProduksi === 'SKM' ? 'all' : 'SKM')}
-                className={`px-2 py-1 text-xs font-semibold rounded-md border transition-all flex items-center gap-1 cursor-pointer ${
-                  filterProduksi === 'SKM'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs font-bold'
-                    : 'bg-white text-blue-800 border-blue-300 hover:bg-blue-50'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                <span>SKM ({countSKM})</span>
-              </button>
-            </>
-          )}
-
-          {(filterJenis !== 'all' || filterProduksi !== 'all') && (
-            <button
-              type="button"
-              onClick={() => {
-                setFilterJenis('all');
-                setFilterProduksi('all');
-              }}
-              className="text-[11px] text-slate-500 hover:text-slate-800 underline ml-auto cursor-pointer font-medium"
-            >
-              Reset Filter
-            </button>
-          )}
         </div>
       </div>
 
