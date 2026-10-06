@@ -92,8 +92,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
     },
     ...(hasBsppAccess ? [{
       id: 'bspp',
-      label: 'BSPP & Selisih',
-      desc: 'Cengkeh & Rajang II',
+      label: 'BSPP',
+      desc: 'Bukti Selisih Persediaan',
       icon: Scale
     }] : []),
     {
