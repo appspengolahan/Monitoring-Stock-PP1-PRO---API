@@ -815,15 +815,14 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         </span>
       </div>
 
-      {/* Table Data - With min-w-[840px] to prevent cutoff */}
+      {/* Table Data - Sleek, fits viewport without right side cutoff */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[840px] text-left border-collapse">
+        <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-100/90 border-b border-slate-200 text-[10.5px] font-semibold text-slate-600 uppercase tracking-wider">
               <th className="py-2 px-3 sm:px-4">Tanggal</th>
               <th className="py-2 px-3 sm:px-4">Bahan</th>
               <th className="py-2 px-3 sm:px-4">Kode / Grade</th>
-              {hasProduksiBreakdown && <th className="py-2 px-3 sm:px-4">Tipe Produksi</th>}
               <th className="py-2 px-3 sm:px-4">Jenis Mutasi</th>
               <th className="py-2 px-3 sm:px-4 text-right">Masuk (Kg)</th>
               <th className="py-2 px-3 sm:px-4 text-right">Keluar (Kg)</th>
@@ -833,7 +832,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
           <tbody className="divide-y divide-slate-100 text-xs">
             {filteredEntries.length === 0 ? (
               <tr>
-                <td colSpan={hasProduksiBreakdown ? 8 : 7} className="py-8 text-center text-slate-400">
+                <td colSpan={7} className="py-8 text-center text-slate-400">
                   Tidak ada data mutasi yang cocok dengan filter saat ini.
                 </td>
               </tr>
@@ -870,28 +869,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap font-bold text-slate-900">
                       {m.kode}
                     </td>
-                    {hasProduksiBreakdown && (
-                      <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap">
-                        {GasService.isSktSkmActiveForKomoditas(e.komoditas) && e.kategoriProduksi === 'Murni SKT' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            Murni SKT
-                          </span>
-                        ) : GasService.isSktSkmActiveForKomoditas(e.komoditas) && e.kategoriProduksi === 'Murni SKM' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                            Murni SKM
-                          </span>
-                        ) : GasService.isSktSkmActiveForKomoditas(e.komoditas) && e.kategoriProduksi === 'Gabungan' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-purple-50 text-purple-800 border border-purple-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                            Gabungan
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">—</span>
-                        )}
-                      </td>
-                    )}
                     <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-700">
                       <span className="font-medium text-slate-800 text-xs">
                         {m.jenisMutasi || '—'}
