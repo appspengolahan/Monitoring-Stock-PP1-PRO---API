@@ -68,7 +68,7 @@ export const AISmartInsights: React.FC<AISmartInsightsProps> = ({
   if (komoditasList.length === 0) return null;
 
   return (
-    <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 border border-blue-100/90 rounded-2xl p-4 sm:p-5 shadow-2xs mb-6">
+    <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 border border-blue-100/90 rounded-2xl p-4 sm:p-5 shadow-2xs">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-blue-100/70">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">

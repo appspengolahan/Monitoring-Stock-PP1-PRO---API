@@ -347,8 +347,13 @@ export default function App() {
 
           {/* Render Active View (Filtered by User Access) */}
           {currentTab === 'ringkasan' && (
-            <div className="space-y-6">
-              {/* AI Smart Insights Bar (Hanya tampil untuk non-staff / manajemen) */}
+            <div className="space-y-4">
+              <OverviewCards
+                data={visibleKomoditasList}
+                onSelectCommodity={handleSelectCommodityFromCard}
+              />
+
+              {/* AI Smart Insights Bar (Pindah ke posisi paling bawah dashboard) */}
               {hasAIAccess && (
                 <AISmartInsights
                   komoditasList={visibleKomoditasList}
@@ -361,11 +366,6 @@ export default function App() {
                   }}
                 />
               )}
-
-              <OverviewCards
-                data={visibleKomoditasList}
-                onSelectCommodity={handleSelectCommodityFromCard}
-              />
             </div>
           )}
 
