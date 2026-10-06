@@ -14,7 +14,9 @@ import {
   PlusCircle,
   Tag,
   Scale,
-  X
+  X,
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react';
 import { exportToPdf } from '../../services/pdfExport';
 import { GasService } from '../../services/gasService';
@@ -60,6 +62,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   const [customJenisVersion, setCustomJenisVersion] = useState<number>(0);
   const [mutasiTags, setMutasiTags] = useState<Record<string, string>>(() => GasService.getMutasiTagsMap());
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<string | null>(null);
+  const [selectedDhpAudit, setSelectedDhpAudit] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
 
   // Sync initialCommodity if parent changes it
   useEffect(() => {
@@ -872,9 +875,34 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                       </span>
                     </td>
                     <td className="py-1.5 px-2.5 sm:px-3 text-slate-700">
-                      <span className="font-medium text-slate-800 text-xs truncate block max-w-[240px]" title={m.jenisMutasi || '—'}>
-                        {m.jenisMutasi || '—'}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium text-slate-800 text-xs truncate block max-w-[200px]" title={m.jenisMutasi || '—'}>
+                          {m.jenisMutasi || '—'}
+                        </span>
+                        {m.dhpMatch && (
+                          m.dhpMatch.selisih === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDhpAudit({ mutasi: m, komoditas: e.komoditas })}
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-all cursor-pointer"
+                              title={`Auto-Check: Identik 100% dengan ${m.dhpMatch.sumber} (${formatNumber(m.dhpMatch.dhpNetto)} Kg). Klik untuk lihat audit.`}
+                            >
+                              <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
+                              <span>Match DHP</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDhpAudit({ mutasi: m, komoditas: e.komoditas })}
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition-all cursor-pointer"
+                              title={`Selisih vs ${m.dhpMatch.sumber}: ${m.dhpMatch.selisih > 0 ? '+' : ''}${formatNumber(m.dhpMatch.selisih)} Kg. Klik untuk lihat audit.`}
+                            >
+                              <AlertCircle className="w-2.5 h-2.5 text-amber-600" />
+                              <span>Selisih {m.dhpMatch.selisih > 0 ? '+' : ''}{formatNumber(m.dhpMatch.selisih)} Kg</span>
+                            </button>
+                          )
+                        )}
+                      </div>
                     </td>
                     <td className="py-1.5 px-2.5 sm:px-3 text-right font-mono tabular-nums">
                       <div className="font-semibold text-emerald-700 text-xs">
@@ -916,15 +944,35 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                     </td>
                     <td className="py-1.5 px-2 sm:px-2.5 text-center">
                       <button
-                        onClick={() => onToggleCek(e.komoditas, m.id || `${e.komoditas}-${index}`, m.cek)}
+                        onClick={() => {
+                          if (m.dhpMatch) {
+                            setSelectedDhpAudit({ mutasi: m, komoditas: e.komoditas });
+                          } else {
+                            onToggleCek(e.komoditas, m.id || `${e.komoditas}-${index}`, m.cek);
+                          }
+                        }}
                         className={`inline-flex items-center justify-center w-5 h-5 rounded-md transition-all cursor-pointer ${
-                          m.cek
+                          m.dhpMatch && m.dhpMatch.selisih === 0
+                            ? 'bg-emerald-600 text-white shadow-2xs hover:bg-emerald-700'
+                            : m.cek
                             ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                             : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                         }`}
-                        title={m.cek ? 'Tervalidasi (Klik untuk ubah)' : 'Belum dicek (Klik untuk validasi)'}
+                        title={
+                          m.dhpMatch && m.dhpMatch.selisih === 0
+                            ? `Auto-Checked: Identik 100% dengan ${m.dhpMatch.sumber} (${formatNumber(m.dhpMatch.dhpNetto)} Kg). Klik untuk lihat audit.`
+                            : m.cek
+                            ? 'Tervalidasi (Klik untuk ubah)'
+                            : 'Belum dicek (Klik untuk validasi)'
+                        }
                       >
-                        {m.cek ? <Check className="w-3 h-3 stroke-[3]" /> : <Minus className="w-3 h-3" />}
+                        {m.dhpMatch && m.dhpMatch.selisih === 0 ? (
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        ) : m.cek ? (
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        ) : (
+                          <Minus className="w-3 h-3" />
+                        )}
                       </button>
                     </td>
                   </tr>
@@ -948,6 +996,142 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         originalJenisList={originalJenisList}
         komoditasList={data.map(k => k.komoditas)}
       />
+
+      {/* Modal Dialog Audit Rekonsiliasi DHP */}
+      {selectedDhpAudit && selectedDhpAudit.mutasi.dhpMatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
+            {/* Modal Header */}
+            <div className={`p-4 sm:p-5 flex items-center justify-between border-b ${
+              selectedDhpAudit.mutasi.dhpMatch.selisih === 0
+                ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100'
+                : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                  selectedDhpAudit.mutasi.dhpMatch.selisih === 0
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-amber-600 text-white shadow-xs'
+                }`}>
+                  {selectedDhpAudit.mutasi.dhpMatch.selisih === 0 ? (
+                    <ShieldCheck className="w-5 h-5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Audit Rekonsiliasi Otomatis
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Pencocokan Data Fisik Gudang vs Kertas Kerja DHP
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedDhpAudit(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-white/80 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 space-y-4">
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Kode / Grade Bahan</span>
+                  <span className="font-bold text-slate-900 text-sm">{selectedDhpAudit.mutasi.kode}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Tanggal Transaksi</span>
+                  <span className="font-semibold text-slate-700">
+                    {selectedDhpAudit.mutasi.tanggal
+                      ? new Date(selectedDhpAudit.mutasi.tanggal).toLocaleDateString('id-ID', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Side by side comparison */}
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                  <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">
+                    1. Persediaan Gudang
+                  </span>
+                  <p className="text-slate-500 text-[11px] leading-tight truncate" title={selectedDhpAudit.komoditas}>
+                    {selectedDhpAudit.komoditas}
+                  </p>
+                  <div className="pt-2 border-t border-slate-100">
+                    <span className="text-[10px] text-slate-400 block">Pemasukan Hasil Proses</span>
+                    <span className="text-lg font-bold font-mono text-slate-900">
+                      {formatNumber(selectedDhpAudit.mutasi.masuk || 0)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
+                    2. Sumber DHP Proses
+                  </span>
+                  <p className="text-slate-500 text-[11px] leading-tight truncate" title={selectedDhpAudit.mutasi.dhpMatch.sumber}>
+                    {selectedDhpAudit.mutasi.dhpMatch.sumber}
+                  </p>
+                  <div className="pt-2 border-t border-slate-100">
+                    <span className="text-[10px] text-slate-400 block">Total Netto Hasil Jadi</span>
+                    <span className="text-lg font-bold font-mono text-emerald-700">
+                      {formatNumber(selectedDhpAudit.mutasi.dhpMatch.dhpNetto)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Result Status Banner */}
+              <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                selectedDhpAudit.mutasi.dhpMatch.selisih === 0
+                  ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                  : 'bg-amber-50/80 border-amber-200 text-amber-900'
+              }`}>
+                <div>
+                  <span className="font-bold text-xs block">
+                    {selectedDhpAudit.mutasi.dhpMatch.selisih === 0
+                      ? '✓ Status: 100% IDENTIK (BALANCE)'
+                      : '⚠ Status: DITEMUKAN SELISIH TIMBANG'}
+                  </span>
+                  <p className="text-[11px] mt-0.5 opacity-90">
+                    {selectedDhpAudit.mutasi.dhpMatch.selisih === 0
+                      ? 'Data pemasukan fisik di persediaan cocok sempurna dengan laporan pengolahan DHP.'
+                      : `Terdapat selisih antara data fisik gudang dan lembar kerja pengolahan.`}
+                  </p>
+                </div>
+                <div className="text-right shrink-0 pl-3">
+                  <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih Netto</span>
+                  <span className="font-mono font-extrabold text-base">
+                    {selectedDhpAudit.mutasi.dhpMatch.selisih > 0 ? '+' : ''}
+                    {formatNumber(selectedDhpAudit.mutasi.dhpMatch.selisih)} Kg
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedDhpAudit(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

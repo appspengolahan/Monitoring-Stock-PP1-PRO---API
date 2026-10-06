@@ -58,6 +58,21 @@ export interface MutasiItem {
   saldoSKT?: number;
   saldoSKM?: number;
   cek: boolean;
+  dhpMatch?: {
+    matched: boolean;
+    dhpNetto: number;
+    selisih: number;
+    sumber: string;
+    jalur?: string;
+  };
+}
+
+export interface DHPEntry {
+  tanggal: string | null;
+  nama: string;
+  nettoKg: number;
+  jalur: string;
+  sumber: string;
 }
 
 export interface KomoditasData {

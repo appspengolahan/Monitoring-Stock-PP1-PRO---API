@@ -1,7 +1,7 @@
-import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem } from '../types';
+import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry } from '../types';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 
-export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbytYMPwbydaE_GhoSyhnCqC6MBkaQRyzDnaCWdXyr2q_309-7CPTXQjGwGVkirinbFEyw/exec';
+export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbwpvTstV4SeELEB1QZgd2TR0sXIPFaJaO1owlVboHI0lnkacQPQ1_BwNrfpYMrUURVG/exec';
 
 const STORAGE_KEYS = {
   KOMODITAS: 'stockpp1_komoditas_data_v3',
@@ -11,7 +11,8 @@ const STORAGE_KEYS = {
   GAS_URL: 'stockpp1_gas_api_url',
   LAST_SYNC: 'stockpp1_last_sync_timestamp',
   CUSTOM_MUTASI: 'stockpp1_custom_mutasi_v1',
-  SNAPSHOT_CACHE: 'stockpp1_snapshot_cache'
+  SNAPSHOT_CACHE: 'stockpp1_snapshot_cache',
+  DHP_RECONCILIATION: 'stockpp1_dhp_reconciliation_v2'
 };
 
 export class GasService {
@@ -496,9 +497,48 @@ export class GasService {
           };
         });
 
+        const dhpList = this.getCachedDHP();
+        const enrichedMutasi = (k.mutasiTerbaru || []).map(m => {
+          if (m.jenisMutasi !== 'Pemasukan Hasil Proses' || dhpList.length === 0) return m;
+          const mKode = (m.kode || '').trim().toUpperCase();
+          const mDate = m.tanggal ? m.tanggal.slice(0, 10) : '';
+
+          const matchedDHP = dhpList.find(d => {
+            const rawD = (d.nama || '').trim().toUpperCase();
+            if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
+            const dDate = d.tanggal ? d.tanggal.slice(0, 10) : '';
+            const dateMatch = !mDate || !dDate || dDate === mDate ||
+              Math.abs(new Date(mDate).getTime() - new Date(dDate).getTime()) <= 86400000;
+            const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
+            const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
+            const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
+            return dateMatch && kodeMatch;
+          });
+
+          if (matchedDHP) {
+            const masukVal = Number(m.masuk) || 0;
+            const dhpVal = Number(matchedDHP.nettoKg) || 0;
+            const diff = Math.round((masukVal - dhpVal) * 10) / 10;
+            return {
+              ...m,
+              cek: diff === 0 ? true : m.cek,
+              dhpMatch: {
+                matched: true,
+                dhpNetto: dhpVal,
+                selisih: diff,
+                sumber: matchedDHP.sumber,
+                jalur: matchedDHP.jalur
+              }
+            };
+          }
+
+          return m;
+        });
+
         return {
           ...k,
           kodeList: enrichedKodeList,
+          mutasiTerbaru: enrichedMutasi,
           saldoSKTTotal: Math.round(totalSKT * 10) / 10,
           saldoSKMTotal: Math.round(totalSKM * 10) / 10
         };
@@ -549,6 +589,21 @@ export class GasService {
 
   public static saveCachedBSPP(data: BSPPData[]): void {
     localStorage.setItem(STORAGE_KEYS.BSPP, JSON.stringify(data));
+  }
+
+  public static getCachedDHP(): DHPEntry[] {
+    const cached = localStorage.getItem(STORAGE_KEYS.DHP_RECONCILIATION);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return [];
+  }
+
+  public static saveCachedDHP(data: DHPEntry[]): void {
+    localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(data));
   }
 
   public static getLastSyncTime(): string | null {
@@ -774,8 +829,27 @@ export class GasService {
         return { index: b, data: bData };
       });
 
-      // Wait for all 4 komoditas to complete simultaneously
-      const komoditasResults = await Promise.allSettled(komoditasPromises);
+      // Launch DHP reconciliation in parallel stream
+      const dhpPromise = (async () => {
+        try {
+          const dhpUrl = `${this.gasUrl}?action=getDHPReconciliation&t=${Date.now()}`;
+          const dhpRes = await this.fetchWithTimeout(dhpUrl, 16000);
+          const dhpData = (dhpRes && dhpRes.data) || dhpRes;
+          if (dhpData && Array.isArray(dhpData.items)) {
+            this.saveCachedDHP(dhpData.items);
+            return dhpData.items;
+          }
+        } catch (eDhp) {
+          console.warn('DHP sync warning:', eDhp);
+        }
+        return [];
+      })();
+
+      // Wait for all 4 komoditas & DHP to complete
+      const [komoditasResults] = await Promise.all([
+        Promise.allSettled(komoditasPromises),
+        dhpPromise
+      ]);
       const currentKomoditasList = [...this.getCachedKomoditas()];
       let komoditasUpdatedCount = 0;
 
