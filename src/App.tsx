@@ -261,8 +261,8 @@ export default function App() {
           />
         </div>
 
-        {/* Content Area (Scrolls independently) */}
-        <main className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-5 lg:px-6 py-3 sm:py-4 pb-28 lg:pb-20 max-w-7xl mx-auto w-full select-text">
+        {/* Content Area (Scrolls independently - dynamic width up to 1680px) */}
+        <main className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-5 lg:px-6 py-3 sm:py-4 pb-28 lg:pb-20 max-w-[1680px] mx-auto w-full select-text">
           {/* Sync notification toast */}
           {syncStatusNotice && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-xs sm:text-sm flex items-center justify-between shadow-2xs animate-in fade-in duration-200">

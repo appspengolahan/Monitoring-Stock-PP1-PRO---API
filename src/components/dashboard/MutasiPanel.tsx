@@ -815,18 +815,18 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         </span>
       </div>
 
-      {/* Table Data - Sleek, fits viewport without right side cutoff */}
-      <div className="overflow-x-auto">
+      {/* Table Data - Dynamic proportional columns, fits viewport completely */}
+      <div className="overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-100/90 border-b border-slate-200 text-[10.5px] font-semibold text-slate-600 uppercase tracking-wider">
-              <th className="py-2 px-3 sm:px-4">Tanggal</th>
-              <th className="py-2 px-3 sm:px-4">Bahan</th>
-              <th className="py-2 px-3 sm:px-4">Kode / Grade</th>
-              <th className="py-2 px-3 sm:px-4">Jenis Mutasi</th>
-              <th className="py-2 px-3 sm:px-4 text-right">Masuk (Kg)</th>
-              <th className="py-2 px-3 sm:px-4 text-right">Keluar (Kg)</th>
-              <th className="py-2 px-3 sm:px-4 text-center">Cek</th>
+            <tr className="bg-slate-100/90 border-b border-slate-200 text-[10px] sm:text-[10.5px] font-semibold text-slate-600 uppercase tracking-wider select-none">
+              <th className="py-2.5 px-2.5 sm:px-3 w-[12%] min-w-[95px]">Tanggal</th>
+              <th className="py-2.5 px-2.5 sm:px-3 w-[16%] min-w-[110px]">Bahan</th>
+              <th className="py-2.5 px-2.5 sm:px-3 w-[18%] min-w-[120px]">Kode / Grade</th>
+              <th className="py-2.5 px-2.5 sm:px-3 min-w-[130px]">Jenis Mutasi</th>
+              <th className="py-2.5 px-2.5 sm:px-3 w-[14%] min-w-[95px] text-right">Masuk (Kg)</th>
+              <th className="py-2.5 px-2.5 sm:px-3 w-[14%] min-w-[95px] text-right">Keluar (Kg)</th>
+              <th className="py-2.5 px-2 sm:px-2.5 w-[50px] min-w-[44px] text-center">Cek</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-xs">
@@ -844,42 +844,44 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                     key={m.id || index}
                     className="hover:bg-slate-50/90 transition-colors"
                   >
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-700 font-medium">
+                    <td className="py-1.5 px-2.5 sm:px-3 whitespace-nowrap text-slate-700 font-medium text-[11px] sm:text-xs">
                       {formatTanggalIndo(m.tanggal || '')}
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap">
+                    <td className="py-1.5 px-2.5 sm:px-3">
                       {e.komoditas.includes('Rajang II') ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-amber-50 text-amber-900 border border-amber-200 whitespace-nowrap">
                           {e.komoditas}
                         </span>
                       ) : e.komoditas.includes('Blend') ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-900 border border-sky-200">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-sky-50 text-sky-900 border border-sky-200 whitespace-nowrap">
                           {e.komoditas}
                         </span>
                       ) : e.komoditas.includes('Cengkeh') ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200 whitespace-nowrap">
                           {e.komoditas}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-purple-900 border border-purple-200">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-purple-50 text-purple-900 border border-purple-200 whitespace-nowrap">
                           {e.komoditas}
                         </span>
                       )}
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap font-bold text-slate-900">
-                      {m.kode}
+                    <td className="py-1.5 px-2.5 sm:px-3 font-bold text-slate-900 text-xs">
+                      <span className="truncate block max-w-[220px]" title={m.kode}>
+                        {m.kode}
+                      </span>
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-slate-700">
-                      <span className="font-medium text-slate-800 text-xs">
+                    <td className="py-1.5 px-2.5 sm:px-3 text-slate-700">
+                      <span className="font-medium text-slate-800 text-xs truncate block max-w-[240px]" title={m.jenisMutasi || '—'}>
                         {m.jenisMutasi || '—'}
                       </span>
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums">
-                      <div className="font-semibold text-emerald-700">
+                    <td className="py-1.5 px-2.5 sm:px-3 text-right font-mono tabular-nums">
+                      <div className="font-semibold text-emerald-700 text-xs">
                         {m.masuk ? `+${formatNumber(m.masuk)}` : '—'}
                       </div>
                       {hasProduksiBreakdown && GasService.isSktSkmActiveForKomoditas(e.komoditas) && (e.masukSKT !== undefined || e.masukSKM !== undefined) && (m.masuk || 0) > 0 && (
-                        <div className="text-[9.5px] text-slate-500 font-mono tracking-tight flex items-center justify-end gap-1 mt-0.5">
+                        <div className="text-[9px] text-slate-500 font-mono tracking-tight flex items-center justify-end gap-1 mt-0.5">
                           {e.masukSKT !== undefined && e.masukSKT > 0 && (
                             <span className="text-amber-800 bg-amber-50/90 px-1 py-0.2 rounded border border-amber-200/60 font-medium">
                               SKT: +{formatNumber(e.masukSKT)}
@@ -893,12 +895,12 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                         </div>
                       )}
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 whitespace-nowrap text-right font-mono tabular-nums">
-                      <div className="font-semibold text-rose-700">
+                    <td className="py-1.5 px-2.5 sm:px-3 text-right font-mono tabular-nums">
+                      <div className="font-semibold text-rose-700 text-xs">
                         {m.keluar ? `-${formatNumber(m.keluar)}` : '—'}
                       </div>
                       {hasProduksiBreakdown && GasService.isSktSkmActiveForKomoditas(e.komoditas) && (e.keluarSKT !== undefined || e.keluarSKM !== undefined) && (m.keluar || 0) > 0 && (
-                        <div className="text-[9.5px] text-slate-500 font-mono tracking-tight flex items-center justify-end gap-1 mt-0.5">
+                        <div className="text-[9px] text-slate-500 font-mono tracking-tight flex items-center justify-end gap-1 mt-0.5">
                           {e.keluarSKT !== undefined && e.keluarSKT > 0 && (
                             <span className="text-amber-800 bg-amber-50/90 px-1 py-0.2 rounded border border-amber-200/60 font-medium">
                               SKT: -{formatNumber(e.keluarSKT)}
@@ -912,10 +914,10 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                         </div>
                       )}
                     </td>
-                    <td className="py-1.5 px-3 sm:px-4 text-center">
+                    <td className="py-1.5 px-2 sm:px-2.5 text-center">
                       <button
                         onClick={() => onToggleCek(e.komoditas, m.id || `${e.komoditas}-${index}`, m.cek)}
-                        className={`inline-flex items-center justify-center w-5 h-5 rounded-md transition-all ${
+                        className={`inline-flex items-center justify-center w-5 h-5 rounded-md transition-all cursor-pointer ${
                           m.cek
                             ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                             : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
