@@ -1077,6 +1077,153 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     ],
     "mutasiTerbaru": [
       {
+        "id": "tembakau---krosok--rajang-ii--dhp-madura-2024",
+        "tanggal": "2026-10-07T00:00:00.000Z",
+        "kode": "MADURA 2024 (BAT) R",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 6055.0,
+        "keluar": 0,
+        "saldo": 6508.7,
+        "masukSKT": 6055.0,
+        "masukSKM": 0,
+        "saldoSKT": 5963.0,
+        "saldoSKM": 545.7,
+        "cek": true,
+        "dhpMatch": {
+          "matched": true,
+          "dhpNetto": 6055.0,
+          "selisih": 0,
+          "sumber": "DHP Tembakau",
+          "jalur": "SKT"
+        }
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-kasturi-2024",
+        "tanggal": "2026-10-07T00:00:00.000Z",
+        "kode": "KASTURI 2024 (BE) - 1",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 912.1,
+        "keluar": 0,
+        "saldo": 1480.2,
+        "masukSKT": 912.1,
+        "masukSKM": 0,
+        "saldoSKT": 1480.2,
+        "saldoSKM": 0,
+        "cek": true,
+        "dhpMatch": {
+          "matched": true,
+          "dhpNetto": 912.1,
+          "selisih": 0,
+          "sumber": "DHP Krosok",
+          "jalur": "SKT"
+        }
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-brazil-grade-b",
+        "tanggal": "2026-10-07T00:00:00.000Z",
+        "kode": "BRAZIL GRADE B (2022)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 196.9,
+        "keluar": 0,
+        "saldo": 381.5,
+        "masukSKT": 196.9,
+        "masukSKM": 0,
+        "saldoSKT": 381.5,
+        "saldoSKM": 0,
+        "cek": true,
+        "dhpMatch": {
+          "matched": true,
+          "dhpNetto": 196.9,
+          "selisih": 0,
+          "sumber": "DHP Krosok",
+          "jalur": "SKT"
+        }
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-zimbabwe-2025-l2of",
+        "tanggal": "2026-10-07T00:00:00.000Z",
+        "kode": "ZIMBABWE 2025 (L2OF/P)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 375.8,
+        "keluar": 0,
+        "saldo": 791.1,
+        "masukSKT": 375.8,
+        "masukSKM": 0,
+        "saldoSKT": 791.1,
+        "saldoSKM": 0,
+        "cek": true,
+        "dhpMatch": {
+          "matched": true,
+          "dhpNetto": 375.8,
+          "selisih": 0,
+          "sumber": "DHP Krosok",
+          "jalur": "SKT"
+        }
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-zambia-m1l",
+        "tanggal": "2026-10-07T00:00:00.000Z",
+        "kode": "ZAMBIA M1L (2023)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 398.0,
+        "keluar": 0,
+        "saldo": 801.7,
+        "masukSKT": 398.0,
+        "masukSKM": 0,
+        "saldoSKT": 801.7,
+        "saldoSKM": 0,
+        "cek": true,
+        "dhpMatch": {
+          "matched": true,
+          "dhpNetto": 398.0,
+          "selisih": 0,
+          "sumber": "DHP Krosok",
+          "jalur": "SKT"
+        }
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-janturan-boyolali",
+        "tanggal": "2026-10-07T00:00:00.000Z",
+        "kode": "JANTURAN BOYOLALI 2024 (VJI)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 182.7,
+        "keluar": 0,
+        "saldo": 395.2,
+        "masukSKT": 182.7,
+        "masukSKM": 0,
+        "saldoSKT": 395.2,
+        "saldoSKM": 0,
+        "cek": true,
+        "dhpMatch": {
+          "matched": true,
+          "dhpNetto": 182.7,
+          "selisih": 0,
+          "sumber": "DHP Krosok",
+          "jalur": "SKT"
+        }
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-krs-garut",
+        "tanggal": "2026-10-07T00:00:00.000Z",
+        "kode": "KRS. GARUT 2025 (MYN)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 282.4,
+        "keluar": 0,
+        "saldo": 285.9,
+        "masukSKT": 282.4,
+        "masukSKM": 0,
+        "saldoSKT": 285.9,
+        "saldoSKM": 0,
+        "cek": true,
+        "dhpMatch": {
+          "matched": true,
+          "dhpNetto": 282.4,
+          "selisih": 0,
+          "sumber": "DHP Krosok",
+          "jalur": "SKT"
+        }
+      },
+      {
         "id": "tembakau---krosok--rajang-ii--0",
         "tanggal": "2026-04-08T00:00:00.000Z",
         "kode": "MADURA 2023 (HL) S",
