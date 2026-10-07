@@ -60,8 +60,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   const [filterHideZero, setFilterHideZero] = useState<boolean>(false);
   const [showAllDates, setShowAllDates] = useState<boolean>(false);
   const [showDhpSection, setShowDhpSection] = useState<boolean>(true);
-  const [showSetoranSection, setShowSetoranSection] = useState<boolean>(true);
-  const [reconciliationTab, setReconciliationTab] = useState<'all' | 'dhp' | 'setoran'>('all');
   const [isSktSkmModalOpen, setIsSktSkmModalOpen] = useState<boolean>(false);
   const [sktSkmVersion, setSktSkmVersion] = useState<number>(0);
   const [isKelolaJenisModalOpen, setIsKelolaJenisModalOpen] = useState<boolean>(false);
@@ -512,27 +510,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     return Math.round((totalFisikMasukKg - totalDhpNettoKg) * 10) / 10;
   }, [totalFisikMasukKg, totalDhpNettoKg]);
 
-  // Rekonsiliasi Pengeluaran Setoran: Mengacu pada mutasi fisik gudang persediaan Tembakau & Krosok (Rajang II)
-  // yang divalidasi silang terhadap Kertas Kerja BSPP SETORAN (Kolom H - 34 bahan)
-  const setoranReconciliationEntries = useMemo(() => {
-    return allMutasi.filter(e => {
-      const isRajang2 = e.komoditas.includes('Rajang II');
-      return isRajang2 && (e.mutasi.jenisMutasi === 'Pengeluaran Setoran' || !!e.mutasi.setoranMatch);
-    });
-  }, [allMutasi]);
-
-  const totalSetoranLabelKg = useMemo(() => {
-    return setoranReconciliationEntries.reduce((acc, curr) => acc + (curr.mutasi.setoranMatch?.labelNetto || curr.mutasi.keluar || 0), 0);
-  }, [setoranReconciliationEntries]);
-
-  const totalFisikKeluarKg = useMemo(() => {
-    return setoranReconciliationEntries.reduce((acc, curr) => acc + (curr.mutasi.keluar || 0), 0);
-  }, [setoranReconciliationEntries]);
-
-  const totalSetoranSelisihKg = useMemo(() => {
-    return Math.round((totalFisikKeluarKg - totalSetoranLabelKg) * 10) / 10;
-  }, [totalFisikKeluarKg, totalSetoranLabelKg]);
-
   const formatNumber = (num: number): string => {
     return Number(num).toLocaleString('id-ID', {
       minimumFractionDigits: 1,
@@ -627,55 +604,8 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         </div>
       </div>
 
-      {/* Tab Switcher jika ada rekonsiliasi DHP atau Setoran */}
-      {(dhpReconciliationEntries.length > 0 || setoranReconciliationEntries.length > 0) && (
-        <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 flex items-center justify-between flex-wrap gap-2 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mr-1">
-              Mode Validasi:
-            </span>
-            <button
-              type="button"
-              onClick={() => setReconciliationTab('all')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                reconciliationTab === 'all'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              Semua Validasi ({dhpReconciliationEntries.length + setoranReconciliationEntries.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setReconciliationTab('dhp')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                reconciliationTab === 'dhp'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              Pemasukan DHP ({dhpReconciliationEntries.length} Bahan)
-            </button>
-            <button
-              type="button"
-              onClick={() => setReconciliationTab('setoran')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                reconciliationTab === 'setoran'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              Pengeluaran Setoran ({setoranReconciliationEntries.length} Bahan)
-            </button>
-          </div>
-          <div className="text-[11px] text-slate-400">
-            Acuan Fisik: <span className="text-slate-200 font-semibold">Tembakau &amp; Krosok (Rajang II)</span>
-          </div>
-        </div>
-      )}
-
       {/* Panel Rekonsiliasi Khusus: Pemasukan Hasil Proses Gudang Persediaan Rajang II vs Kertas Kerja DHP */}
-      {dhpReconciliationEntries.length > 0 && (reconciliationTab === 'all' || reconciliationTab === 'dhp') && (
+      {dhpReconciliationEntries.length > 0 && (
         <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border-b border-emerald-800/50 p-4 sm:p-5">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
@@ -838,170 +768,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                       </td>
                       <td colSpan={2} className="py-2.5 px-3 text-center font-sans text-[10px] text-emerald-300 font-bold">
                         ✓ Seluruh Data Terverifikasi Sempurna
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Panel Rekonsiliasi Khusus: Pengeluaran Setoran Gudang Persediaan Rajang II vs Kertas Kerja BSPP SETORAN (Kolom H) */}
-      {setoranReconciliationEntries.length > 0 && (reconciliationTab === 'all' || reconciliationTab === 'setoran') && (
-        <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 text-white border-b border-blue-800/50 p-4 sm:p-5">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Rekonsiliasi Otomatis (2-Way Matching)</span>
-                </span>
-                <span className="text-[11px] text-slate-300 font-medium">
-                  Rabu, 07 Oktober 2026
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/10 text-slate-300 border border-white/10" title="ID Sheet Kertas Kerja Setoran">
-                  Tab: BSPP SETORAN (Kolom H)
-                </span>
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                <span>Pengeluaran Setoran: Gudang Rajang II vs Kertas Kerja BSPP SETORAN (Kolom H)</span>
-              </h3>
-              <p className="text-xs text-slate-300 mt-0.5 max-w-2xl leading-relaxed">
-                Acuan data adalah entri mutasi fisik pengeluaran yang tercatat di <strong className="text-emerald-200">Gudang Persediaan Tembakau &amp; Krosok (Rajang II)</strong>, divalidasi silang terhadap kertas kerja <strong className="text-blue-200">BSPP SETORAN (34 bahan)</strong> acuan <strong className="text-amber-200">Kolom H</strong> (Bobot Label Netto Kg). ID Sheet: <span className="font-mono text-[11px] text-slate-300">1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA</span>.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="bg-white/10 backdrop-blur-xs rounded-xl px-3 py-2 border border-white/10 text-center">
-                <span className="text-[10px] text-slate-300 uppercase tracking-wider block">Acuan Rajang II</span>
-                <span className="text-sm font-bold text-white font-mono">{setoranReconciliationEntries.length} Bahan</span>
-              </div>
-              <div className="bg-rose-500/15 backdrop-blur-xs rounded-xl px-3 py-2 border border-rose-400/30 text-center">
-                <span className="text-[10px] text-rose-200 uppercase tracking-wider block">Fisik Keluar</span>
-                <span className="text-sm font-bold text-rose-300 font-mono">-{formatNumber(totalFisikKeluarKg)} Kg</span>
-              </div>
-              <div className="bg-blue-500/15 backdrop-blur-xs rounded-xl px-3 py-2 border border-blue-400/30 text-center">
-                <span className="text-[10px] text-blue-200 uppercase tracking-wider block">Label Netto (Kolom H)</span>
-                <span className="text-sm font-bold text-blue-300 font-mono">{formatNumber(totalSetoranLabelKg)} Kg</span>
-              </div>
-              <div className="bg-emerald-500/20 backdrop-blur-xs rounded-xl px-3 py-2 border border-emerald-400/40 text-center">
-                <span className="text-[10px] text-emerald-200 uppercase tracking-wider block">Status Keselarasan</span>
-                <span className="text-sm font-bold text-emerald-300 font-mono">
-                  {totalSetoranSelisihKg === 0 ? '100% IDENTIK' : `Selisih ${formatNumber(totalSetoranSelisihKg)} Kg`}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSetoranSection(!showSetoranSection)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer border border-white/15"
-                title={showSetoranSection ? 'Sembunyikan rincian tabel perbandingan' : 'Buka rincian tabel perbandingan'}
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>{showSetoranSection ? 'Tutup Rincian' : 'Lihat Rincian (34 Bahan)'}</span>
-                {showSetoranSection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Rincian Komparasi 34 Bahan Setoran */}
-          {showSetoranSection && (
-            <div className="mt-4 pt-3.5 border-t border-blue-800/40">
-              <div className="overflow-x-auto rounded-xl border border-slate-700/80 bg-slate-900/80 shadow-inner max-h-[420px] overflow-y-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-800/95 text-[10.5px] uppercase font-bold text-slate-300 border-b border-slate-700 sticky top-0 z-10 backdrop-blur-xs">
-                    <tr>
-                      <th className="py-2 px-3 text-center w-10">No</th>
-                      <th className="py-2 px-3">Tanggal</th>
-                      <th className="py-2 px-3">Bahan Gudang Rajang II (Acuan Utama)</th>
-                      <th className="py-2 px-3">Kertas Kerja Pembanding (BSPP SETORAN)</th>
-                      <th className="py-2 px-3 text-right">Fisik Keluar Gudang</th>
-                      <th className="py-2 px-3 text-right">Label Netto (Kolom H)</th>
-                      <th className="py-2 px-3 text-right">Selisih</th>
-                      <th className="py-2 px-3 text-center">Status Validasi</th>
-                      <th className="py-2 px-3 text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
-                    {setoranReconciliationEntries.map((e, idx) => {
-                      const m = e.mutasi;
-                      const match = m.setoranMatch;
-                      const isIdentik = match ? match.selisih === 0 : false;
-                      return (
-                        <tr key={m.id || idx} className="hover:bg-slate-800/60 transition-colors">
-                          <td className="py-2 px-3 text-center text-slate-400 font-sans">{idx + 1}</td>
-                          <td className="py-2 px-3 whitespace-nowrap text-slate-300 font-sans">
-                            {formatTanggalIndo(m.tanggal || '')}
-                          </td>
-                          <td className="py-2 px-3 font-bold text-white font-sans">
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                              <span>{m.kode}</span>
-                            </span>
-                          </td>
-                          <td className="py-2 px-3 font-sans">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-900/60 text-blue-300 border border-blue-700/60">
-                              BSPP SETORAN (Kolom H)
-                            </span>
-                          </td>
-                          <td className="py-2 px-3 text-right font-bold text-rose-400">
-                            -{formatNumber(m.keluar || 0)} Kg
-                          </td>
-                          <td className="py-2 px-3 text-right font-bold text-slate-200">
-                            {formatNumber(match ? match.labelNetto : m.keluar || 0)} Kg
-                          </td>
-                          <td className="py-2 px-3 text-right">
-                            {match && match.selisih !== 0 ? (
-                              <span className="text-amber-400 font-bold">
-                                {match.selisih > 0 ? '+' : ''}{formatNumber(match.selisih)} Kg
-                              </span>
-                            ) : (
-                              <span className="text-emerald-400 font-semibold">0,0 Kg</span>
-                            )}
-                          </td>
-                          <td className="py-2 px-3 text-center font-sans">
-                            {isIdentik ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                                <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                                <span>100% IDENTIK (MATCH)</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                <AlertCircle className="w-3 h-3 text-amber-400" />
-                                <span>SELISIH TIMBANG</span>
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2 px-3 text-center font-sans">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedSetoranAudit({ mutasi: m, komoditas: e.komoditas })}
-                              className="px-2 py-1 text-[10.5px] font-semibold text-slate-200 bg-slate-700/80 hover:bg-slate-700 hover:text-white rounded border border-slate-600 transition-colors cursor-pointer"
-                            >
-                              Audit
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot className="bg-slate-800/95 font-mono text-[11px] font-bold border-t border-slate-700 text-slate-200 sticky bottom-0 z-10 backdrop-blur-xs">
-                    <tr>
-                      <td colSpan={4} className="py-2.5 px-3 font-sans text-right uppercase tracking-wider text-[10.5px]">
-                        Total Pengeluaran Setoran ({setoranReconciliationEntries.length} Bahan):
-                      </td>
-                      <td className="py-2.5 px-3 text-right text-rose-400 text-xs">
-                        -{formatNumber(totalFisikKeluarKg)} Kg
-                      </td>
-                      <td className="py-2.5 px-3 text-right text-slate-100 text-xs">
-                        {formatNumber(totalSetoranLabelKg)} Kg
-                      </td>
-                      <td className="py-2.5 px-3 text-right text-emerald-400 text-xs">
-                        {totalSetoranSelisihKg === 0 ? '0,0 Kg' : `${formatNumber(totalSetoranSelisihKg)} Kg`}
-                      </td>
-                      <td colSpan={2} className="py-2.5 px-3 text-center font-sans text-[10px] text-emerald-300 font-bold">
-                        ✓ 34 Bahan Terverifikasi Sempurna (Balance 100%)
                       </td>
                     </tr>
                   </tfoot>
