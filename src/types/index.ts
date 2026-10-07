@@ -65,6 +65,12 @@ export interface MutasiItem {
     sumber: string;
     jalur?: string;
   };
+  setoranMatch?: {
+    matched: boolean;
+    labelNetto: number;
+    selisih: number;
+    sumber: string;
+  };
 }
 
 export interface DHPEntry {
@@ -72,6 +78,13 @@ export interface DHPEntry {
   nama: string;
   nettoKg: number;
   jalur: string;
+  sumber: string;
+}
+
+export interface SetoranEntry {
+  tanggal: string | null;
+  nama: string;
+  labelNettoKg: number;
   sumber: string;
 }
 

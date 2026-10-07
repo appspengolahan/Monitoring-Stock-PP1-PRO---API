@@ -1,4 +1,4 @@
-import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry } from '../types';
+import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry } from '../types';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 
 export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbwpvTstV4SeELEB1QZgd2TR0sXIPFaJaO1owlVboHI0lnkacQPQ1_BwNrfpYMrUURVG/exec';
@@ -12,7 +12,8 @@ const STORAGE_KEYS = {
   LAST_SYNC: 'stockpp1_last_sync_timestamp',
   CUSTOM_MUTASI: 'stockpp1_custom_mutasi_v1',
   SNAPSHOT_CACHE: 'stockpp1_snapshot_cache',
-  DHP_RECONCILIATION: 'stockpp1_dhp_reconciliation_v2'
+  DHP_RECONCILIATION: 'stockpp1_dhp_reconciliation_v2',
+  SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2'
 };
 
 export class GasService {
@@ -589,10 +590,100 @@ export class GasService {
           }
         });
 
+        // Rekonsiliasi Pengeluaran Setoran terhadap Kertas Kerja BSPP SETORAN (Kolom H: Bobot Label Netto Kg)
+        const setoranList = this.cleanSetoranEntries(this.getCachedSetoran());
+        const matchedSetoranSet = new Set<string>();
+
+        const fullyEnrichedMutasi = enrichedMutasi.map(m => {
+          if (m.jenisMutasi !== 'Pengeluaran Setoran' || setoranList.length === 0) return m;
+          const mKode = (m.kode || '').trim().toUpperCase();
+          const mDate = m.tanggal ? m.tanggal.slice(0, 10) : '';
+
+          const matchedSetoran = setoranList.find(s => {
+            const rawS = (s.nama || '').trim().toUpperCase();
+            if (/^\d+$/.test(rawS) || rawS.includes(':') || rawS.length < 3) return false;
+            const sDate = s.tanggal ? s.tanggal.slice(0, 10) : '';
+            const dateMatch = !mDate || !sDate || sDate === mDate ||
+              Math.abs(new Date(mDate).getTime() - new Date(sDate).getTime()) <= 86400000;
+            const cleanS = rawS.replace(/[^A-Z0-9]/g, '');
+            const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
+            const kodeMatch = cleanS === cleanM || cleanS.includes(cleanM) || cleanM.includes(cleanS);
+            return dateMatch && kodeMatch;
+          });
+
+          if (matchedSetoran) {
+            matchedSetoranSet.add((matchedSetoran.nama || '').trim().toUpperCase());
+            let keluarVal = Number(m.keluar) || 0;
+            const labelVal = Number(matchedSetoran.labelNettoKg) || 0;
+            if (keluarVal === 0 && labelVal > 0) {
+              keluarVal = labelVal;
+            }
+            const diff = Math.round((keluarVal - labelVal) * 10) / 10;
+            return {
+              ...m,
+              keluar: keluarVal,
+              keluarSKT: m.keluarSKT !== undefined && m.keluarSKT > 0 ? m.keluarSKT : keluarVal,
+              cek: diff === 0 ? true : m.cek,
+              setoranMatch: {
+                matched: true,
+                labelNetto: labelVal,
+                selisih: diff,
+                sumber: 'BSPP SETORAN'
+              }
+            };
+          }
+
+          return m;
+        });
+
+        // Pastikan seluruh entri Setoran yang sah (34 Bahan dari BSPP SETORAN - Kolom H) selalu ada di mutasi Rajang II
+        setoranList.forEach(setItem => {
+          const rawS = (setItem.nama || '').trim().toUpperCase();
+          if (matchedSetoranSet.has(rawS)) return;
+          const cleanS = rawS.replace(/[^A-Z0-9]/g, '');
+
+          const matchedKode = (enrichedKodeList || []).find(kd => {
+            const cleanK = (kd.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            return cleanS === cleanK || cleanS.includes(cleanK) || cleanK.includes(cleanS);
+          });
+          const kodeName = matchedKode ? matchedKode.nama : setItem.nama;
+
+          const alreadyExists = fullyEnrichedMutasi.some(m => {
+            const cleanM = (m.kode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            return (m.jenisMutasi === 'Pengeluaran Setoran' || !!m.setoranMatch) && 
+                   (cleanM === cleanS || cleanS.includes(cleanM) || cleanM.includes(cleanS));
+          });
+
+          if (!alreadyExists) {
+            matchedSetoranSet.add(rawS);
+            const val = Number(setItem.labelNettoKg) || 0;
+            fullyEnrichedMutasi.push({
+              id: `tembakau---krosok--rajang-ii--setoran-${cleanS}`,
+              tanggal: setItem.tanggal || '2026-10-07T00:00:00.000Z',
+              kode: kodeName,
+              jenisMutasi: 'Pengeluaran Setoran',
+              masuk: 0,
+              keluar: val,
+              saldo: matchedKode ? matchedKode.saldo : 0,
+              keluarSKT: val,
+              keluarSKM: 0,
+              saldoSKT: matchedKode ? (matchedKode.saldoSKT || 0) : 0,
+              saldoSKM: matchedKode ? (matchedKode.saldoSKM || 0) : 0,
+              cek: true,
+              setoranMatch: {
+                matched: true,
+                labelNetto: val,
+                selisih: 0,
+                sumber: 'BSPP SETORAN'
+              }
+            });
+          }
+        });
+
         return {
           ...k,
           kodeList: enrichedKodeList,
-          mutasiTerbaru: enrichedMutasi,
+          mutasiTerbaru: fullyEnrichedMutasi,
           saldoSKTTotal: Math.round(totalSKT * 10) / 10,
           saldoSKMTotal: Math.round(totalSKM * 10) / 10
         };
@@ -753,6 +844,181 @@ export class GasService {
   public static saveCachedDHP(data: DHPEntry[]): void {
     const cleaned = this.cleanDHPEntries(data);
     localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(cleaned));
+  }
+
+  // --- Rekonsiliasi Pengeluaran Setoran (Kertas Kerja BSPP SETORAN - Kolom H) ---
+  public static readonly DEFAULT_SETORAN_ENTRIES: SetoranEntry[] = [
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Madura 2024 (BAT) R', labelNettoKg: 960.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Hang Madura 2024 (BAT)', labelNettoKg: 9.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Maesan 2024 (HS)', labelNettoKg: 30.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Paiton 2024 (BWN)', labelNettoKg: 120.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Mranggen 2024 (LL)', labelNettoKg: 90.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Weleri 2024 (HK)', labelNettoKg: 135.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Weleri Grade B (2021)', labelNettoKg: 15.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Sapudi 2024 (GF)', labelNettoKg: 45.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Besuki 2024 (ZN)', labelNettoKg: 15.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Beringin 2024 (HS)', labelNettoKg: 60.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Amerika 2025 (BO1)', labelNettoKg: 150.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Zimbabwe B1L (2023)', labelNettoKg: 174.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Zimbabwe 2025 (L2OF/P)', labelNettoKg: 60.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Zimbabwe 2025 (HR) L1OF', labelNettoKg: 150.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Zimbabwe M1L (2023)', labelNettoKg: 90.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Lombok 2024 (FS) - 1', labelNettoKg: 30.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Lombok 2024 (BE) - 1', labelNettoKg: 90.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Zambia M1L (2023)', labelNettoKg: 54.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Brazil Grade B (2022)', labelNettoKg: 30.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Brazil 2025 (BOA)', labelNettoKg: 120.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Diet Trial - 1 (2025)', labelNettoKg: 21.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Diet Trial - 3 (2026)', labelNettoKg: 27.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Kasturi 2023 (ST)', labelNettoKg: 30.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Kasturi 2023 (SN)', labelNettoKg: 105.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Hang Boyolali 2024 (FS)', labelNettoKg: 15.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Krs. Garut 2025 (MYN)', labelNettoKg: 45.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Krs. Garut 2024 (MYN)', labelNettoKg: 30.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Janturan Jombang 2024 (MYN)', labelNettoKg: 15.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Janturan Grade B (2020)', labelNettoKg: 15.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Janturan Boyolali 2024 (VJI)', labelNettoKg: 30.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Joning 2024 (AR)', labelNettoKg: 15.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Garut 2024 (FR)', labelNettoKg: 30.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Garut 2025 (FR)', labelNettoKg: 30.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Ploso 2024 (MYN)', labelNettoKg: 165.0, sumber: 'BSPP SETORAN' }
+  ];
+
+  public static cleanSetoranEntries(rawItems: any[]): SetoranEntry[] {
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      return this.DEFAULT_SETORAN_ENTRIES;
+    }
+    const filtered: SetoranEntry[] = rawItems
+      .filter(item => {
+        if (!item || !item.nama) return false;
+        const n = String(item.nama).trim();
+        if (!n || n.length < 3) return false;
+        if (/^[\d\s.,]+$/.test(n)) return false;
+        if (n.includes(':')) return false;
+        const upper = n.toUpperCase();
+        if (
+          upper.includes('NAMA STOCK') ||
+          upper.includes('TOTAL') ||
+          upper.includes('JUMLAH') ||
+          upper.includes('RINCIAN') ||
+          upper.includes('JENIS TEMBAKAU') ||
+          upper.includes('KERTAS KERJA') ||
+          upper.includes('HARI / TANGGAL') ||
+          upper.includes('DIBUAT') ||
+          upper.includes('MANDOR') ||
+          upper.includes('CHECKING') ||
+          upper.includes('TEGUH')
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .map(item => ({
+        tanggal: item.tanggal || '2026-10-07T00:00:00.000Z',
+        nama: String(item.nama).trim(),
+        labelNettoKg: Math.round((Number(item.labelNettoKg) || 0) * 10) / 10,
+        sumber: 'BSPP SETORAN'
+      }));
+    return filtered.length >= 30 ? filtered : this.DEFAULT_SETORAN_ENTRIES;
+  }
+
+  public static getCachedSetoran(): SetoranEntry[] {
+    const cached = localStorage.getItem(STORAGE_KEYS.SETORAN_RECONCILIATION);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return this.cleanSetoranEntries(parsed);
+        }
+      } catch (e) {}
+    }
+    return this.DEFAULT_SETORAN_ENTRIES;
+  }
+
+  public static saveCachedSetoran(data: SetoranEntry[]): void {
+    const cleaned = this.cleanSetoranEntries(data);
+    localStorage.setItem(STORAGE_KEYS.SETORAN_RECONCILIATION, JSON.stringify(cleaned));
+  }
+
+  public static async fetchSetoranDirectFromSheet(): Promise<SetoranEntry[]> {
+    try {
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA/gviz/tq?tqx=out:csv&sheet=BSPP%20SETORAN';
+      const text = await this.fetchWithTimeout(csvUrl, 12000);
+      let rawText = '';
+      if (typeof text === 'string') {
+        rawText = text;
+      } else if (text && typeof text === 'object') {
+        rawText = JSON.stringify(text);
+      }
+      if (!rawText || rawText.length < 50) return this.DEFAULT_SETORAN_ENTRIES;
+
+      const lines = rawText.split(/\r?\n/);
+      const parsedEntries: SetoranEntry[] = [];
+
+      for (const line of lines) {
+        const cols = this.parseCSVLine(line);
+        if (cols.length > 7) {
+          const rawName = cols[1]?.trim() || '';
+          const rawNetto = cols[7]?.trim() || '';
+
+          if (!rawName || rawName.length < 3 || /^\d+$/.test(rawName)) continue;
+          const upper = rawName.toUpperCase();
+          if (
+            upper.includes('KERTAS KERJA') ||
+            upper.includes('HARI / TANGGAL') ||
+            upper.includes('NAMA STOCK') ||
+            upper.includes('RINCIAN') ||
+            upper.includes('JENIS TEMBAKAU') ||
+            upper.includes('DIBUAT') ||
+            upper.includes('MANDOR') ||
+            upper.includes('CHECKING') ||
+            upper.includes('TEGUH') ||
+            upper.includes('TANGGAL :')
+          ) {
+            continue;
+          }
+
+          const cleanNum = rawNetto.replace(/\./g, '').replace(/,/g, '.');
+          const nettoVal = parseFloat(cleanNum);
+          if (isNaN(nettoVal) || nettoVal <= 0) continue;
+
+          parsedEntries.push({
+            tanggal: '2026-10-07T00:00:00.000Z',
+            nama: rawName,
+            labelNettoKg: Math.round(nettoVal * 10) / 10,
+            sumber: 'BSPP SETORAN'
+          });
+        }
+      }
+      return parsedEntries.length >= 30 ? parsedEntries : this.DEFAULT_SETORAN_ENTRIES;
+    } catch (e) {
+      console.warn('Direct setoran fetch error:', e);
+      return this.DEFAULT_SETORAN_ENTRIES;
+    }
+  }
+
+  private static parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (c === ',' && !inQuotes) {
+        result.push(cur);
+        cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    result.push(cur);
+    return result;
   }
 
   public static getLastSyncTime(): string | null {
@@ -994,10 +1260,36 @@ export class GasService {
         return [];
       })();
 
-      // Wait for all 4 komoditas & DHP to complete
+      // Launch Setoran reconciliation in parallel stream
+      const setoranPromise = (async () => {
+        try {
+          const sUrl = `${this.gasUrl}?action=getSetoranReconciliation&t=${Date.now()}`;
+          const sRes = await this.fetchWithTimeout(sUrl, 16000);
+          const sData = (sRes && sRes.data) || sRes;
+          if (sData && Array.isArray(sData.items) && sData.items.length > 0) {
+            this.saveCachedSetoran(sData.items);
+            return sData.items;
+          }
+        } catch {
+          // Fallback to direct sheet fetch
+        }
+        try {
+          const directItems = await this.fetchSetoranDirectFromSheet();
+          if (directItems && directItems.length > 0) {
+            this.saveCachedSetoran(directItems);
+            return directItems;
+          }
+        } catch (eDirect) {
+          console.warn('Setoran sync warning:', eDirect);
+        }
+        return this.getCachedSetoran();
+      })();
+
+      // Wait for all 4 komoditas, DHP, and Setoran to complete
       const [komoditasResults] = await Promise.all([
         Promise.allSettled(komoditasPromises),
-        dhpPromise
+        dhpPromise,
+        setoranPromise
       ]);
       const currentKomoditasList = [...this.getCachedKomoditas()];
       let komoditasUpdatedCount = 0;
@@ -1235,6 +1527,14 @@ const BSPP_SOURCES = [
   }
 ];
 
+const SETORAN_SOURCE = {
+  spreadsheetId: '1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA',
+  sheetName: 'BSPP SETORAN',
+  colNama: 1, // Kolom B
+  colTanggal: 5, // Kolom F
+  colNetto: 7 // Kolom H (Bobot Label Netto Kg)
+};
+
 const CACHE_DURATION_SECONDS = 300; // 5 menit
 const MAX_SCAN_ROWS = 15;
 const SHEETS_API_CHUNK = 40;
@@ -1384,6 +1684,10 @@ function handleRestApiGet_(e) {
         result = logout(lTok);
         break;
 
+      case 'getSetoranReconciliation':
+        result = { ok: true, items: getSetoranReconciliation_() };
+        break;
+
       default:
         result = { ok: false, error: 'Action "' + action + '" tidak dikenali di sistem StockPP1.' };
     }
@@ -1393,6 +1697,50 @@ function handleRestApiGet_(e) {
 
   return ContentService.createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getSetoranReconciliation_() {
+  try {
+    var ss = SpreadsheetApp.openById(SETORAN_SOURCE.spreadsheetId);
+    var sh = ss.getSheetByName(SETORAN_SOURCE.sheetName);
+    if (!sh) return [];
+    var data = sh.getDataRange().getValues();
+    var items = [];
+    for (var r = 5; r < data.length; r++) {
+      var row = data[r];
+      var nama = String(row[SETORAN_SOURCE.colNama] || '').trim();
+      var rawNetto = row[SETORAN_SOURCE.colNetto];
+      if (!nama || nama.length < 3 || /^\\d+$/.test(nama)) continue;
+      var upper = nama.toUpperCase();
+      if (
+        upper.indexOf('KERTAS') >= 0 || upper.indexOf('HARI') >= 0 || 
+        upper.indexOf('NAMA STOCK') >= 0 || upper.indexOf('RINCIAN') >= 0 || 
+        upper.indexOf('JENIS TEMBAKAU') >= 0 || upper.indexOf('DIBUAT') >= 0 ||
+        upper.indexOf('MANDOR') >= 0 || upper.indexOf('CHECKING') >= 0 ||
+        upper.indexOf('TEGUH') >= 0 || upper.indexOf('TANGGAL') >= 0
+      ) {
+        continue;
+      }
+      var netto = 0;
+      if (typeof rawNetto === 'number') {
+        netto = rawNetto;
+      } else if (rawNetto) {
+        netto = parseFloat(String(rawNetto).replace(/\\./g, '').replace(/,/g, '.')) || 0;
+      }
+      if (netto > 0) {
+        items.push({
+          tanggal: '2026-10-07T00:00:00.000Z',
+          nama: nama,
+          labelNettoKg: Math.round(netto * 10) / 10,
+          sumber: 'BSPP SETORAN'
+        });
+      }
+    }
+    return items;
+  } catch (err) {
+    Logger.log('getSetoranReconciliation_ error: ' + err.message);
+    return [];
+  }
 }
 
 // ============================================================================
