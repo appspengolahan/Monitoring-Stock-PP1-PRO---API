@@ -540,6 +540,21 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     return Math.round((totalFisikKeluarKg - totalSetoranLabelKg) * 10) / 10;
   }, [totalFisikKeluarKg, totalSetoranLabelKg]);
 
+  // Tanggal rekonsiliasi yang terdeteksi
+  const latestDhpTanggal = useMemo(() => {
+    for (const e of dhpReconciliationEntries) {
+      if (e.mutasi.tanggal) return e.mutasi.tanggal;
+    }
+    return '2026-10-08T00:00:00.000Z';
+  }, [dhpReconciliationEntries]);
+
+  const latestSetoranTanggal = useMemo(() => {
+    for (const e of setoranReconciliationEntries) {
+      if (e.mutasi.tanggal) return e.mutasi.tanggal;
+    }
+    return '2026-10-08T00:00:00.000Z';
+  }, [setoranReconciliationEntries]);
+
   const formatNumber = (num: number): string => {
     return Number(num).toLocaleString('id-ID', {
       minimumFractionDigits: 1,
@@ -645,7 +660,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   <span>Rekonsiliasi Otomatis (2-Way Matching)</span>
                 </span>
                 <span className="text-[11px] text-slate-300 font-medium">
-                  Rabu, 07 Oktober 2026
+                  {formatTanggalIndo(latestDhpTanggal)}
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
@@ -819,7 +834,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   <span>Rekonsiliasi Otomatis (2-Way Matching)</span>
                 </span>
                 <span className="text-[11px] text-slate-300 font-medium">
-                  Rabu, 07 Oktober 2026
+                  {formatTanggalIndo(latestSetoranTanggal)}
                 </span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/10 text-slate-300 border border-white/10" title="ID Sheet Kertas Kerja Setoran">
                   Tab: BSPP SETORAN (Kolom H)
