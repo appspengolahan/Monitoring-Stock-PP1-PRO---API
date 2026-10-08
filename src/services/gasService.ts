@@ -1,4 +1,4 @@
-import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry } from '../types';
+import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, ReconciliationDisplayConfig } from '../types';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 
 export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbwpvTstV4SeELEB1QZgd2TR0sXIPFaJaO1owlVboHI0lnkacQPQ1_BwNrfpYMrUURVG/exec';
@@ -13,7 +13,8 @@ const STORAGE_KEYS = {
   CUSTOM_MUTASI: 'stockpp1_custom_mutasi_v1',
   SNAPSHOT_CACHE: 'stockpp1_snapshot_cache',
   DHP_RECONCILIATION: 'stockpp1_dhp_reconciliation_v2',
-  SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2'
+  SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2',
+  RECONCILIATION_DISPLAY: 'stockpp1_reconciliation_display_config_v1'
 };
 
 export class GasService {
@@ -59,6 +60,30 @@ export class GasService {
   public static resetGasUrl(): void {
     this.gasUrl = DEFAULT_GAS_URL;
     localStorage.setItem(STORAGE_KEYS.GAS_URL, DEFAULT_GAS_URL);
+  }
+
+  // --- Reconciliation Summary Display Configuration (Developer & Site Engineer) ---
+  public static getReconciliationDisplayConfig(): ReconciliationDisplayConfig {
+    const defaultVal: ReconciliationDisplayConfig = {
+      showDhpSummary: false,      // Default nonaktif agar halaman mutasi operasional tetap bersih
+      showSetoranSummary: false  // Default nonaktif
+    };
+    const stored = localStorage.getItem(STORAGE_KEYS.RECONCILIATION_DISPLAY);
+    if (!stored) return defaultVal;
+    try {
+      return { ...defaultVal, ...JSON.parse(stored) };
+    } catch {
+      return defaultVal;
+    }
+  }
+
+  public static setReconciliationDisplayConfig(patch: Partial<ReconciliationDisplayConfig>): void {
+    const current = this.getReconciliationDisplayConfig();
+    const updated = { ...current, ...patch };
+    localStorage.setItem(STORAGE_KEYS.RECONCILIATION_DISPLAY, JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_config_changed', { detail: updated }));
+    }
   }
 
   // --- SKT & SKM Features Configuration per Komoditas ---

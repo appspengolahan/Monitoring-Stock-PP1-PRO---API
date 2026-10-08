@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GasService } from '../../services/gasService';
+import { ReconciliationDisplayConfig } from '../../types';
 import { 
   X, 
   Database, 
@@ -35,8 +36,9 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
   const [isTesting, setIsTesting] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; latencyMs: number; message: string } | null>(null);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
-  const [activeSubTab, setActiveSubTab] = useState<'review' | 'code' | 'deploy' | 'skt_skm' | 'speed_audit'>('review');
+  const [activeSubTab, setActiveSubTab] = useState<'review' | 'code' | 'deploy' | 'skt_skm' | 'speed_audit' | 'reconcile'>('review');
   const [sktConfig, setSktConfig] = useState<Record<string, boolean>>(() => GasService.getSktSkmConfig());
+  const [reconcileConfig, setReconcileConfig] = useState<ReconciliationDisplayConfig>(() => GasService.getReconciliationDisplayConfig());
   const [speedAuditLoading, setSpeedAuditLoading] = useState<boolean>(false);
   const [speedAuditResult, setSpeedAuditResult] = useState<any>(null);
 
@@ -187,6 +189,20 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
           >
             <Gauge className="w-3.5 h-3.5 text-indigo-600" />
             <span>5. Audit Kecepatan Data (Live)</span>
+          </button>
+          <button
+            onClick={() => {
+              setReconcileConfig(GasService.getReconciliationDisplayConfig());
+              setActiveSubTab('reconcile');
+            }}
+            className={`pb-2.5 border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              activeSubTab === 'reconcile'
+                ? 'border-emerald-600 text-emerald-700 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>6. Modul Rekonsiliasi</span>
           </button>
         </div>
 
@@ -667,6 +683,128 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB 6: MODUL REKONSILIASI & VISIBILITAS */}
+          {activeSubTab === 'reconcile' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl">
+                <h4 className="font-bold text-sm text-emerald-950 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Pusat Kontrol Visibilitas Modul Rekonsiliasi (Dev &amp; Site Engineer)</span>
+                </h4>
+                <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                  Fitur ini mengatur apakah panel banner ringkasan perbandingan data ditampilkan di bagian atas halaman <strong>Mutasi Terkini</strong>, atau disembunyikan agar tabel operasional tetap lega dan ringkas di layar smartphone.
+                </p>
+                <div className="mt-2.5 p-2.5 bg-white/80 rounded-xl border border-emerald-300/80 text-[11.5px] text-emerald-900 flex items-start gap-2">
+                  <Zap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Catatan Sistem:</strong> Meskipun banner ringkasan di atas disembunyikan, setiap baris transaksi di tabel mutasi tetap terverifikasi 100% otomatis (badge status <em>Match</em>, auto-check, dan dialog audit komparasi tetap aktif saat diklik).
+                  </span>
+                </div>
+              </div>
+
+              {/* Checklist Items */}
+              <div className="space-y-3">
+                {/* 1. DHP Hasil Proses */}
+                <div className="p-4 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 transition-all shadow-2xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                          1. Rekonsiliasi Pemasukan Hasil Proses (DHP)
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                          7 Bahan
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Acuan fisik Gudang Persediaan Rajang II vs Kertas Kerja DHP Tembakau (1 bahan) dan DHP Krosok (6 bahan).
+                      </p>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none shrink-0 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={reconcileConfig.showDhpSummary}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          GasService.setReconciliationDisplayConfig({ showDhpSummary: val });
+                          setReconcileConfig(prev => ({ ...prev, showDhpSummary: val }));
+                        }}
+                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span className={`text-xs font-bold ${reconcileConfig.showDhpSummary ? 'text-emerald-700' : 'text-slate-600'}`}>
+                        {reconcileConfig.showDhpSummary ? 'Tampilkan di Mutasi' : 'Disembunyikan (Default)'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 2. BSPP SETORAN (Kolom H) */}
+                <div className="p-4 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 transition-all shadow-2xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                          2. Rekonsiliasi Pengeluaran Setoran (BSPP SETORAN)
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                          34 Bahan (Kolom H)
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Acuan fisik Gudang Persediaan Rajang II vs Kertas Kerja BSPP SETORAN (ID: 1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA).
+                      </p>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none shrink-0 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={reconcileConfig.showSetoranSummary}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          GasService.setReconciliationDisplayConfig({ showSetoranSummary: val });
+                          setReconcileConfig(prev => ({ ...prev, showSetoranSummary: val }));
+                        }}
+                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span className={`text-xs font-bold ${reconcileConfig.showSetoranSummary ? 'text-emerald-700' : 'text-slate-600'}`}>
+                        {reconcileConfig.showSetoranSummary ? 'Tampilkan di Mutasi' : 'Disembunyikan (Default)'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 3. Slot Mendatang */}
+                <div className="p-3.5 bg-slate-50/80 border border-dashed border-slate-300 rounded-2xl flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center shrink-0">
+                    <Database className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs text-slate-700">Slot Integrasi Rekonsiliasi Baru (Siap Bertambah)</h5>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Data rekonsiliasi berikutnya yang akan ditambahkan akan otomatis terdaftar dan dikontrol visibilitasnya di panel ini.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reset to Default */}
+              <div className="pt-2 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defaultVal = { showDhpSummary: false, showSetoranSummary: false };
+                    GasService.setReconciliationDisplayConfig(defaultVal);
+                    setReconcileConfig(defaultVal);
+                  }}
+                  className="text-xs text-slate-600 hover:text-slate-900 underline font-medium cursor-pointer"
+                >
+                  Kembalikan ke Default (Sembunyikan Semua Banner agar Layar Bersih)
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -88,6 +88,11 @@ export interface SetoranEntry {
   sumber: string;
 }
 
+export interface ReconciliationDisplayConfig {
+  showDhpSummary: boolean;
+  showSetoranSummary: boolean;
+}
+
 export interface KomoditasData {
   komoditas: string;
   satuan: string;
