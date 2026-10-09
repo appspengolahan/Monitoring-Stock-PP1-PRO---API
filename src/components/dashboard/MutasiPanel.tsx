@@ -19,7 +19,9 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
-  FileSpreadsheet
+  FileSpreadsheet,
+  CloudDownload,
+  RefreshCw
 } from 'lucide-react';
 import { exportToPdf } from '../../services/pdfExport';
 import { GasService } from '../../services/gasService';
@@ -30,6 +32,10 @@ interface MutasiPanelProps {
   data: KomoditasData[];
   onToggleCek: (komoditasName: string, mutasiId: string, currentStatus: boolean) => void;
   initialCommodity?: string;
+  onForceFetchDatasheet?: () => void;
+  isForceFetching?: boolean;
+  isAutoRefresh?: boolean;
+  onToggleAutoRefresh?: () => void;
 }
 
 interface FlattenedMutasi {
@@ -47,7 +53,11 @@ interface FlattenedMutasi {
 export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   data,
   onToggleCek,
-  initialCommodity = 'all'
+  initialCommodity = 'all',
+  onForceFetchDatasheet,
+  isForceFetching = false,
+  isAutoRefresh = false,
+  onToggleAutoRefresh
 }) => {
   // Filters state
   const [filterKomoditas, setFilterKomoditas] = useState<string>(initialCommodity);
@@ -628,7 +638,39 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Tombol Auto-Sync / Auto-Refresh di panel mutasi */}
+          {onToggleAutoRefresh && (
+            <button
+              onClick={onToggleAutoRefresh}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                isAutoRefresh
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 ring-2 ring-emerald-500/20'
+                  : 'bg-slate-100 hover:bg-slate-200/90 text-slate-700 border-slate-200/90'
+              }`}
+              title={isAutoRefresh ? 'Auto-Refresh Aktif (Pembaruan otomatis tiap 30 detik). Klik untuk mematikan.' : 'Aktifkan Auto-Refresh (logo berputar)'}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isAutoRefresh ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
+              <span className="hidden sm:inline">{isAutoRefresh ? 'Auto-Sync ON' : 'Auto-Sync'}</span>
+              {isAutoRefresh && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+              )}
+            </button>
+          )}
+
+          {/* Tombol Tarik Datasheet Langsung di panel mutasi */}
+          {onForceFetchDatasheet && (
+            <button
+              onClick={onForceFetchDatasheet}
+              disabled={isForceFetching}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 border border-emerald-300/90 disabled:opacity-60 transition-colors cursor-pointer"
+              title="Tarik seluruh data langsung dari Google Spreadsheet (bypass cache total untuk antisipasi keterlambatan data)"
+            >
+              <CloudDownload className={`w-3.5 h-3.5 text-emerald-700 ${isForceFetching ? 'animate-bounce' : ''}`} />
+              <span>{isForceFetching ? 'Menarik Datasheet...' : 'Tarik Datasheet'}</span>
+            </button>
+          )}
+
           <button
             onClick={() => setIsSktSkmModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300/80 transition-colors cursor-pointer"

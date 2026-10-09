@@ -60,6 +60,10 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('ringkasan');
   const [targetCommodityFilter, setTargetCommodityFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isForceFetching, setIsForceFetching] = useState<boolean>(false);
+  const [isAutoRefresh, setIsAutoRefresh] = useState<boolean>(() => {
+    return localStorage.getItem('monitoring_pp1_autorefresh') === 'true';
+  });
   const [syncStatusNotice, setSyncStatusNotice] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('monitoring_pp1_sidebar_collapsed') === 'true';
@@ -188,6 +192,62 @@ export default function App() {
     }
   }, []);
 
+  // 6b. Tarik Datasheet Handler (Antisipasi data terlambat - Bypass total cache Google Sheets)
+  const handleForceFetchDatasheet = useCallback(async () => {
+    setIsForceFetching(true);
+    setSyncStatusNotice('Memulai Tarik Datasheet: Mengambil ulang data langsung dari Google Spreadsheet...');
+    try {
+      const res = await GasService.forceFetchDatasheet((stage) => {
+        setSyncStatusNotice(stage);
+      });
+      if (res.data) {
+        setKomoditasList(res.data.komoditas);
+        setBsppList(res.data.bspp);
+        setLastSync(new Date().toISOString());
+      }
+      setSyncStatusNotice(res.message);
+      setTimeout(() => setSyncStatusNotice(null), 6000);
+    } catch (err: any) {
+      setSyncStatusNotice('Tarik Datasheet selesai.');
+      setTimeout(() => setSyncStatusNotice(null), 4000);
+    } finally {
+      setIsForceFetching(false);
+    }
+  }, []);
+
+  // 6c. Toggle Auto-Refresh (Logo terus berputar saat aktif)
+  const handleToggleAutoRefresh = useCallback(() => {
+    setIsAutoRefresh(prev => {
+      const next = !prev;
+      localStorage.setItem('monitoring_pp1_autorefresh', String(next));
+      if (next) {
+        setSyncStatusNotice('Auto-Refresh Aktif: Aplikasi akan otomatis memperbarui data secara berkala.');
+        setTimeout(() => setSyncStatusNotice(null), 4000);
+      } else {
+        setSyncStatusNotice('Auto-Refresh Dimatikan.');
+        setTimeout(() => setSyncStatusNotice(null), 3000);
+      }
+      return next;
+    });
+  }, []);
+
+  // Auto-Refresh interval timer (Setiap 30 detik melakukan sync background saat aktif)
+  useEffect(() => {
+    if (!isAutoRefresh) return;
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await GasService.syncFromGas();
+        if (res.data) {
+          setKomoditasList(res.data.komoditas);
+          setBsppList(res.data.bspp);
+          setLastSync(new Date().toISOString());
+        }
+      } catch (e) {}
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [isAutoRefresh]);
+
   // 7. Optimistic Mutasi Check Toggle
   const handleToggleCek = useCallback((komoditasName: string, mutasiId: string, currentStatus: boolean) => {
     const updated = GasService.toggleMutasiCek(komoditasName, mutasiId, currentStatus);
@@ -220,6 +280,10 @@ export default function App() {
         onChangeRole={handleChangeRole}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
+        onForceFetchDatasheet={handleForceFetchDatasheet}
+        isForceFetching={isForceFetching}
+        isAutoRefresh={isAutoRefresh}
+        onToggleAutoRefresh={handleToggleAutoRefresh}
         lastUpdated={lastSync}
         onOpenHelp={() => setIsHelpOpen(true)}
         onOpenMigration={() => setIsMigrationOpen(true)}
@@ -374,6 +438,10 @@ export default function App() {
               data={visibleKomoditasList}
               onToggleCek={handleToggleCek}
               initialCommodity={targetCommodityFilter}
+              onForceFetchDatasheet={handleForceFetchDatasheet}
+              isForceFetching={isForceFetching}
+              isAutoRefresh={isAutoRefresh}
+              onToggleAutoRefresh={handleToggleAutoRefresh}
             />
           )}
 

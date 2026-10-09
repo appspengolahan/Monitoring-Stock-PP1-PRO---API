@@ -1412,6 +1412,142 @@ export class GasService {
     }
   }
 
+  // --- TARIK DATASHEET LANGSUNG (Bypass Cache Total & Deep Sync Seluruh Sheet) ---
+  public static async forceFetchDatasheet(onProgress?: (msg: string, percent: number) => void): Promise<{
+    success: boolean;
+    message: string;
+    durationMs: number;
+    data?: { komoditas: KomoditasData[]; bspp: BSPPData[] };
+  }> {
+    const startTime = performance.now();
+    try {
+      if (onProgress) onProgress('Memulai Tarik Datasheet: Menghapus cache lokal & bypass cache server...', 10);
+      
+      const bustTimestamp = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+      // 1. Tarik 4 Sheet Komoditas secara paralel dengan query bypass cache
+      if (onProgress) onProgress('Menarik 4 Datasheet Komoditas langsung dari Google Spreadsheet...', 30);
+      const komoditasPromises = [0, 1, 2, 3].map(async (i) => {
+        const kUrl = `${this.gasUrl}?action=getKomoditasData&index=${i}&force=true&nocache=1&_t=${bustTimestamp}`;
+        const kRes = await this.fetchWithTimeout(kUrl, 16000);
+        const kData = (kRes && kRes.data) || kRes;
+        return { index: i, data: kData };
+      });
+
+      // 2. Tarik 2 Datasheet BSPP secara paralel
+      if (onProgress) onProgress('Menarik 2 Datasheet Rekap BSPP...', 55);
+      const bsppPromises = [0, 1].map(async (b) => {
+        const bUrl = `${this.gasUrl}?action=getBSPPData&index=${b}&force=true&nocache=1&_t=${bustTimestamp}`;
+        const bRes = await this.fetchWithTimeout(bUrl, 16000);
+        const bData = (bRes && bRes.data) || bRes;
+        return { index: b, data: bData };
+      });
+
+      // 3. Tarik DHP Reconciliation secara paralel
+      const dhpPromise = (async () => {
+        try {
+          const dhpUrl = `${this.gasUrl}?action=getDHPReconciliation&force=true&_t=${bustTimestamp}`;
+          const dhpRes = await this.fetchWithTimeout(dhpUrl, 16000);
+          const dhpData = (dhpRes && dhpRes.data) || dhpRes;
+          if (dhpData && Array.isArray(dhpData.items)) {
+            this.saveCachedDHP(dhpData.items);
+            return dhpData.items;
+          }
+        } catch (eDhp) {
+          console.warn('DHP force fetch warning:', eDhp);
+        }
+        return [];
+      })();
+
+      // 4. Tarik BSPP SETORAN langsung dari sheet via Google Visualization CSV
+      const setoranPromise = (async () => {
+        try {
+          const directItems = await this.fetchSetoranDirectFromSheet();
+          if (directItems && directItems.length > 0) {
+            this.saveCachedSetoran(directItems);
+            return directItems;
+          }
+        } catch (eSetoran) {
+          console.warn('Setoran force fetch warning:', eSetoran);
+        }
+        try {
+          const sUrl = `${this.gasUrl}?action=getSetoranReconciliation&force=true&_t=${bustTimestamp}`;
+          const sRes = await this.fetchWithTimeout(sUrl, 16000);
+          const sData = (sRes && sRes.data) || sRes;
+          if (sData && Array.isArray(sData.items) && sData.items.length > 0) {
+            this.saveCachedSetoran(sData.items);
+            return sData.items;
+          }
+        } catch {}
+        return this.getCachedSetoran();
+      })();
+
+      if (onProgress) onProgress('Memproses seluruh entri mutasi fisik & rekonsiliasi...', 80);
+
+      const [komoditasResults] = await Promise.all([
+        Promise.allSettled(komoditasPromises),
+        dhpPromise,
+        setoranPromise
+      ]);
+
+      const currentKomoditasList = [...this.getCachedKomoditas()];
+      let komoditasUpdatedCount = 0;
+
+      komoditasResults.forEach((res) => {
+        if (res.status === 'fulfilled' && res.value?.data?.komoditas) {
+          currentKomoditasList[res.value.index] = res.value.data;
+          komoditasUpdatedCount++;
+        }
+      });
+
+      if (komoditasUpdatedCount > 0) {
+        this.saveCachedKomoditas(currentKomoditasList);
+      }
+
+      const bsppResults = await Promise.allSettled(bsppPromises);
+      const currentBsppList = [...this.getCachedBSPP()];
+      let bsppUpdatedCount = 0;
+
+      bsppResults.forEach((res) => {
+        if (res.status === 'fulfilled' && res.value?.data) {
+          const bsppItem = res.value.data;
+          if (Array.isArray(bsppItem.entries)) {
+            currentBsppList[res.value.index] = bsppItem;
+            bsppUpdatedCount++;
+          }
+        }
+      });
+
+      if (bsppUpdatedCount > 0) {
+        this.saveCachedBSPP(currentBsppList);
+      }
+
+      const durationMs = Math.round(performance.now() - startTime);
+      if (onProgress) onProgress('Tarik Datasheet Selesai: Seluruh data telah diperbarui langsung dari Spreadsheet!', 100);
+
+      return {
+        success: true,
+        durationMs,
+        message: `Tarik Datasheet Berhasil! Diperbarui langsung dari Google Spreadsheet dalam ${(durationMs / 1000).toFixed(2)}s (${komoditasUpdatedCount}/4 bahan & ${bsppUpdatedCount}/2 BSPP).`,
+        data: {
+          komoditas: this.getCachedKomoditas(),
+          bspp: this.getCachedBSPP()
+        }
+      };
+    } catch (err: any) {
+      const durationMs = Math.round(performance.now() - startTime);
+      return {
+        success: false,
+        durationMs,
+        message: `Tarik Datasheet Gagal: ${err.message}. Data tetap menggunakan cache aktif.`,
+        data: {
+          komoditas: this.getCachedKomoditas(),
+          bspp: this.getCachedBSPP()
+        }
+      };
+    }
+  }
+
   // --- Detailed Verification & Speed Audit Tool ---
   public static async runSpeedAudit(): Promise<{
     pingMs: number;

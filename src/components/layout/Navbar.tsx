@@ -17,7 +17,9 @@ import {
   Sparkles,
   Sliders,
   Grid,
-  Bot
+  Bot,
+  CloudDownload,
+  RefreshCw
 } from 'lucide-react';
 import { UserSession, UserRole } from '../../types';
 
@@ -26,6 +28,10 @@ interface NavbarProps {
   onChangeRole: (newRole: UserRole) => void;
   onRefresh: () => void;
   isRefreshing: boolean;
+  onForceFetchDatasheet?: () => void;
+  isForceFetching?: boolean;
+  isAutoRefresh?: boolean;
+  onToggleAutoRefresh?: () => void;
   lastUpdated: string | null;
   onOpenHelp: () => void;
   onOpenMigration: () => void;
@@ -50,6 +56,10 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
   onChangeRole,
   onRefresh,
   isRefreshing,
+  onForceFetchDatasheet,
+  isForceFetching = false,
+  isAutoRefresh = false,
+  onToggleAutoRefresh,
   lastUpdated,
   onOpenHelp,
   onOpenMigration,
@@ -148,11 +158,43 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
         </div>
 
         {/* Zone 2: Compact Actions & Controls */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Fitur Auto-Refresh (Logo terus berputar halus saat aktif) */}
+          {onToggleAutoRefresh && (
+            <button
+              onClick={onToggleAutoRefresh}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs ${
+                isAutoRefresh
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 ring-2 ring-emerald-500/20'
+                  : 'bg-slate-100 hover:bg-slate-200/90 text-slate-700 border-slate-200/90'
+              }`}
+              title={isAutoRefresh ? 'Auto-Refresh Aktif (Pembaruan otomatis tiap 30 detik). Klik untuk mematikan.' : 'Aktifkan Auto-Refresh otomatis (logo terus berputar)'}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isAutoRefresh ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
+              <span className="hidden lg:inline">{isAutoRefresh ? 'Auto-Sync ON' : 'Auto-Sync'}</span>
+              {isAutoRefresh && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+              )}
+            </button>
+          )}
+
+          {/* Fitur Tarik Datasheet (Antisipasi data terlambat - Bypass total cache) */}
+          {onForceFetchDatasheet && (
+            <button
+              onClick={onForceFetchDatasheet}
+              disabled={isForceFetching || isRefreshing}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 border border-emerald-300 disabled:opacity-60 transition-colors shadow-2xs cursor-pointer"
+              title="Tarik seluruh data langsung dari Google Spreadsheet (bypass cache untuk antisipasi keterlambatan data)"
+            >
+              <CloudDownload className={`w-3.5 h-3.5 text-emerald-700 ${isForceFetching ? 'animate-bounce' : ''}`} />
+              <span className="hidden md:inline">{isForceFetching ? 'Menarik...' : 'Tarik Datasheet'}</span>
+            </button>
+          )}
+
           {/* 1. Tombol Utama: Refresh Data (Selalu tampak langsung untuk kemudahan operasional) */}
           <button
             onClick={onRefresh}
-            disabled={isRefreshing}
+            disabled={isRefreshing || isForceFetching}
             className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-60 transition-colors shadow-2xs cursor-pointer"
             title="Ambil data terbaru dari Google Sheets"
           >
