@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  RotateCw, 
   Maximize2, 
   Minimize2, 
   ShieldCheck, 
@@ -190,17 +189,6 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
               <span className="hidden md:inline">{isForceFetching ? 'Menarik...' : 'Tarik Datasheet'}</span>
             </button>
           )}
-
-          {/* 1. Tombol Utama: Refresh Data (Selalu tampak langsung untuk kemudahan operasional) */}
-          <button
-            onClick={onRefresh}
-            disabled={isRefreshing || isForceFetching}
-            className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-60 transition-colors shadow-2xs cursor-pointer"
-            title="Ambil data terbaru dari Google Sheets"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{isRefreshing ? 'Memuat...' : 'Refresh'}</span>
-          </button>
 
           {/* 2. Dropdown Dinamis: Gabungan Seluruh Menu Alat & Fitur */}
           <div className="relative" ref={toolsRef}>

@@ -438,10 +438,6 @@ export default function App() {
               data={visibleKomoditasList}
               onToggleCek={handleToggleCek}
               initialCommodity={targetCommodityFilter}
-              onForceFetchDatasheet={handleForceFetchDatasheet}
-              isForceFetching={isForceFetching}
-              isAutoRefresh={isAutoRefresh}
-              onToggleAutoRefresh={handleToggleAutoRefresh}
             />
           )}
 
