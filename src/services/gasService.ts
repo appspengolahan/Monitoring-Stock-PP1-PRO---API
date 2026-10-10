@@ -19,7 +19,7 @@ const STORAGE_KEYS = {
 };
 
 export class GasService {
-  private static gasUrl: string = localStorage.getItem(STORAGE_KEYS.GAS_URL) || DEFAULT_GAS_URL;
+  private static gasUrl: string = typeof localStorage !== 'undefined' ? (localStorage.getItem(STORAGE_KEYS.GAS_URL) || DEFAULT_GAS_URL) : DEFAULT_GAS_URL;
 
   public static getGasUrl(): string {
     return this.gasUrl;
@@ -592,7 +592,10 @@ export class GasService {
 
           const alreadyExists = enrichedMutasi.some(m => {
             const cleanM = (m.kode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-            return m.jenisMutasi === 'Pemasukan Hasil Proses' && (cleanM === cleanD || cleanD.includes(cleanM) || cleanM.includes(cleanD));
+            const mDateKey = getTanggalKey(m.tanggal);
+            const dDateKey = getTanggalKey(dhpItem.tanggal);
+            const sameDate = !mDateKey || !dDateKey || mDateKey === dDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(dhpItem.tanggal)) <= 86400000;
+            return sameDate && m.jenisMutasi === 'Pemasukan Hasil Proses' && (cleanM === cleanD || cleanD.includes(cleanM) || cleanM.includes(cleanD));
           });
 
           if (!alreadyExists) {
@@ -692,7 +695,10 @@ export class GasService {
 
           const alreadyExists = fullyEnrichedMutasi.some(m => {
             const cleanM = (m.kode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-            return (m.jenisMutasi === 'Pengeluaran Setoran' || !!m.setoranMatch) && 
+            const mDateKey = getTanggalKey(m.tanggal);
+            const sDateKey = getTanggalKey(setItem.tanggal);
+            const sameDate = !mDateKey || !sDateKey || mDateKey === sDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(setItem.tanggal)) <= 86400000;
+            return sameDate && (m.jenisMutasi === 'Pengeluaran Setoran' || !!m.setoranMatch) && 
                    (cleanM === cleanS || cleanS.includes(cleanM) || cleanM.includes(cleanS));
           });
 
@@ -700,8 +706,8 @@ export class GasService {
             matchedSetoranSet.add(rawS);
             const val = Number(setItem.labelNettoKg) || 0;
             fullyEnrichedMutasi.push({
-              id: `tembakau---krosok--rajang-ii--setoran-${cleanS}`,
-              tanggal: setItem.tanggal || '2026-10-08T00:00:00.000Z',
+              id: `tembakau---krosok--rajang-ii--setoran-${cleanS}-${getTanggalKey(setItem.tanggal) || '2026-10-10'}`,
+              tanggal: setItem.tanggal || '2026-10-10T00:00:00.000Z',
               kode: kodeName,
               jenisMutasi: 'Pengeluaran Setoran',
               masuk: 0,
@@ -903,6 +909,48 @@ export class GasService {
 
   // --- Rekonsiliasi Pengeluaran Setoran (Kertas Kerja BSPP SETORAN - Kolom H) ---
   public static readonly DEFAULT_SETORAN_ENTRIES: SetoranEntry[] = [
+    // --- Data Lembar Kerja BSPP SETORAN Tanggal 10 Oktober 2026 ---
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Madura 2024 (BAT) R', labelNettoKg: 857.6, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Hang Madura Grade B (2021)', labelNettoKg: 3.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Hang Madura 2024 (BAT)', labelNettoKg: 15.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Maesan 2024 (HS)', labelNettoKg: 27.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Paiton 2024 (BWN)', labelNettoKg: 96.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Paiton 2023 (DM)', labelNettoKg: 12.8, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Mranggen 2024 (LL)', labelNettoKg: 81.6, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Weleri 2024 (HK)', labelNettoKg: 124.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Weleri Grade B (2021)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Sapudi 2024 (GF)', labelNettoKg: 36.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Besuki 2024 (ZN)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Beringin 2024 (HS)', labelNettoKg: 56.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Tbk Escot 2024 (BE)', labelNettoKg: 11.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Amerika 2025 (BO1)', labelNettoKg: 139.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Zimbabwe B1L (2023)', labelNettoKg: 156.8, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Zimbabwe 2025 (L2OF/P)', labelNettoKg: 51.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Zimbabwe 2025 (HR) L1OF', labelNettoKg: 132.8, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Zimbabwe M1L (2023)', labelNettoKg: 83.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Lombok 2024 (FS) - 1', labelNettoKg: 30.4, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Lombok 2024 (BE) - 1', labelNettoKg: 78.4, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Zambia M1L (2023)', labelNettoKg: 54.4, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Brazil Grade B (2022)', labelNettoKg: 24.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Brazil 2025 (BOA)', labelNettoKg: 112.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Expanded Stem - 1B Grade B (2023)', labelNettoKg: 1.6, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Diet Trial - 1 (2025)', labelNettoKg: 15.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Diet Trial - 3 (2026)', labelNettoKg: 21.6, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'FCV Diet Tobacco SGI (2024)', labelNettoKg: 3.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Kasturi 2023 (ST)', labelNettoKg: 24.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Kasturi 2024 (BE) - 1', labelNettoKg: 96.8, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Hang Boyolali 2024 (FS)', labelNettoKg: 15.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Krs. Garut 2025 (MYN)', labelNettoKg: 36.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Krs. Garut 2024 (MYN)', labelNettoKg: 30.4, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Janturan Jombang 2024 (MYN)', labelNettoKg: 16.8, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Janturan Grade B (2020)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Janturan Boyolali 2024 (VJI)', labelNettoKg: 27.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Joning 2024 (AR)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Garut 2024 (FR)', labelNettoKg: 27.2, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Garut 2025 (FR)', labelNettoKg: 25.6, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Ploso 2024 (MYN)', labelNettoKg: 148.0, sumber: 'BSPP SETORAN' },
+
+    // --- Data Historis Lembar Kerja BSPP SETORAN Tanggal 8 Oktober 2026 ---
     { tanggal: '2026-10-08T00:00:00.000Z', nama: 'Madura 2024 (BAT) R', labelNettoKg: 1536.0, sumber: 'BSPP SETORAN' },
     { tanggal: '2026-10-08T00:00:00.000Z', nama: 'Hang Madura 2024 (BAT)', labelNettoKg: 24.0, sumber: 'BSPP SETORAN' },
     { tanggal: '2026-10-08T00:00:00.000Z', nama: 'Maesan 2024 (HS)', labelNettoKg: 48.0, sumber: 'BSPP SETORAN' },
@@ -969,7 +1017,7 @@ export class GasService {
         return true;
       })
       .map(item => ({
-        tanggal: normalizeDateToIso(item.tanggal, '2026-10-08T00:00:00.000Z'),
+        tanggal: normalizeDateToIso(item.tanggal, '2026-10-10T00:00:00.000Z'),
         nama: String(item.nama).trim(),
         labelNettoKg: Math.round((Number(item.labelNettoKg) || 0) * 10) / 10,
         sumber: 'BSPP SETORAN'
@@ -983,6 +1031,14 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // Jika cache hanya punya tanggal 8 dan belum ada tanggal 10, gabungkan data 10 Oktober secara otomatis
+          const hasDate10 = parsed.some(p => (p.tanggal || '').includes('2026-10-10'));
+          if (!hasDate10) {
+            const date10Entries = this.DEFAULT_SETORAN_ENTRIES.filter(d => (d.tanggal || '').includes('2026-10-10'));
+            const merged = [...date10Entries, ...this.cleanSetoranEntries(parsed)];
+            this.saveCachedSetoran(merged);
+            return merged;
+          }
           return this.cleanSetoranEntries(parsed);
         }
       } catch (e) {}

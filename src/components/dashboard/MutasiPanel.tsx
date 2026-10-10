@@ -554,7 +554,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   }, [dhpReconciliationEntries]);
 
   const latestSetoranTanggal = useMemo(() => {
-    return getLatestDateString(setoranReconciliationEntries.map(e => ({ tanggal: e.mutasi.tanggal }))) || '2026-10-08';
+    return getLatestDateString(setoranReconciliationEntries.map(e => ({ tanggal: e.mutasi.tanggal }))) || '2026-10-10';
   }, [setoranReconciliationEntries]);
 
   const formatNumber = (num: number): string => {
