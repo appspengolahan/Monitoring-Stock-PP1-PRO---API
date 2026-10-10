@@ -103,6 +103,15 @@ export default function App() {
     } catch (e) {}
   }, []);
 
+  // Auto-refresh komoditasList when reconciliation data is fetched or updated
+  useEffect(() => {
+    const handleReconUpdate = () => {
+      setKomoditasList(GasService.getCachedKomoditas());
+    };
+    window.addEventListener('stockpp1_reconciliation_data_updated', handleReconUpdate);
+    return () => window.removeEventListener('stockpp1_reconciliation_data_updated', handleReconUpdate);
+  }, []);
+
   // Filtered Komoditas list according to user RBAC allowedKomoditas
   const visibleKomoditasList = React.useMemo(() => {
     if (!session.allowedKomoditas || session.allowedKomoditas.includes('*') || session.allowedKomoditas.includes('all')) {

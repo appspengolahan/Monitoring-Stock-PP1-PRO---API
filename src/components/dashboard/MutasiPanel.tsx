@@ -114,6 +114,13 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     return () => window.removeEventListener('stockpp1_reconciliation_config_changed', handleReconcileChange);
   }, []);
 
+  // Listen to real-time reconciliation data updates
+  useEffect(() => {
+    const handleReconDataChange = () => setSktSkmVersion(v => v + 1);
+    window.addEventListener('stockpp1_reconciliation_data_updated', handleReconDataChange);
+    return () => window.removeEventListener('stockpp1_reconciliation_data_updated', handleReconDataChange);
+  }, []);
+
   // Check if current view has SKT / SKM data breakdown active
   const hasProduksiBreakdown = useMemo(() => {
     if (filterKomoditas !== 'all') {
@@ -362,16 +369,8 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         const jUpper = (m.jenisMutasi || '').trim().toUpperCase();
         const tagUpper = (userTag || '').trim().toUpperCase();
 
-        // 0. Special Case: Filter Status Rekonsiliasi Otomatis
-        if (fUpper === 'REKON_ALL' || fUpper === 'SEMUA REKONSILIASI') {
-          if (!m.dhpMatch && !m.setoranMatch) return false;
-        } else if (fUpper === 'REKON_DHP' || fUpper === 'REKONSILIASI DHP') {
-          if (!m.dhpMatch && m.jenisMutasi !== 'Pemasukan Hasil Proses') return false;
-        } else if (fUpper === 'REKON_SETORAN' || fUpper === 'REKONSILIASI SETORAN') {
-          if (!m.setoranMatch && m.jenisMutasi !== 'Pengeluaran Setoran') return false;
-        }
         // 1. Special Case: BSPP (menampilkan jenis yang nilainya plus DAN minus)
-        else if (fUpper === 'BSPP' || fUpper === 'BSPP (SEMUA)') {
+        if (fUpper === 'BSPP' || fUpper === 'BSPP (SEMUA)') {
           const isBspp = jUpper.includes('BSPP') || tagUpper.includes('BSPP');
           if (!isBspp) return false;
         }
@@ -442,11 +441,8 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         if (filterFrom && itemDate < filterFrom) return false;
         if (filterTo && itemDate > filterTo) return false;
       } else if (!showAllDates && latestTanggal) {
-        // Mode default mutasi terbaru: hanya tanggal terkini (dikecualikan jika pengguna sengaja memilih filter rekonsiliasi)
-        const isRekonFilterActive = filterJenis === 'REKON_ALL' || filterJenis === 'REKON_DHP' || filterJenis === 'REKON_SETORAN';
-        if (!isRekonFilterActive) {
-          if (itemDate !== latestTanggal) return false;
-        }
+        // Mode default mutasi terbaru: hanya tanggal terkini
+        if (itemDate !== latestTanggal) return false;
       }
 
       // Text search
@@ -682,23 +678,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setFilterKomoditas('Tembakau & Krosok (Rajang II)');
-                  setFilterJenis('Pemasukan Hasil Proses');
-                  setShowAllDates(true);
-                  setFilterFrom('');
-                  setFilterTo('');
-                  const el = document.getElementById('mutasi-table-section');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-200 transition-colors cursor-pointer border border-emerald-400/30"
-                title="Buka dan fokuskan seluruh mutasi DHP di tabel mutasi bawah"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Fokuskan di Tabel</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => setShowDhpSection(!showDhpSection)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer border border-white/15"
                 title={showDhpSection ? 'Sembunyikan rincian tabel perbandingan' : 'Buka rincian tabel perbandingan'}
@@ -874,23 +853,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   {totalSetoranSelisihKg === 0 ? '100% IDENTIK' : `Selisih ${formatNumber(totalSetoranSelisihKg)} Kg`}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterKomoditas('Tembakau & Krosok (Rajang II)');
-                  setFilterJenis('Pengeluaran Setoran');
-                  setShowAllDates(true);
-                  setFilterFrom('');
-                  setFilterTo('');
-                  const el = document.getElementById('mutasi-table-section');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/25 hover:bg-blue-500/40 text-blue-200 transition-colors cursor-pointer border border-blue-400/30"
-                title="Buka dan fokuskan seluruh mutasi Setoran di tabel mutasi bawah"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-300" />
-                <span>Fokuskan di Tabel</span>
-              </button>
               <button
                 type="button"
                 onClick={() => setShowSetoranSection(!showSetoranSection)}
@@ -1076,19 +1038,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   : `Semua Mutasi (${filterKomoditas})`}
               </option>
 
-              {/* Opsi Khusus Rekonsiliasi Otomatis (DHP & BSPP Setoran) */}
-              <optgroup label="🛡️ Status Rekonsiliasi Otomatis">
-                <option value="REKON_ALL">
-                  🛡️ Semua Rekonsiliasi (DHP &amp; Setoran) ({dhpReconciliationEntries.length + setoranReconciliationEntries.length})
-                </option>
-                <option value="REKON_DHP">
-                  🛡️ Rekonsiliasi DHP (Hasil Proses) ({dhpReconciliationEntries.length})
-                </option>
-                <option value="REKON_SETORAN">
-                  🛡️ Rekonsiliasi Setoran (BSPP SETORAN) ({setoranReconciliationEntries.length})
-                </option>
-              </optgroup>
-
               {/* Opsi Khusus BSPP (Bukti Selisih Persediaan) */}
               <optgroup label="⚖️ Mutasi BSPP (Selisih Timbangan)">
                 <option value="BSPP">
@@ -1199,23 +1148,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   Semua Tanggal
                 </button>
               </span>
-            )}
-
-            {!showAllDates && !filterFrom && !filterTo && (dhpReconciliationEntries.length > 0 || setoranReconciliationEntries.length > 0) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterKomoditas('Tembakau & Krosok (Rajang II)');
-                  setShowAllDates(true);
-                  const el = document.getElementById('mutasi-table-section');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded text-[10.5px] font-semibold hover:bg-emerald-100 transition-colors cursor-pointer"
-                title="Tampilkan seluruh mutasi Rajang II yang memiliki badge rekonsiliasi (DHP & Setoran)"
-              >
-                <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                <span>Buka Data Rekonsiliasi ({dhpReconciliationEntries.length + setoranReconciliationEntries.length})</span>
-              </button>
             )}
             {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero) && (
               <button

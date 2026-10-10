@@ -889,6 +889,16 @@ export class GasService {
   public static saveCachedDHP(data: DHPEntry[]): void {
     const cleaned = this.cleanDHPEntries(data);
     localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(cleaned));
+    // Otomatis perbarui pencocokan rekonsiliasi dan badge pada data mutasi persediaan
+    try {
+      const current = this.getCachedKomoditas();
+      this.saveCachedKomoditas(current);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+      }
+    } catch (e) {
+      console.warn('Gagal memicu pembaruan rekonsiliasi DHP', e);
+    }
   }
 
   // --- Rekonsiliasi Pengeluaran Setoran (Kertas Kerja BSPP SETORAN - Kolom H) ---
@@ -983,6 +993,16 @@ export class GasService {
   public static saveCachedSetoran(data: SetoranEntry[]): void {
     const cleaned = this.cleanSetoranEntries(data);
     localStorage.setItem(STORAGE_KEYS.SETORAN_RECONCILIATION, JSON.stringify(cleaned));
+    // Otomatis perbarui pencocokan rekonsiliasi dan badge pada data mutasi persediaan
+    try {
+      const current = this.getCachedKomoditas();
+      this.saveCachedKomoditas(current);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+      }
+    } catch (e) {
+      console.warn('Gagal memicu pembaruan rekonsiliasi Setoran', e);
+    }
   }
 
   public static async fetchSetoranDirectFromSheet(): Promise<SetoranEntry[]> {
