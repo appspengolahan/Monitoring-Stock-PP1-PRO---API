@@ -1,5 +1,6 @@
 import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, ReconciliationDisplayConfig } from '../types';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
+import { parseDateIndo, normalizeDateToIso, getTanggalKey, getEpochTime } from '../utils/dateUtils';
 
 export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbwpvTstV4SeELEB1QZgd2TR0sXIPFaJaO1owlVboHI0lnkacQPQ1_BwNrfpYMrUURVG/exec';
 
@@ -461,6 +462,12 @@ export class GasService {
   // --- Local Cache Data Access (0.01 detik response) ---
   public static enrichKomoditasData(data: KomoditasData[]): KomoditasData[] {
     return data.map(k => {
+      // Normalisasi seluruh tanggal mutasi ke format ISO kanonikal presisi WIB
+      const normalizedMutasi = (k.mutasiTerbaru || []).map(m => ({
+        ...m,
+        tanggal: normalizeDateToIso(m.tanggal, m.tanggal || '')
+      }));
+
       if (k.komoditas.includes('Rajang II')) {
         let totalSKT = 0;
         let totalSKM = 0;
@@ -526,17 +533,17 @@ export class GasService {
         const dhpList = this.cleanDHPEntries(this.getCachedDHP());
         const matchedDhpSet = new Set<string>();
 
-        const enrichedMutasi = (k.mutasiTerbaru || []).map(m => {
+        const enrichedMutasi = normalizedMutasi.map(m => {
           if (m.jenisMutasi !== 'Pemasukan Hasil Proses' || dhpList.length === 0) return m;
           const mKode = (m.kode || '').trim().toUpperCase();
-          const mDate = m.tanggal ? m.tanggal.slice(0, 10) : '';
+          const mDateKey = getTanggalKey(m.tanggal);
 
           const matchedDHP = dhpList.find(d => {
             const rawD = (d.nama || '').trim().toUpperCase();
             if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
-            const dDate = d.tanggal ? d.tanggal.slice(0, 10) : '';
-            const dateMatch = !mDate || !dDate || dDate === mDate ||
-              Math.abs(new Date(mDate).getTime() - new Date(dDate).getTime()) <= 86400000;
+            const dDateKey = getTanggalKey(d.tanggal);
+            const dateMatch = !mDateKey || !dDateKey || dDateKey === mDateKey ||
+              Math.abs(getEpochTime(m.tanggal) - getEpochTime(d.tanggal)) <= 86400000;
             const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
             const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
             const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
@@ -622,14 +629,14 @@ export class GasService {
         const fullyEnrichedMutasi = enrichedMutasi.map(m => {
           if (m.jenisMutasi !== 'Pengeluaran Setoran' || setoranList.length === 0) return m;
           const mKode = (m.kode || '').trim().toUpperCase();
-          const mDate = m.tanggal ? m.tanggal.slice(0, 10) : '';
+          const mDateKey = getTanggalKey(m.tanggal);
 
           const matchedSetoran = setoranList.find(s => {
             const rawS = (s.nama || '').trim().toUpperCase();
             if (/^\d+$/.test(rawS) || rawS.includes(':') || rawS.length < 3) return false;
-            const sDate = s.tanggal ? s.tanggal.slice(0, 10) : '';
-            const dateMatch = !mDate || !sDate || sDate === mDate ||
-              Math.abs(new Date(mDate).getTime() - new Date(sDate).getTime()) <= 86400000;
+            const sDateKey = getTanggalKey(s.tanggal);
+            const dateMatch = !mDateKey || !sDateKey || sDateKey === mDateKey ||
+              Math.abs(getEpochTime(m.tanggal) - getEpochTime(s.tanggal)) <= 86400000;
             const cleanS = rawS.replace(/[^A-Z0-9]/g, '');
             const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
 
@@ -723,7 +730,10 @@ export class GasService {
           saldoSKMTotal: Math.round(totalSKM * 10) / 10
         };
       }
-      return k;
+      return {
+        ...k,
+        mutasiTerbaru: normalizedMutasi
+      };
     });
   }
 
@@ -853,7 +863,7 @@ export class GasService {
         return true;
       })
       .map(item => ({
-        tanggal: item.tanggal || '2026-10-07T00:00:00.000Z',
+        tanggal: normalizeDateToIso(item.tanggal, '2026-10-07T00:00:00.000Z'),
         nama: String(item.nama).trim(),
         nettoKg: Math.round((Number(item.nettoKg) || 0) * 10) / 10,
         jalur: item.jalur || 'SKT',
@@ -949,7 +959,7 @@ export class GasService {
         return true;
       })
       .map(item => ({
-        tanggal: item.tanggal || '2026-10-08T00:00:00.000Z',
+        tanggal: normalizeDateToIso(item.tanggal, '2026-10-08T00:00:00.000Z'),
         nama: String(item.nama).trim(),
         labelNettoKg: Math.round((Number(item.labelNettoKg) || 0) * 10) / 10,
         sumber: 'BSPP SETORAN'
@@ -2031,9 +2041,27 @@ function safeDateValue_(cellValue) {
   } else if (cellValue instanceof Date) {
     d = cellValue;
   } else {
-    return String(cellValue);
+    var str = String(cellValue).trim();
+    if (!str) return null;
+    if (/^\d{5,6}(\.\d+)?$/.test(str)) {
+      d = serialToDate_(parseFloat(str));
+    } else {
+      var mSlash = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+      if (mSlash) {
+        d = new Date(Date.UTC(parseInt(mSlash[3], 10), parseInt(mSlash[2], 10) - 1, parseInt(mSlash[1], 10)));
+      } else {
+        var clean = str.replace(/^(minggu|senin|selasa|rabu|kamis|jumat|sabtu|ahad)[\s,]+/i, '').trim();
+        var mText = clean.match(/^(\d{1,2})[\s\-]+([a-zA-Z]+)[\s\-]+(\d{4})/);
+        var bMap = { januari: 1, jan: 1, februari: 2, feb: 2, maret: 3, mar: 3, april: 4, apr: 4, mei: 5, juni: 6, jun: 6, juli: 7, jul: 7, agustus: 8, ags: 8, agu: 8, september: 9, sep: 9, oktober: 10, okt: 10, november: 11, nov: 11, desember: 12, des: 12 };
+        if (mText && bMap[mText[2].toLowerCase()]) {
+          d = new Date(Date.UTC(parseInt(mText[3], 10), bMap[mText[2].toLowerCase()] - 1, parseInt(mText[1], 10)));
+        } else {
+          d = new Date(str);
+        }
+      }
+    }
   }
-  if (isNaN(d.getTime())) return null;
+  if (!d || isNaN(d.getTime())) return null;
   return d.toISOString();
 }
 

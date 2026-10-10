@@ -15,6 +15,7 @@ import {
 import { GasService } from '../../services/gasService';
 import { exportToPdf } from '../../services/pdfExport';
 import { SktSkmSettingsModal } from '../modals/SktSkmSettingsModal';
+import { formatTanggalIndo } from '../../utils/dateUtils';
 
 interface SaldoKodePanelProps {
   data: KomoditasData[];
@@ -200,21 +201,6 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
     });
-  };
-
-  const formatTanggalIndo = (tanggalISO?: string): string => {
-    if (!tanggalISO) return '—';
-    try {
-      const date = new Date(tanggalISO);
-      if (isNaN(date.getTime())) return tanggalISO;
-      return date.toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      });
-    } catch {
-      return tanggalISO;
-    }
   };
 
   // Export PDF

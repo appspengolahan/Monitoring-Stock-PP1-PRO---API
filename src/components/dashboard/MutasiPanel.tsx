@@ -25,6 +25,14 @@ import { exportToPdf } from '../../services/pdfExport';
 import { GasService } from '../../services/gasService';
 import { SktSkmSettingsModal } from '../modals/SktSkmSettingsModal';
 import { KelolaJenisMutasiModal } from '../modals/KelolaJenisMutasiModal';
+import { 
+  parseDateIndo, 
+  getTanggalKey, 
+  getEpochTime, 
+  getLatestDateString, 
+  formatTanggalIndo, 
+  formatDateTimeIndo 
+} from '../../utils/dateUtils';
 
 interface MutasiPanelProps {
   data: KomoditasData[];
@@ -189,28 +197,21 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
       });
     });
 
-    // Sort by date descending (terbaru di atas)
+    // Sort by date descending (terbaru di atas) dengan epoch time berstandar Locale Indonesia
     return list.sort((a, b) => {
-      const dateA = new Date(a.mutasi.tanggal || '').getTime() || 0;
-      const dateB = new Date(b.mutasi.tanggal || '').getTime() || 0;
+      const dateA = getEpochTime(a.mutasi.tanggal);
+      const dateB = getEpochTime(b.mutasi.tanggal);
       return dateB - dateA;
     });
   }, [data, sktSkmVersion]);
 
-  // Tanggal terbaru yang tercatat pada mutasi (format YYYY-MM-DD)
+  // Tanggal terbaru yang tercatat pada mutasi (format YYYY-MM-DD berbasis epoch numerik)
   const latestTanggal = useMemo(() => {
-    let maxDate = '';
     const pool = filterKomoditas === 'all' 
       ? allMutasi 
       : allMutasi.filter(e => e.komoditas === filterKomoditas);
 
-    for (const item of pool) {
-      const d = (item.mutasi.tanggal || '').slice(0, 10);
-      if (d && d > maxDate) {
-        maxDate = d;
-      }
-    }
-    return maxDate;
+    return getLatestDateString(pool.map(item => ({ tanggal: item.mutasi.tanggal })));
   }, [allMutasi, filterKomoditas]);
 
   // Available Kode options based on selected Komoditas
@@ -361,8 +362,16 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         const jUpper = (m.jenisMutasi || '').trim().toUpperCase();
         const tagUpper = (userTag || '').trim().toUpperCase();
 
+        // 0. Special Case: Filter Status Rekonsiliasi Otomatis
+        if (fUpper === 'REKON_ALL' || fUpper === 'SEMUA REKONSILIASI') {
+          if (!m.dhpMatch && !m.setoranMatch) return false;
+        } else if (fUpper === 'REKON_DHP' || fUpper === 'REKONSILIASI DHP') {
+          if (!m.dhpMatch && m.jenisMutasi !== 'Pemasukan Hasil Proses') return false;
+        } else if (fUpper === 'REKON_SETORAN' || fUpper === 'REKONSILIASI SETORAN') {
+          if (!m.setoranMatch && m.jenisMutasi !== 'Pengeluaran Setoran') return false;
+        }
         // 1. Special Case: BSPP (menampilkan jenis yang nilainya plus DAN minus)
-        if (fUpper === 'BSPP' || fUpper === 'BSPP (SEMUA)') {
+        else if (fUpper === 'BSPP' || fUpper === 'BSPP (SEMUA)') {
           const isBspp = jUpper.includes('BSPP') || tagUpper.includes('BSPP');
           if (!isBspp) return false;
         }
@@ -428,13 +437,16 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
 
       // Filter Date Range:
       // Request: Tampilkan hanya mutasi tanggal terbaru secara default. Jika ingin mencari data tertentu, gunakan rentang periode.
-      const itemDate = (m.tanggal || '').slice(0, 10);
+      const itemDate = getTanggalKey(m.tanggal);
       if (filterFrom || filterTo) {
         if (filterFrom && itemDate < filterFrom) return false;
         if (filterTo && itemDate > filterTo) return false;
       } else if (!showAllDates && latestTanggal) {
-        // Mode default mutasi terbaru: hanya tanggal terkini
-        if (itemDate !== latestTanggal) return false;
+        // Mode default mutasi terbaru: hanya tanggal terkini (dikecualikan jika pengguna sengaja memilih filter rekonsiliasi)
+        const isRekonFilterActive = filterJenis === 'REKON_ALL' || filterJenis === 'REKON_DHP' || filterJenis === 'REKON_SETORAN';
+        if (!isRekonFilterActive) {
+          if (itemDate !== latestTanggal) return false;
+        }
       }
 
       // Text search
@@ -443,7 +455,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         const matchKode = m.kode?.toLowerCase().includes(q);
         const matchJenis = m.jenisMutasi?.toLowerCase().includes(q);
         const matchBahan = e.komoditas.toLowerCase().includes(q);
-        const matchTanggal = m.tanggal?.toLowerCase().includes(q);
+        const matchTanggal = (m.tanggal || '').toLowerCase().includes(q) || formatTanggalIndo(m.tanggal).toLowerCase().includes(q);
         if (!matchKode && !matchJenis && !matchBahan && !matchTanggal) {
           return false;
         }
@@ -540,19 +552,13 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     return Math.round((totalFisikKeluarKg - totalSetoranLabelKg) * 10) / 10;
   }, [totalFisikKeluarKg, totalSetoranLabelKg]);
 
-  // Tanggal rekonsiliasi yang terdeteksi
+  // Tanggal rekonsiliasi yang terdeteksi secara dinamis berstandar Indonesia
   const latestDhpTanggal = useMemo(() => {
-    for (const e of dhpReconciliationEntries) {
-      if (e.mutasi.tanggal) return e.mutasi.tanggal;
-    }
-    return '2026-10-08T00:00:00.000Z';
+    return getLatestDateString(dhpReconciliationEntries.map(e => ({ tanggal: e.mutasi.tanggal }))) || '2026-10-08';
   }, [dhpReconciliationEntries]);
 
   const latestSetoranTanggal = useMemo(() => {
-    for (const e of setoranReconciliationEntries) {
-      if (e.mutasi.tanggal) return e.mutasi.tanggal;
-    }
-    return '2026-10-08T00:00:00.000Z';
+    return getLatestDateString(setoranReconciliationEntries.map(e => ({ tanggal: e.mutasi.tanggal }))) || '2026-10-08';
   }, [setoranReconciliationEntries]);
 
   const formatNumber = (num: number): string => {
@@ -560,22 +566,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
     });
-  };
-
-  const formatTanggalIndo = (tanggalISO: string): string => {
-    if (!tanggalISO) return '—';
-    try {
-      const date = new Date(tanggalISO);
-      if (isNaN(date.getTime())) return tanggalISO;
-      return date.toLocaleDateString('id-ID', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      });
-    } catch {
-      return tanggalISO;
-    }
   };
 
   // PDF Export Trigger
@@ -690,6 +680,23 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   {totalDhpSelisihKg === 0 ? '100% IDENTIK' : `Selisih ${formatNumber(totalDhpSelisihKg)} Kg`}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterKomoditas('Tembakau & Krosok (Rajang II)');
+                  setFilterJenis('Pemasukan Hasil Proses');
+                  setShowAllDates(true);
+                  setFilterFrom('');
+                  setFilterTo('');
+                  const el = document.getElementById('mutasi-table-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-200 transition-colors cursor-pointer border border-emerald-400/30"
+                title="Buka dan fokuskan seluruh mutasi DHP di tabel mutasi bawah"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Fokuskan di Tabel</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowDhpSection(!showDhpSection)}
@@ -867,6 +874,23 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   {totalSetoranSelisihKg === 0 ? '100% IDENTIK' : `Selisih ${formatNumber(totalSetoranSelisihKg)} Kg`}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterKomoditas('Tembakau & Krosok (Rajang II)');
+                  setFilterJenis('Pengeluaran Setoran');
+                  setShowAllDates(true);
+                  setFilterFrom('');
+                  setFilterTo('');
+                  const el = document.getElementById('mutasi-table-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/25 hover:bg-blue-500/40 text-blue-200 transition-colors cursor-pointer border border-blue-400/30"
+                title="Buka dan fokuskan seluruh mutasi Setoran di tabel mutasi bawah"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-300" />
+                <span>Fokuskan di Tabel</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowSetoranSection(!showSetoranSection)}
@@ -1052,6 +1076,19 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   : `Semua Mutasi (${filterKomoditas})`}
               </option>
 
+              {/* Opsi Khusus Rekonsiliasi Otomatis (DHP & BSPP Setoran) */}
+              <optgroup label="🛡️ Status Rekonsiliasi Otomatis">
+                <option value="REKON_ALL">
+                  🛡️ Semua Rekonsiliasi (DHP &amp; Setoran) ({dhpReconciliationEntries.length + setoranReconciliationEntries.length})
+                </option>
+                <option value="REKON_DHP">
+                  🛡️ Rekonsiliasi DHP (Hasil Proses) ({dhpReconciliationEntries.length})
+                </option>
+                <option value="REKON_SETORAN">
+                  🛡️ Rekonsiliasi Setoran (BSPP SETORAN) ({setoranReconciliationEntries.length})
+                </option>
+              </optgroup>
+
               {/* Opsi Khusus BSPP (Bukti Selisih Persediaan) */}
               <optgroup label="⚖️ Mutasi BSPP (Selisih Timbangan)">
                 <option value="BSPP">
@@ -1163,6 +1200,23 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                 </button>
               </span>
             )}
+
+            {!showAllDates && !filterFrom && !filterTo && (dhpReconciliationEntries.length > 0 || setoranReconciliationEntries.length > 0) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterKomoditas('Tembakau & Krosok (Rajang II)');
+                  setShowAllDates(true);
+                  const el = document.getElementById('mutasi-table-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded text-[10.5px] font-semibold hover:bg-emerald-100 transition-colors cursor-pointer"
+                title="Tampilkan seluruh mutasi Rajang II yang memiliki badge rekonsiliasi (DHP & Setoran)"
+              >
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                <span>Buka Data Rekonsiliasi ({dhpReconciliationEntries.length + setoranReconciliationEntries.length})</span>
+              </button>
+            )}
             {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero) && (
               <button
                 type="button"
@@ -1236,7 +1290,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
       </div>
 
       {/* Table Data - Dynamic proportional columns, fits viewport completely */}
-      <div className="overflow-x-auto w-full">
+      <div id="mutasi-table-section" className="overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-100/90 border-b border-slate-200 text-[10px] sm:text-[10.5px] font-semibold text-slate-600 uppercase tracking-wider select-none">

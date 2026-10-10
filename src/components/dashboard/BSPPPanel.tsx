@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BSPPData } from '../../types';
 import { exportToPdf } from '../../services/pdfExport';
+import { parseDateIndo } from '../../utils/dateUtils';
 import { 
   Scale, 
   Download, 
@@ -41,9 +42,10 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
   };
 
   const formatTanggalIndo = (dateStr: string): string => {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
+    const d = parseDateIndo(dateStr);
+    if (!d || isNaN(d.getTime())) return dateStr;
     const s = d.toLocaleDateString('id-ID', {
+      timeZone: 'UTC',
       weekday: 'short',
       day: 'numeric',
       month: 'short',
@@ -53,9 +55,10 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
   };
 
   const formatTanggalPendek = (dateStr: string): string => {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
+    const d = parseDateIndo(dateStr);
+    if (!d || isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('id-ID', {
+      timeZone: 'UTC',
       day: 'numeric',
       month: 'short'
     });

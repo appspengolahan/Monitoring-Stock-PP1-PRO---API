@@ -29,7 +29,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "nama": "F MILD STAR - BK",
         "saldo": 364.2,
-        "tanggalTerakhir": "Jum'at, 10 April 2026"
+        "tanggalTerakhir": "2026-04-10T00:00:00.000Z"
       },
       {
         "nama": "F REG 153 HIJAU - BK (kode B)",
@@ -291,6 +291,56 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
         "masuk": 0,
         "keluar": 850,
         "saldo": 0,
+        "cek": false
+      },
+      {
+        "id": "tembakau-blend-oct9-1",
+        "tanggal": "2026-10-09T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pemasukan Hasil Blend",
+        "masuk": 6992.2,
+        "keluar": 0,
+        "saldo": 8855.0,
+        "cek": false
+      },
+      {
+        "id": "tembakau-blend-oct9-2",
+        "tanggal": "2026-10-09T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - Wagir 1 & 3",
+        "masuk": 0,
+        "keluar": 810,
+        "saldo": 8045.0,
+        "cek": false
+      },
+      {
+        "id": "tembakau-blend-oct9-3",
+        "tanggal": "2026-10-09T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - Wagir 2",
+        "masuk": 0,
+        "keluar": 180,
+        "saldo": 7865.0,
+        "cek": false
+      },
+      {
+        "id": "tembakau-blend-oct9-4",
+        "tanggal": "2026-10-09T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - Genengan",
+        "masuk": 0,
+        "keluar": 1740,
+        "saldo": 6125.0,
+        "cek": false
+      },
+      {
+        "id": "tembakau-blend-oct9-5",
+        "tanggal": "2026-10-09T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 0.8,
+        "keluar": 0,
+        "saldo": 6125.8,
         "cek": false
       },
       {
