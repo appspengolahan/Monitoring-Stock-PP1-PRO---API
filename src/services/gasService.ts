@@ -1,4 +1,4 @@
-import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, ReconciliationDisplayConfig } from '../types';
+import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, ReconciliationDisplayConfig } from '../types/index';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 import { parseDateIndo, normalizeDateToIso, getTanggalKey, getEpochTime } from '../utils/dateUtils';
 
@@ -880,6 +880,7 @@ export class GasService {
   }
 
   public static getCachedDHP(): DHPEntry[] {
+    if (typeof localStorage === 'undefined') return this.DEFAULT_DHP_ENTRIES;
     const cached = localStorage.getItem(STORAGE_KEYS.DHP_RECONCILIATION);
     if (cached) {
       try {
@@ -894,7 +895,9 @@ export class GasService {
 
   public static saveCachedDHP(data: DHPEntry[]): void {
     const cleaned = this.cleanDHPEntries(data);
-    localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(cleaned));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(cleaned));
+    }
     // Otomatis perbarui pencocokan rekonsiliasi dan badge pada data mutasi persediaan
     try {
       const current = this.getCachedKomoditas();
@@ -1026,6 +1029,7 @@ export class GasService {
   }
 
   public static getCachedSetoran(): SetoranEntry[] {
+    if (typeof localStorage === 'undefined') return this.DEFAULT_SETORAN_ENTRIES;
     const cached = localStorage.getItem(STORAGE_KEYS.SETORAN_RECONCILIATION);
     if (cached) {
       try {
@@ -1048,7 +1052,9 @@ export class GasService {
 
   public static saveCachedSetoran(data: SetoranEntry[]): void {
     const cleaned = this.cleanSetoranEntries(data);
-    localStorage.setItem(STORAGE_KEYS.SETORAN_RECONCILIATION, JSON.stringify(cleaned));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.SETORAN_RECONCILIATION, JSON.stringify(cleaned));
+    }
     // Otomatis perbarui pencocokan rekonsiliasi dan badge pada data mutasi persediaan
     try {
       const current = this.getCachedKomoditas();
