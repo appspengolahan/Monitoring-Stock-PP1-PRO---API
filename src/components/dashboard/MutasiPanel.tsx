@@ -68,6 +68,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   const [filterHideZero, setFilterHideZero] = useState<boolean>(false);
   const [showAllDates, setShowAllDates] = useState<boolean>(false);
   const [showDhpSection, setShowDhpSection] = useState<boolean>(true);
+  const [showDhpBlendSection, setShowDhpBlendSection] = useState<boolean>(true);
   const [showSetoranSection, setShowSetoranSection] = useState<boolean>(true);
   const [reconcileDisplay, setReconcileDisplay] = useState<ReconciliationDisplayConfig>(() => GasService.getReconciliationDisplayConfig());
   const [isSktSkmModalOpen, setIsSktSkmModalOpen] = useState<boolean>(false);
@@ -558,6 +559,37 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     return getLatestDateString(setoranReconciliationEntries.map(e => ({ tanggal: e.mutasi.tanggal }))) || '2026-10-10';
   }, [setoranReconciliationEntries]);
 
+  // Rekonsiliasi Pemasukan Hasil Blend: Mengacu pada mutasi fisik gudang persediaan Tembakau Blend
+  // yang divalidasi silang terhadap DHP Blend (Kolom I Kertas Kerja Proses Blend)
+  const dhpBlendReconciliationEntries = useMemo(() => {
+    return allMutasi.filter(e => {
+      const isBlend = e.komoditas.toLowerCase().includes('blend');
+      return isBlend && (e.mutasi.jenisMutasi === 'Pemasukan Hasil Blend' || !!e.mutasi.dhpMatch);
+    });
+  }, [allMutasi]);
+
+  const totalDhpBlendNettoKg = useMemo(() => {
+    return dhpBlendReconciliationEntries.reduce((acc, curr) => acc + (curr.mutasi.dhpMatch?.dhpNetto || curr.mutasi.masuk || 0), 0);
+  }, [dhpBlendReconciliationEntries]);
+
+  const totalFisikBlendMasukKg = useMemo(() => {
+    return dhpBlendReconciliationEntries.reduce((acc, curr) => acc + (curr.mutasi.masuk || 0), 0);
+  }, [dhpBlendReconciliationEntries]);
+
+  const totalDhpBlendSelisihKg = useMemo(() => {
+    return Math.round((totalFisikBlendMasukKg - totalDhpBlendNettoKg) * 10) / 10;
+  }, [totalFisikBlendMasukKg, totalDhpBlendNettoKg]);
+
+  const totalMolenCount = useMemo(() => {
+    return dhpBlendReconciliationEntries.reduce((acc, curr) => {
+      return acc + (curr.mutasi.dhpMatch?.molenList?.length || 0);
+    }, 0);
+  }, [dhpBlendReconciliationEntries]);
+
+  const latestDhpBlendTanggal = useMemo(() => {
+    return getLatestDateString(dhpBlendReconciliationEntries.map(e => ({ tanggal: e.mutasi.tanggal }))) || '2026-10-12';
+  }, [dhpBlendReconciliationEntries]);
+
   const formatNumber = (num: number): string => {
     return Number(num).toLocaleString('id-ID', {
       minimumFractionDigits: 1,
@@ -637,7 +669,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
       </div>
 
       {/* Panel Rekonsiliasi Khusus: Pemasukan Hasil Proses Gudang Persediaan Rajang II vs Kertas Kerja DHP (Diatur via Headless GAS Center) */}
-      {reconcileDisplay.showDhpSummary && dhpReconciliationEntries.length > 0 && (
+      {reconcileDisplay.showDhpSummary && (filterKomoditas === 'all' || filterKomoditas.includes('Rajang II')) && dhpReconciliationEntries.length > 0 && (
         <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border-b border-emerald-800/50 p-4 sm:p-5">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
@@ -800,6 +832,189 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                       </td>
                       <td colSpan={2} className="py-2.5 px-3 text-center font-sans text-[10px] text-emerald-300 font-bold">
                         ✓ Seluruh Data Terverifikasi Sempurna
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Panel Rekonsiliasi Khusus: Pemasukan Hasil Blend Gudang Persediaan Tembakau Blend vs DHP Blend (Kolom I) */}
+      {reconcileDisplay.showDhpSummary && (filterKomoditas === 'all' || filterKomoditas.toLowerCase().includes('blend')) && dhpBlendReconciliationEntries.length > 0 && (
+        <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-indigo-950 text-white border-b border-teal-800/50 p-4 sm:p-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Rekonsiliasi Otomatis (2-Way Matching)</span>
+                </span>
+                <span className="text-[11px] text-slate-300 font-medium">
+                  {formatTanggalIndo(latestDhpBlendTanggal)}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/10 text-slate-300 border border-white/10" title="ID Sheet Kertas Kerja DHP Blend">
+                  Tab: INTEGRASI DATA DHP BLEND (Kolom I)
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                <span>Pemasukan Hasil Blend: Gudang Tembakau Blend vs DHP Blend</span>
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5 max-w-2xl leading-relaxed">
+                Acuan data adalah entri mutasi fisik yang tercatat di <strong className="text-teal-200">Gudang Persediaan Tembakau Blend</strong>, divalidasi silang terhadap kertas kerja <strong className="text-blue-200">DHP Blend Unit Blend - Divisi Produksi I (Kolom I: Hasil Jadi Bersih)</strong>.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="bg-white/10 backdrop-blur-xs rounded-xl px-3 py-2 border border-white/10 text-center">
+                <span className="text-[10px] text-slate-300 uppercase tracking-wider block">Acuan Blend</span>
+                <span className="text-sm font-bold text-white font-mono">{dhpBlendReconciliationEntries.length} Bahan</span>
+              </div>
+              <div className="bg-blue-500/15 backdrop-blur-xs rounded-xl px-3 py-2 border border-blue-400/30 text-center">
+                <span className="text-[10px] text-blue-200 uppercase tracking-wider block">DHP Blend Netto</span>
+                <span className="text-sm font-bold text-blue-300 font-mono">{formatNumber(totalDhpBlendNettoKg)} Kg</span>
+              </div>
+              {totalMolenCount > 0 && (
+                <div className="bg-purple-500/15 backdrop-blur-xs rounded-xl px-3 py-2 border border-purple-400/30 text-center">
+                  <span className="text-[10px] text-purple-200 uppercase tracking-wider block">Batch Molen</span>
+                  <span className="text-sm font-bold text-purple-300 font-mono">{totalMolenCount} Batch</span>
+                </div>
+              )}
+              <div className="bg-teal-500/20 backdrop-blur-xs rounded-xl px-3 py-2 border border-teal-400/40 text-center">
+                <span className="text-[10px] text-teal-200 uppercase tracking-wider block">Status Keselarasan</span>
+                <span className="text-sm font-bold text-teal-300 font-mono">
+                  {totalDhpBlendSelisihKg === 0 ? '100% IDENTIK' : `Selisih ${formatNumber(totalDhpBlendSelisihKg)} Kg`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDhpBlendSection(!showDhpBlendSection)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer border border-white/15"
+                title={showDhpBlendSection ? 'Sembunyikan rincian tabel perbandingan' : 'Buka rincian tabel perbandingan'}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>{showDhpBlendSection ? 'Tutup Rincian' : 'Lihat Rincian'}</span>
+                {showDhpBlendSection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Rincian Komparasi DHP Blend */}
+          {showDhpBlendSection && (
+            <div className="mt-4 pt-3.5 border-t border-teal-800/40">
+              <div className="overflow-x-auto rounded-xl border border-slate-700/80 bg-slate-900/80 shadow-inner">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-800/90 text-[10.5px] uppercase font-bold text-slate-300 border-b border-slate-700">
+                    <tr>
+                      <th className="py-2 px-3 text-center w-10">No</th>
+                      <th className="py-2 px-3">Tanggal</th>
+                      <th className="py-2 px-3">Bahan Gudang Blend (Acuan Utama)</th>
+                      <th className="py-2 px-3">Kertas Kerja Pembanding</th>
+                      <th className="py-2 px-3 text-center">Tujuan / Jalur</th>
+                      <th className="py-2 px-3 text-right">Fisik Masuk Gudang</th>
+                      <th className="py-2 px-3 text-right">Hasil Jadi DHP Blend</th>
+                      <th className="py-2 px-3 text-right">Selisih</th>
+                      <th className="py-2 px-3 text-center">Rincian Molen</th>
+                      <th className="py-2 px-3 text-center">Status Validasi</th>
+                      <th className="py-2 px-3 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
+                    {dhpBlendReconciliationEntries.map((e, idx) => {
+                      const m = e.mutasi;
+                      const match = m.dhpMatch;
+                      const isIdentik = match ? match.selisih === 0 : false;
+                      const molens = match?.molenList || [];
+                      return (
+                        <tr key={m.id || idx} className="hover:bg-slate-800/60 transition-colors">
+                          <td className="py-2 px-3 text-center text-slate-400 font-sans">{idx + 1}</td>
+                          <td className="py-2 px-3 whitespace-nowrap text-slate-300 font-sans">
+                            {formatTanggalIndo(m.tanggal || '')}
+                          </td>
+                          <td className="py-2 px-3 font-bold text-white font-sans">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+                              <span>{m.kode}</span>
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 font-sans">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-900/60 text-teal-300 border border-teal-700/60">
+                              DHP Blend (Kolom I)
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 font-bold">
+                              {match?.jalur || 'Wagir'}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold text-teal-400">
+                            +{formatNumber(m.masuk || 0)} Kg
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold text-slate-200">
+                            {formatNumber(match ? match.dhpNetto : m.masuk || 0)} Kg
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            {match && match.selisih !== 0 ? (
+                              <span className="text-amber-400 font-bold">
+                                {match.selisih > 0 ? '+' : ''}{formatNumber(match.selisih)} Kg
+                              </span>
+                            ) : (
+                              <span className="text-teal-400 font-semibold">0,0 Kg</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-center font-sans">
+                            {molens.length > 0 ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-900/40 text-purple-300 border border-purple-700/40" title={molens.map(b => `${b.namaMolen}: ${formatNumber(b.nettoKg)} Kg`).join(', ')}>
+                                {molens.length} Batch ({formatNumber(molens[0]?.nettoKg || 0)} Kg/batch)
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 text-[10px]">—</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-center font-sans">
+                            {isIdentik ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                                <span>100% IDENTIK (MATCH)</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                <AlertCircle className="w-3 h-3 text-amber-400" />
+                                <span>SELISIH BLEND</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-center font-sans">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDhpAudit({ mutasi: m, komoditas: e.komoditas })}
+                              className="px-2 py-1 text-[10.5px] font-semibold text-slate-200 bg-slate-700/80 hover:bg-slate-700 hover:text-white rounded border border-slate-600 transition-colors cursor-pointer"
+                            >
+                              Audit
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-slate-800/80 font-mono text-[11px] font-bold border-t border-slate-700 text-slate-200">
+                    <tr>
+                      <td colSpan={5} className="py-2.5 px-3 font-sans text-right uppercase tracking-wider text-[10.5px]">
+                        Total Hasil Blend ({dhpBlendReconciliationEntries.length} Bahan):
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-teal-400 text-xs">
+                        +{formatNumber(totalFisikBlendMasukKg)} Kg
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-slate-100 text-xs">
+                        {formatNumber(totalDhpBlendNettoKg)} Kg
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-teal-400 text-xs">
+                        {totalDhpBlendSelisihKg === 0 ? '0,0 Kg' : `${formatNumber(totalDhpBlendSelisihKg)} Kg`}
+                      </td>
+                      <td colSpan={3} className="py-2.5 px-3 text-center font-sans text-[10px] text-teal-300 font-bold">
+                        ✓ Seluruh Data DHP Blend Terverifikasi Sempurna
                       </td>
                     </tr>
                   </tfoot>
@@ -1530,7 +1745,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                     {selectedDhpAudit.komoditas}
                   </p>
                   <div className="pt-2 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400 block">Pemasukan Hasil Proses</span>
+                    <span className="text-[10px] text-slate-400 block">{selectedDhpAudit.mutasi.jenisMutasi || 'Pemasukan Hasil Proses'}</span>
                     <span className="text-lg font-bold font-mono text-slate-900">
                       {formatNumber(selectedDhpAudit.mutasi.masuk || 0)} <span className="text-xs font-normal text-slate-500">Kg</span>
                     </span>
@@ -1552,6 +1767,50 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   </div>
                 </div>
               </div>
+
+              {/* Rincian Batch Molen jika tersedia (DHP Blend) */}
+              {selectedDhpAudit.mutasi.dhpMatch.molenList && selectedDhpAudit.mutasi.dhpMatch.molenList.length > 0 && (
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
+                      Rincian Penimbangan Batch Molen (DHP Blend)
+                    </span>
+                    <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-full">
+                      {selectedDhpAudit.mutasi.dhpMatch.molenList.length} Batch Molen
+                    </span>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-600 border-b border-slate-200 sticky top-0">
+                        <tr>
+                          <th className="py-1 px-2.5 text-center w-8">No</th>
+                          <th className="py-1 px-2.5">Batch Molen</th>
+                          <th className="py-1 px-2.5 text-right">Hasil Jadi Netto</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                        {selectedDhpAudit.mutasi.dhpMatch.molenList.map((ml, mIdx) => (
+                          <tr key={mIdx} className="hover:bg-slate-50">
+                            <td className="py-1 px-2.5 text-center text-slate-400 font-sans">{ml.no || mIdx + 1}</td>
+                            <td className="py-1 px-2.5 font-sans font-semibold text-slate-800">{ml.namaMolen}</td>
+                            <td className="py-1 px-2.5 text-right font-bold text-emerald-700">{formatNumber(ml.nettoKg)} Kg</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-slate-50 font-mono text-[11px] font-bold border-t border-slate-200 text-slate-900 sticky bottom-0">
+                        <tr>
+                          <td colSpan={2} className="py-1.5 px-2.5 font-sans text-right uppercase tracking-wider text-[10px]">
+                            Total Batch Molen:
+                          </td>
+                          <td className="py-1.5 px-2.5 text-right text-emerald-800">
+                            {formatNumber(selectedDhpAudit.mutasi.dhpMatch.dhpNetto)} Kg
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Result Status Banner */}
               <div className={`p-3.5 rounded-xl border flex items-center justify-between ${

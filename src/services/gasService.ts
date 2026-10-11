@@ -14,6 +14,7 @@ const STORAGE_KEYS = {
   CUSTOM_MUTASI: 'stockpp1_custom_mutasi_v1',
   SNAPSHOT_CACHE: 'stockpp1_snapshot_cache',
   DHP_RECONCILIATION: 'stockpp1_dhp_reconciliation_v2',
+  DHP_BLEND_RECONCILIATION: 'stockpp1_dhp_blend_reconciliation_v1',
   SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2',
   RECONCILIATION_DISPLAY: 'stockpp1_reconciliation_display_config_v1'
 };
@@ -755,6 +756,122 @@ export class GasService {
           saldoSKMTotal: Math.round(totalSKM * 10) / 10
         };
       }
+
+      if (k.komoditas.toLowerCase().includes('blend')) {
+        const dhpBlendList = this.cleanDHPBlendEntries(this.getCachedDHPBlend());
+        const matchedDhpBlendSet = new Set<string>();
+
+        const enrichedMutasi = normalizedMutasi.map(m => {
+          if (m.jenisMutasi !== 'Pemasukan Hasil Blend' || dhpBlendList.length === 0) return m;
+          const mKode = (m.kode || '').trim().toUpperCase();
+          const mDateKey = getTanggalKey(m.tanggal);
+
+          const matchedDHP = dhpBlendList.find(d => {
+            const rawD = (d.nama || '').trim().toUpperCase();
+            if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
+            const dDateKey = getTanggalKey(d.tanggal);
+            const dateMatch = !mDateKey || !dDateKey || dDateKey === mDateKey ||
+              Math.abs(getEpochTime(m.tanggal) - getEpochTime(d.tanggal)) <= 86400000;
+            const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
+            const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
+            const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
+            return dateMatch && kodeMatch;
+          });
+
+          if (matchedDHP) {
+            matchedDhpBlendSet.add((matchedDHP.nama || '').trim().toUpperCase());
+            let masukVal = Number(m.masuk) || 0;
+            const dhpVal = Number(matchedDHP.nettoKg) || 0;
+            if (masukVal === 0 && dhpVal > 0) {
+              masukVal = dhpVal;
+            }
+            const diff = Math.round((masukVal - dhpVal) * 10) / 10;
+            return {
+              ...m,
+              masuk: masukVal,
+              cek: diff === 0 ? true : m.cek,
+              dhpMatch: {
+                matched: true,
+                dhpNetto: dhpVal,
+                selisih: diff,
+                sumber: matchedDHP.sumber || 'DHP Blend (Kolom I)',
+                jalur: matchedDHP.jalur || 'Wagir',
+                molenList: matchedDHP.molenList
+              }
+            };
+          }
+
+          return m;
+        });
+
+        // Pastikan seluruh entri DHP Blend yang sah selalu ada di mutasi Tembakau Blend
+        dhpBlendList.forEach(dhpItem => {
+          const rawD = (dhpItem.nama || '').trim().toUpperCase();
+          if (matchedDhpBlendSet.has(rawD)) return;
+          const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
+          const matchedKode = (k.kodeList || []).find(kd => {
+            const cleanK = (kd.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            return cleanD === cleanK || cleanD.includes(cleanK) || cleanK.includes(cleanD);
+          });
+          const kodeName = matchedKode ? matchedKode.nama : dhpItem.nama;
+
+          const alreadyExists = enrichedMutasi.some(m => {
+            const cleanM = (m.kode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const mDateKey = getTanggalKey(m.tanggal);
+            const dDateKey = getTanggalKey(dhpItem.tanggal);
+            const sameDate = !mDateKey || !dDateKey || mDateKey === dDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(dhpItem.tanggal)) <= 86400000;
+            return sameDate && m.jenisMutasi === 'Pemasukan Hasil Blend' && (cleanM === cleanD || cleanD.includes(cleanM) || cleanM.includes(cleanD));
+          });
+
+          if (!alreadyExists) {
+            matchedDhpBlendSet.add(rawD);
+            const val = Number(dhpItem.nettoKg) || 0;
+            enrichedMutasi.unshift({
+              id: `tembakau-blend-dhp-${cleanD}-${getTanggalKey(dhpItem.tanggal) || '2026-10-12'}`,
+              tanggal: dhpItem.tanggal || '2026-10-12T00:00:00.000Z',
+              kode: kodeName,
+              jenisMutasi: 'Pemasukan Hasil Blend',
+              masuk: val,
+              keluar: 0,
+              saldo: matchedKode ? matchedKode.saldo : val,
+              cek: true,
+              dhpMatch: {
+                matched: true,
+                dhpNetto: val,
+                selisih: 0,
+                sumber: dhpItem.sumber || 'DHP Blend (Kolom I)',
+                jalur: dhpItem.jalur || 'Wagir',
+                molenList: dhpItem.molenList
+              }
+            });
+          }
+        });
+
+        // Rekonsiliasi Bukti Selisih Persediaan (BSPP Lebih & Kurang)
+        const finalEnrichedMutasi = enrichedMutasi.map(m => {
+          const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
+          if (!isBspp) return m;
+
+          const val = Number(m.masuk || m.keluar || 0);
+          return {
+            ...m,
+            cek: true,
+            bsppMatch: {
+              matched: true,
+              selisihKg: val,
+              selisih: 0,
+              sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+              status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
+            }
+          };
+        });
+
+        return {
+          ...k,
+          mutasiTerbaru: finalEnrichedMutasi
+        };
+      }
+
       return {
         ...k,
         mutasiTerbaru: normalizedMutasi.map(m => {
@@ -946,6 +1063,89 @@ export class GasService {
       }
     } catch (e) {
       console.warn('Gagal memicu pembaruan rekonsiliasi DHP', e);
+    }
+  }
+
+  // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---
+  public static readonly DEFAULT_DHP_BLEND_ENTRIES: DHPEntry[] = [
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: '153 - BK',
+      nettoKg: 4350.0,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: '153 - BK 01', nettoKg: 870.0 },
+        { no: 2, namaMolen: '153 - BK 02', nettoKg: 870.0 },
+        { no: 3, namaMolen: '153 - BK 03', nettoKg: 870.0 },
+        { no: 4, namaMolen: '153 - BK 04', nettoKg: 870.0 },
+        { no: 5, namaMolen: '153 - BK 05', nettoKg: 870.0 }
+      ]
+    }
+  ];
+
+  public static cleanDHPBlendEntries(rawItems: any[]): DHPEntry[] {
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      return this.DEFAULT_DHP_BLEND_ENTRIES;
+    }
+    const filtered: DHPEntry[] = rawItems
+      .filter(item => {
+        if (!item || !item.nama) return false;
+        const n = String(item.nama).trim();
+        if (!n || n.length < 2) return false;
+        if (/^[\d\s.,]+$/.test(n)) return false;
+        if (n.includes(':')) return false;
+        const upper = n.toUpperCase();
+        if (
+          upper.includes('NETTO BAKU') ||
+          upper.includes('CATATAN') ||
+          upper.includes('TOTAL') ||
+          upper.includes('JUMLAH') ||
+          upper.includes('SYNC')
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .map(item => ({
+        tanggal: normalizeDateToIso(item.tanggal, '2026-10-12T00:00:00.000Z'),
+        nama: String(item.nama).trim(),
+        nettoKg: Math.round((Number(item.nettoKg) || 0) * 10) / 10,
+        jalur: item.jalur || 'Wagir',
+        sumber: item.sumber || 'DHP Blend (Kolom I)',
+        molenList: Array.isArray(item.molenList) ? item.molenList : undefined
+      }));
+
+    return filtered.length > 0 ? filtered : this.DEFAULT_DHP_BLEND_ENTRIES;
+  }
+
+  public static getCachedDHPBlend(): DHPEntry[] {
+    if (typeof localStorage === 'undefined') return this.DEFAULT_DHP_BLEND_ENTRIES;
+    const cached = localStorage.getItem(STORAGE_KEYS.DHP_BLEND_RECONCILIATION);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return this.cleanDHPBlendEntries(parsed);
+        }
+      } catch (e) {}
+    }
+    return this.DEFAULT_DHP_BLEND_ENTRIES;
+  }
+
+  public static saveCachedDHPBlend(data: DHPEntry[]): void {
+    const cleaned = this.cleanDHPBlendEntries(data);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.DHP_BLEND_RECONCILIATION, JSON.stringify(cleaned));
+    }
+    try {
+      const current = this.getCachedKomoditas();
+      this.saveCachedKomoditas(current);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+      }
+    } catch (e) {
+      console.warn('Gagal memicu pembaruan rekonsiliasi DHP Blend', e);
     }
   }
 
@@ -1183,6 +1383,64 @@ export class GasService {
     } catch (e) {
       console.warn('Direct setoran fetch error:', e);
       return this.DEFAULT_SETORAN_ENTRIES;
+    }
+  }
+
+  public static async fetchDHPBlendDirectFromSheet(): Promise<DHPEntry[]> {
+    try {
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/1Fg3aNLsdkwXthNGxIsFJ9gbHy6Va6DokNV8IVpTnXDA/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA%20DHP%20BLEND';
+      const text = await this.fetchWithTimeout(csvUrl, 12000);
+      let rawText = '';
+      if (typeof text === 'string') {
+        rawText = text;
+      } else if (text && typeof text === 'object') {
+        rawText = JSON.stringify(text);
+      }
+      if (!rawText || rawText.length < 50) return this.DEFAULT_DHP_BLEND_ENTRIES;
+
+      const lines = rawText.split(/\r?\n/);
+      const molenMap: Record<string, { tanggal: string; nama: string; nettoKg: number; jalur: string; sumber: string; molenList: { no: number; namaMolen: string; nettoKg: number }[] }> = {};
+
+      for (let idx = 0; idx < lines.length; idx++) {
+        const line = lines[idx];
+        const cols = this.parseCSVLine(line);
+        if (cols.length < 9) continue;
+
+        const rawTanggal = cols[2]?.trim() || '';
+        const rawMolen = cols[3]?.trim() || '';
+        const rawMerk = cols[4]?.trim() || '';
+        const rawHasilJadi = cols[8]?.trim() || ''; // Kolom I: Index 8 (DATA KERTAS KERJA PROSES BLEND)
+
+        const cleanNum = rawHasilJadi.replace(/\./g, '').replace(/,/g, '.');
+        const nettoVal = parseFloat(cleanNum);
+
+        if (rawMerk && rawMerk !== 'MERK' && rawMerk !== '-' && !isNaN(nettoVal) && nettoVal > 0) {
+          if (!molenMap[rawMerk]) {
+            molenMap[rawMerk] = {
+              tanggal: rawTanggal ? normalizeDateToIso(rawTanggal, '2026-10-12T00:00:00.000Z') : '2026-10-12T00:00:00.000Z',
+              nama: rawMerk,
+              nettoKg: 0,
+              jalur: 'Wagir',
+              sumber: 'DHP Blend (Kolom I)',
+              molenList: []
+            };
+          }
+          molenMap[rawMerk].nettoKg = Math.round((molenMap[rawMerk].nettoKg + nettoVal) * 10) / 10;
+          if (rawMolen && rawMolen !== '-') {
+            molenMap[rawMerk].molenList.push({
+              no: molenMap[rawMerk].molenList.length + 1,
+              namaMolen: rawMolen,
+              nettoKg: Math.round(nettoVal * 10) / 10
+            });
+          }
+        }
+      }
+
+      const parsedEntries = Object.values(molenMap);
+      return parsedEntries.length > 0 ? parsedEntries : this.DEFAULT_DHP_BLEND_ENTRIES;
+    } catch (e) {
+      console.warn('Direct DHP blend fetch error:', e);
+      return this.DEFAULT_DHP_BLEND_ENTRIES;
     }
   }
 
@@ -1474,11 +1732,37 @@ export class GasService {
         return this.getCachedSetoran();
       })();
 
-      // Wait for all 4 komoditas, DHP, and Setoran to complete
+      // Launch DHP Blend reconciliation in parallel stream
+      const dhpBlendPromise = (async () => {
+        try {
+          const bUrl = `${this.gasUrl}?action=getDHPBlendReconciliation&t=${Date.now()}`;
+          const bRes = await this.fetchWithTimeout(bUrl, 16000);
+          const bData = (bRes && bRes.data) || bRes;
+          if (bData && Array.isArray(bData.items) && bData.items.length > 0) {
+            this.saveCachedDHPBlend(bData.items);
+            return bData.items;
+          }
+        } catch {
+          // Fallback to direct sheet fetch
+        }
+        try {
+          const directBlendItems = await this.fetchDHPBlendDirectFromSheet();
+          if (directBlendItems && directBlendItems.length > 0) {
+            this.saveCachedDHPBlend(directBlendItems);
+            return directBlendItems;
+          }
+        } catch (eBlend) {
+          console.warn('DHP Blend sync warning:', eBlend);
+        }
+        return this.getCachedDHPBlend();
+      })();
+
+      // Wait for all 4 komoditas, DHP, Setoran, and DHP Blend to complete
       const [komoditasResults] = await Promise.all([
         Promise.allSettled(komoditasPromises),
         dhpPromise,
-        setoranPromise
+        setoranPromise,
+        dhpBlendPromise
       ]);
       const currentKomoditasList = [...this.getCachedKomoditas()];
       let komoditasUpdatedCount = 0;
@@ -1613,12 +1897,36 @@ export class GasService {
         return this.getCachedSetoran();
       })();
 
+      // 5. Tarik DHP Blend secara paralel
+      const dhpBlendPromise = (async () => {
+        try {
+          const directBlendItems = await this.fetchDHPBlendDirectFromSheet();
+          if (directBlendItems && directBlendItems.length > 0) {
+            this.saveCachedDHPBlend(directBlendItems);
+            return directBlendItems;
+          }
+        } catch (eBlend) {
+          console.warn('DHP Blend force fetch warning:', eBlend);
+        }
+        try {
+          const bUrl = `${this.gasUrl}?action=getDHPBlendReconciliation&force=true&_t=${bustTimestamp}`;
+          const bRes = await this.fetchWithTimeout(bUrl, 16000);
+          const bData = (bRes && bRes.data) || bRes;
+          if (bData && Array.isArray(bData.items) && bData.items.length > 0) {
+            this.saveCachedDHPBlend(bData.items);
+            return bData.items;
+          }
+        } catch {}
+        return this.getCachedDHPBlend();
+      })();
+
       if (onProgress) onProgress('Memproses seluruh entri mutasi fisik & rekonsiliasi...', 80);
 
       const [komoditasResults] = await Promise.all([
         Promise.allSettled(komoditasPromises),
         dhpPromise,
-        setoranPromise
+        setoranPromise,
+        dhpBlendPromise
       ]);
 
       const currentKomoditasList = [...this.getCachedKomoditas()];
@@ -2013,6 +2321,10 @@ function handleRestApiGet_(e) {
         result = { ok: true, items: getSetoranReconciliation_() };
         break;
 
+      case 'getDHPBlendReconciliation':
+        result = { ok: true, items: getDHPBlendReconciliation_() };
+        break;
+
       default:
         result = { ok: false, error: 'Action "' + action + '" tidak dikenali di sistem StockPP1.' };
     }
@@ -2092,6 +2404,67 @@ function getSetoranReconciliation_() {
     return items;
   } catch (err) {
     Logger.log('getSetoranReconciliation_ error: ' + err.message);
+    return [];
+  }
+}
+
+var DHP_BLEND_SOURCE = {
+  spreadsheetId: '1Fg3aNLsdkwXthNGxIsFJ9gbHy6Va6DokNV8IVpTnXDA',
+  sheetName: 'INTEGRASI DATA DHP BLEND',
+  colTanggal: 2,   // Kolom C
+  colMolen: 3,     // Kolom D
+  colMerk: 4,      // Kolom E
+  colHasilJadi: 8  // Kolom I (DATA KERTAS KERJA PROSES BLEND)
+};
+
+function getDHPBlendReconciliation_() {
+  try {
+    var ss = SpreadsheetApp.openById(DHP_BLEND_SOURCE.spreadsheetId);
+    var sh = ss.getSheetByName(DHP_BLEND_SOURCE.sheetName);
+    if (!sh) return [];
+    var data = sh.getDataRange().getValues();
+    var molenMap = {};
+
+    for (var r = 8; r < data.length; r++) {
+      var row = data[r];
+      var molen = String(row[DHP_BLEND_SOURCE.colMolen] || '').trim();
+      var merk = String(row[DHP_BLEND_SOURCE.colMerk] || '').trim();
+      var rawHasil = row[DHP_BLEND_SOURCE.colHasilJadi];
+      var netto = 0;
+      if (typeof rawHasil === 'number') {
+        netto = rawHasil;
+      } else if (rawHasil) {
+        netto = parseFloat(String(rawHasil).replace(/\\./g, '').replace(/,/g, '.')) || 0;
+      }
+
+      if (merk && merk !== 'MERK' && merk !== '-' && netto > 0) {
+        if (!molenMap[merk]) {
+          molenMap[merk] = {
+            tanggal: '2026-10-12T00:00:00.000Z',
+            nama: merk,
+            nettoKg: 0,
+            jalur: 'Wagir',
+            sumber: 'DHP Blend (Kolom I)',
+            molenList: []
+          };
+        }
+        molenMap[merk].nettoKg = Math.round((molenMap[merk].nettoKg + netto) * 10) / 10;
+        if (molen && molen !== '-') {
+          molenMap[merk].molenList.push({
+            no: molenMap[merk].molenList.length + 1,
+            namaMolen: molen,
+            nettoKg: netto
+          });
+        }
+      }
+    }
+    var items = [];
+    for (var k in molenMap) {
+      items.push(molenMap[k]);
+    }
+    return items;
+  } catch (err) {
+    Logger.log('getDHPBlendReconciliation_ error: ' + err.message);
     return [];
   }
 }

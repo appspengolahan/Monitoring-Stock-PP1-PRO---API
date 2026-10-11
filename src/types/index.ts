@@ -64,6 +64,7 @@ export interface MutasiItem {
     selisih: number;
     sumber: string;
     jalur?: string;
+    molenList?: { no: number; namaMolen: string; nettoKg: number }[];
   };
   setoranMatch?: {
     matched: boolean;
@@ -86,6 +87,7 @@ export interface DHPEntry {
   nettoKg: number;
   jalur: string;
   sumber: string;
+  molenList?: { no: number; namaMolen: string; nettoKg: number }[];
 }
 
 export interface SetoranEntry {

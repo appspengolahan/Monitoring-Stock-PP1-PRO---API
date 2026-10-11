@@ -713,14 +713,14 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-900 text-xs sm:text-sm">
-                          1. Rekonsiliasi Pemasukan Hasil Proses (DHP)
+                          1. Rekonsiliasi Pemasukan Hasil Proses (DHP & DHP Blend)
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-                          7 Bahan
+                          Rajang II & Blend
                         </span>
                       </div>
                       <p className="text-xs text-slate-500">
-                        Acuan fisik Gudang Persediaan Rajang II vs Kertas Kerja DHP Tembakau (1 bahan) dan DHP Krosok (6 bahan).
+                        Acuan fisik Gudang Persediaan Rajang II &amp; Tembakau Blend vs Kertas Kerja DHP (Rajang II: 7 bahan, Blend: Kolom I Hasil Jadi Bersih).
                       </p>
                     </div>
 
