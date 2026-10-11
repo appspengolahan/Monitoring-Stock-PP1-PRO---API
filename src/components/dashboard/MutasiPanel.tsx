@@ -78,6 +78,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<string | null>(null);
   const [selectedDhpAudit, setSelectedDhpAudit] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
   const [selectedSetoranAudit, setSelectedSetoranAudit] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
+  const [selectedBsppAudit, setSelectedBsppAudit] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
 
   // Sync initialCommodity if parent changes it
   useEffect(() => {
@@ -1328,6 +1329,29 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                             </button>
                           )
                         )}
+                        {m.bsppMatch && (
+                          m.bsppMatch.selisih === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBsppAudit({ mutasi: m, komoditas: e.komoditas })}
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-purple-100 text-purple-800 border border-purple-300 hover:bg-purple-200 transition-all cursor-pointer"
+                              title={`Auto-Check: Terverifikasi dengan ${m.bsppMatch.sumber} (${formatNumber(m.bsppMatch.selisihKg)} Kg). Klik untuk lihat audit.`}
+                            >
+                              <ShieldCheck className="w-2.5 h-2.5 text-purple-600" />
+                              <span>Match BSPP</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBsppAudit({ mutasi: m, komoditas: e.komoditas })}
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition-all cursor-pointer"
+                              title={`Selisih vs ${m.bsppMatch.sumber}: ${m.bsppMatch.selisih > 0 ? '+' : ''}${formatNumber(m.bsppMatch.selisih)} Kg. Klik untuk lihat audit.`}
+                            >
+                              <AlertCircle className="w-2.5 h-2.5 text-amber-600" />
+                              <span>Selisih {m.bsppMatch.selisih > 0 ? '+' : ''}{formatNumber(m.bsppMatch.selisih)} Kg</span>
+                            </button>
+                          )
+                        )}
                       </div>
                     </td>
                     <td className="py-1.5 px-2.5 sm:px-3 text-right font-mono tabular-nums">
@@ -1375,6 +1399,8 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                             setSelectedDhpAudit({ mutasi: m, komoditas: e.komoditas });
                           } else if (m.setoranMatch) {
                             setSelectedSetoranAudit({ mutasi: m, komoditas: e.komoditas });
+                          } else if (m.bsppMatch) {
+                            setSelectedBsppAudit({ mutasi: m, komoditas: e.komoditas });
                           } else {
                             onToggleCek(e.komoditas, m.id || `${e.komoditas}-${index}`, m.cek);
                           }
@@ -1384,6 +1410,8 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                             ? 'bg-emerald-600 text-white shadow-2xs hover:bg-emerald-700'
                             : m.setoranMatch && m.setoranMatch.selisih === 0
                             ? 'bg-blue-600 text-white shadow-2xs hover:bg-blue-700'
+                            : m.bsppMatch && m.bsppMatch.selisih === 0
+                            ? 'bg-purple-600 text-white shadow-2xs hover:bg-purple-700'
                             : m.cek
                             ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                             : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
@@ -1393,12 +1421,14 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                             ? `Auto-Checked: Identik 100% dengan ${m.dhpMatch.sumber} (${formatNumber(m.dhpMatch.dhpNetto)} Kg). Klik untuk lihat audit.`
                             : m.setoranMatch && m.setoranMatch.selisih === 0
                             ? `Auto-Checked: Identik 100% dengan ${m.setoranMatch.sumber} Kolom H (${formatNumber(m.setoranMatch.labelNetto)} Kg). Klik untuk lihat audit.`
+                            : m.bsppMatch && m.bsppMatch.selisih === 0
+                            ? `Auto-Checked: Terverifikasi dengan ${m.bsppMatch.sumber} (${formatNumber(m.bsppMatch.selisihKg)} Kg). Klik untuk lihat audit.`
                             : m.cek
                             ? 'Tervalidasi (Klik untuk ubah)'
                             : 'Belum dicek (Klik untuk validasi)'
                         }
                       >
-                        {(m.dhpMatch && m.dhpMatch.selisih === 0) || (m.setoranMatch && m.setoranMatch.selisih === 0) ? (
+                        {(m.dhpMatch && m.dhpMatch.selisih === 0) || (m.setoranMatch && m.setoranMatch.selisih === 0) || (m.bsppMatch && m.bsppMatch.selisih === 0) ? (
                           <ShieldCheck className="w-3.5 h-3.5" />
                         ) : m.cek ? (
                           <Check className="w-3 h-3 stroke-[3]" />
@@ -1701,6 +1731,153 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => setSelectedSetoranAudit(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Dialog Audit Rekonsiliasi Bukti Selisih Persediaan (BSPP) */}
+      {selectedBsppAudit && selectedBsppAudit.mutasi.bsppMatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
+            {/* Modal Header */}
+            <div className={`p-4 sm:p-5 flex items-center justify-between border-b ${
+              selectedBsppAudit.mutasi.bsppMatch.selisih === 0
+                ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-100'
+                : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                  selectedBsppAudit.mutasi.bsppMatch.selisih === 0
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-amber-600 text-white shadow-xs'
+                }`}>
+                  {selectedBsppAudit.mutasi.bsppMatch.selisih === 0 ? (
+                    <ShieldCheck className="w-5 h-5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Audit Rekonsiliasi Bukti Selisih Persediaan (BSPP)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Validasi Deviasi Penimbangan Fisik vs Lembar Kerja BSPP
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedBsppAudit(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-white/80 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-6 space-y-4">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Bahan Baku:</span>
+                  <span className="font-bold text-slate-900">{selectedBsppAudit.mutasi.kode}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Gudang Penyimpanan:</span>
+                  <span className="font-semibold text-slate-800">{selectedBsppAudit.komoditas}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Tanggal Transaksi:</span>
+                  <span className="font-mono text-slate-700">
+                    {formatTanggalIndo(selectedBsppAudit.mutasi.tanggal || '')}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Kategori Penyesuaian:</span>
+                  <span className={`font-bold ${selectedBsppAudit.mutasi.jenisMutasi.includes('Lebih') ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {selectedBsppAudit.mutasi.jenisMutasi}
+                  </span>
+                </div>
+              </div>
+
+              {/* Comparison Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    1. Catatan Mutasi Fisik
+                  </span>
+                  <p className="text-slate-500 text-[11px] leading-tight truncate">
+                    Gudang Persediaan
+                  </p>
+                  <div className="pt-2 border-t border-slate-100">
+                    <span className="text-[10px] text-slate-400 block">Bobot Penyesuaian</span>
+                    <span className={`text-lg font-bold font-mono ${selectedBsppAudit.mutasi.masuk ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      {selectedBsppAudit.mutasi.masuk ? `+${formatNumber(selectedBsppAudit.mutasi.masuk)}` : `-${formatNumber(selectedBsppAudit.mutasi.keluar)}`} <span className="text-xs font-normal text-slate-500">Kg</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                  <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider block">
+                    2. Lembar Kerja BSPP
+                  </span>
+                  <p className="text-slate-500 text-[11px] leading-tight truncate" title="Kertas Kerja BSPP">
+                    {selectedBsppAudit.mutasi.bsppMatch.sumber}
+                  </p>
+                  <div className="pt-2 border-t border-slate-100">
+                    <span className="text-[10px] text-slate-400 block">Deviasi Selisih Timbang</span>
+                    <span className="text-lg font-bold font-mono text-purple-700">
+                      {formatNumber(selectedBsppAudit.mutasi.bsppMatch.selisihKg)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Result Status Banner */}
+              <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                selectedBsppAudit.mutasi.bsppMatch.selisih === 0
+                  ? 'bg-purple-50/80 border-purple-200 text-purple-900'
+                  : 'bg-amber-50/80 border-amber-200 text-amber-900'
+              }`}>
+                <div>
+                  <span className="font-bold text-xs block">
+                    {selectedBsppAudit.mutasi.bsppMatch.selisih === 0
+                      ? '✓ Status: 100% TERVALIDASI (BALANCE)'
+                      : '⚠ Status: DITEMUKAN SELISIH TIMBANG'}
+                  </span>
+                  <p className="text-[11px] mt-0.5 opacity-90">
+                    {selectedBsppAudit.mutasi.bsppMatch.selisih === 0
+                      ? 'Data selisih fisik di persediaan cocok sempurna dengan lembar kerja penimbangan ulang BSPP.'
+                      : 'Terdapat selisih antara data fisik gudang dan lembar kerja BSPP.'}
+                  </p>
+                </div>
+                <div className="text-right shrink-0 pl-3">
+                  <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih Netto</span>
+                  <span className="font-mono font-extrabold text-base">
+                    {selectedBsppAudit.mutasi.bsppMatch.selisih > 0 ? '+' : ''}
+                    {formatNumber(selectedBsppAudit.mutasi.bsppMatch.selisih)} Kg
+                  </span>
+                </div>
+              </div>
+
+              {/* Reference Info */}
+              <div className="text-[10.5px] text-slate-400 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
+                <span className="font-medium text-slate-600 block mb-0.5">Spreadsheet Acuan Kertas Kerja:</span>
+                <span className="font-mono text-[10px] text-slate-500 break-all">ID: 1SQO6MMyCX9WRlT8Nk-cpu1in7UbkY90uPPVX2P5F_IA &amp; 1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA</span>
+                <span className="block text-slate-500 mt-0.5">Modul Acuan: <strong>Bukti Selisih Persediaan (BSPP)</strong> — Penimbangan Ulang Shift</span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedBsppAudit(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 Tutup

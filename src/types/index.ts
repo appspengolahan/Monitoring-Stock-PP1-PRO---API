@@ -71,6 +71,13 @@ export interface MutasiItem {
     selisih: number;
     sumber: string;
   };
+  bsppMatch?: {
+    matched: boolean;
+    selisihKg: number;
+    selisih: number;
+    sumber: string;
+    status?: string;
+  };
 }
 
 export interface DHPEntry {

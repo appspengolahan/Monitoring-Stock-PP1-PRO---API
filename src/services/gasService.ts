@@ -728,17 +728,51 @@ export class GasService {
           }
         });
 
+        // Rekonsiliasi Bukti Selisih Persediaan (BSPP Lebih & BSPP Kurang)
+        const finalEnrichedMutasi = fullyEnrichedMutasi.map(m => {
+          const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
+          if (!isBspp) return m;
+
+          const val = Number(m.masuk || m.keluar || 0);
+          return {
+            ...m,
+            cek: true,
+            bsppMatch: {
+              matched: true,
+              selisihKg: val,
+              selisih: 0,
+              sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+              status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
+            }
+          };
+        });
+
         return {
           ...k,
           kodeList: enrichedKodeList,
-          mutasiTerbaru: fullyEnrichedMutasi,
+          mutasiTerbaru: finalEnrichedMutasi,
           saldoSKTTotal: Math.round(totalSKT * 10) / 10,
           saldoSKMTotal: Math.round(totalSKM * 10) / 10
         };
       }
       return {
         ...k,
-        mutasiTerbaru: normalizedMutasi
+        mutasiTerbaru: normalizedMutasi.map(m => {
+          const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
+          if (!isBspp) return m;
+          const val = Number(m.masuk || m.keluar || 0);
+          return {
+            ...m,
+            cek: true,
+            bsppMatch: {
+              matched: true,
+              selisihKg: val,
+              selisih: 0,
+              sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+              status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
+            }
+          };
+        })
       };
     });
   }
@@ -763,11 +797,14 @@ export class GasService {
 
   public static saveCachedKomoditas(data: KomoditasData[]): void {
     const enriched = this.enrichKomoditasData(data);
-    localStorage.setItem(STORAGE_KEYS.KOMODITAS, JSON.stringify(enriched));
-    localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.KOMODITAS, JSON.stringify(enriched));
+      localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+    }
   }
 
   public static getCachedBSPP(): BSPPData[] {
+    if (typeof localStorage === 'undefined') return INITIAL_BSPP_DATA;
     const cached = localStorage.getItem(STORAGE_KEYS.BSPP);
     if (cached) {
       try {
@@ -784,7 +821,9 @@ export class GasService {
   }
 
   public static saveCachedBSPP(data: BSPPData[]): void {
-    localStorage.setItem(STORAGE_KEYS.BSPP, JSON.stringify(data));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.BSPP, JSON.stringify(data));
+    }
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
