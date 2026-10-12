@@ -112,10 +112,22 @@ export interface PengirimanBlendEntry {
   sumber: string;
 }
 
+export interface CengkehDryerEntry {
+  tanggal: string | null;
+  partai: string;
+  nama: string;
+  timbangUlangBasahKg: number;
+  hasilDryerKg: number;
+  susutKg: number;
+  susutPersen: string;
+  sumber: string;
+}
+
 export interface ReconciliationDisplayConfig {
   showDhpSummary: boolean;
   showSetoranSummary: boolean;
   showPengirimanBlendSummary?: boolean;
+  showCengkehDryerSummary?: boolean;
 }
 
 export interface KomoditasData {

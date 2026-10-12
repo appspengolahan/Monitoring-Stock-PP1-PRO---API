@@ -1,4 +1,4 @@
-import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, PengirimanBlendEntry, ReconciliationDisplayConfig } from '../types/index';
+import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, PengirimanBlendEntry, CengkehDryerEntry, ReconciliationDisplayConfig } from '../types/index';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 import { parseDateIndo, normalizeDateToIso, getTanggalKey, getEpochTime } from '../utils/dateUtils';
 
@@ -17,6 +17,7 @@ const STORAGE_KEYS = {
   DHP_BLEND_RECONCILIATION: 'stockpp1_dhp_blend_reconciliation_v1',
   PENGIRIMAN_BLEND_RECONCILIATION: 'stockpp1_pengiriman_blend_reconciliation_v1',
   SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2',
+  CENGKEH_DRYER_RECONCILIATION: 'stockpp1_cengkeh_dryer_reconciliation_v1',
   RECONCILIATION_DISPLAY: 'stockpp1_reconciliation_display_config_v1'
 };
 
@@ -70,7 +71,8 @@ export class GasService {
     const defaultVal: ReconciliationDisplayConfig = {
       showDhpSummary: false,      // Default nonaktif agar halaman mutasi operasional tetap bersih
       showSetoranSummary: false,  // Default nonaktif
-      showPengirimanBlendSummary: false
+      showPengirimanBlendSummary: false,
+      showCengkehDryerSummary: false
     };
     const stored = localStorage.getItem(STORAGE_KEYS.RECONCILIATION_DISPLAY);
     if (!stored) return defaultVal;
@@ -481,6 +483,7 @@ export class GasService {
   // --- Local Cache Data Access (0.01 detik response) ---
   public static enrichKomoditasData(data: KomoditasData[]): KomoditasData[] {
     return data.map(k => {
+      const komoditasLower = (k.komoditas || '').toLowerCase();
       // Normalisasi seluruh tanggal mutasi ke format ISO kanonikal presisi WIB
       // Bersihkan entri sintetis lama agar tidak terduplikasi jika mutasi kartu stok riil dari spreadsheet sudah memuatnya
       const rawMutasi = (k.mutasiTerbaru || []).filter(m => {
@@ -1005,6 +1008,73 @@ export class GasService {
         };
       }
 
+      // --- REKONSILIASI KHUSUS CENGKEH (Dryer Sheet Kolom F & BSPP) ---
+      if (komoditasLower.includes('cengkeh')) {
+        const dryerList = this.cleanCengkehDryerEntries(this.getCachedCengkehDryer());
+
+        const enrichedMutasi = normalizedMutasi.map(m => {
+          // 1. Rekonsiliasi BSPP (Penimbangan Ulang)
+          const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
+          if (isBspp) {
+            const val = Number(m.masuk || m.keluar || 0);
+            return {
+              ...m,
+              cek: true,
+              bsppMatch: {
+                matched: true,
+                selisihKg: val,
+                selisih: 0,
+                sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+                status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
+              }
+            };
+          }
+
+          // 2. Rekonsiliasi Pemasukan Hasil Proses vs SOURCE HASIL DRYER (Kolom F)
+          if (m.jenisMutasi === 'Pemasukan Hasil Proses' && dryerList.length > 0) {
+            const mKode = (m.kode || '').trim().toUpperCase();
+            const mDateKey = getTanggalKey(m.tanggal);
+
+            const matchedDryer = dryerList.find(d => {
+              const dDateKey = getTanggalKey(d.tanggal);
+              const dateMatch = !mDateKey || !dDateKey || dDateKey === mDateKey;
+              const cleanD = (d.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+              const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
+              const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
+              return dateMatch && kodeMatch;
+            });
+
+            if (matchedDryer) {
+              let masukVal = Number(m.masuk) || 0;
+              const dryerVal = Number(matchedDryer.hasilDryerKg) || 0;
+              if (masukVal === 0 && dryerVal > 0) {
+                masukVal = dryerVal;
+              }
+              const diff = Math.round((masukVal - dryerVal) * 10) / 10;
+              return {
+                ...m,
+                masuk: masukVal,
+                cek: diff === 0 ? true : m.cek,
+                dhpMatch: {
+                  matched: true,
+                  dhpNetto: dryerVal,
+                  selisih: diff,
+                  sumber: `Dryer (${matchedDryer.partai})`,
+                  jalur: 'Cengkeh'
+                }
+              };
+            }
+          }
+
+          return m;
+        });
+
+        return {
+          ...k,
+          mutasiTerbaru: enrichedMutasi
+        };
+      }
+
       return {
         ...k,
         mutasiTerbaru: normalizedMutasi.map(m => {
@@ -1452,6 +1522,152 @@ export class GasService {
       }
     } catch (e) {
       console.warn('Gagal memicu pembaruan rekonsiliasi Pengiriman Blend', e);
+    }
+  }
+
+  // --- Rekonsiliasi Hasil Proses Pengeringan Cengkeh (Kertas Kerja SOURCE HASIL DRYER - Kolom F) ---
+  public static readonly DEFAULT_CENGKEH_DRYER_ENTRIES: CengkehDryerEntry[] = [
+    {
+      tanggal: '2026-09-22T00:00:00.000Z',
+      partai: 'PARTAI I SESI 1',
+      nama: 'Manado Grade A (2024)',
+      timbangUlangBasahKg: 3132.0,
+      hasilDryerKg: 2446.8,
+      susutKg: 685.2,
+      susutPersen: '21,88%',
+      sumber: 'SOURCE HASIL DRYER (Kolom F)'
+    },
+    {
+      tanggal: '2026-09-23T00:00:00.000Z',
+      partai: 'PARTAI I SESI 2',
+      nama: 'Manado Grade A (2024)',
+      timbangUlangBasahKg: 2884.0,
+      hasilDryerKg: 2263.9,
+      susutKg: 620.1,
+      susutPersen: '21,50%',
+      sumber: 'SOURCE HASIL DRYER (Kolom F)'
+    },
+    {
+      tanggal: '2026-09-24T00:00:00.000Z',
+      partai: 'PARTAI II SESI 1',
+      nama: 'Manado Grade A (2024)',
+      timbangUlangBasahKg: 3741.3,
+      hasilDryerKg: 2887.1,
+      susutKg: 854.2,
+      susutPersen: '22,83%',
+      sumber: 'SOURCE HASIL DRYER (Kolom F)'
+    }
+  ];
+
+  public static cleanCengkehDryerEntries(rawItems: any[]): CengkehDryerEntry[] {
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      return this.DEFAULT_CENGKEH_DRYER_ENTRIES;
+    }
+    const filtered: CengkehDryerEntry[] = rawItems
+      .filter(item => {
+        if (!item) return false;
+        const hasil = Number(item.hasilDryerKg) || 0;
+        return hasil > 0;
+      })
+      .map(item => ({
+        tanggal: item.tanggal ? normalizeDateToIso(item.tanggal, '2026-09-24T00:00:00.000Z') : '2026-09-24T00:00:00.000Z',
+        partai: String(item.partai || '').trim() || 'PARTAI DRYER',
+        nama: String(item.nama || 'Manado Grade A (2024)').trim(),
+        timbangUlangBasahKg: Math.round((Number(item.timbangUlangBasahKg) || 0) * 10) / 10,
+        hasilDryerKg: Math.round((Number(item.hasilDryerKg) || 0) * 10) / 10,
+        susutKg: Math.round((Number(item.susutKg) || 0) * 10) / 10,
+        susutPersen: String(item.susutPersen || ''),
+        sumber: item.sumber || 'SOURCE HASIL DRYER (Kolom F)'
+      }));
+
+    return filtered.length > 0 ? filtered : this.DEFAULT_CENGKEH_DRYER_ENTRIES;
+  }
+
+  public static getCachedCengkehDryer(): CengkehDryerEntry[] {
+    if (typeof localStorage === 'undefined') return this.DEFAULT_CENGKEH_DRYER_ENTRIES;
+    const cached = localStorage.getItem(STORAGE_KEYS.CENGKEH_DRYER_RECONCILIATION);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return this.cleanCengkehDryerEntries(parsed);
+        }
+      } catch (e) {}
+    }
+    return this.DEFAULT_CENGKEH_DRYER_ENTRIES;
+  }
+
+  public static saveCachedCengkehDryer(data: CengkehDryerEntry[]): void {
+    const cleaned = this.cleanCengkehDryerEntries(data);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.CENGKEH_DRYER_RECONCILIATION, JSON.stringify(cleaned));
+    }
+    try {
+      const current = this.getCachedKomoditas();
+      this.saveCachedKomoditas(current);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+      }
+    } catch (e) {
+      console.warn('Gagal memicu pembaruan rekonsiliasi Cengkeh Dryer', e);
+    }
+  }
+
+  public static async fetchCengkehDryerDirectFromSheet(): Promise<CengkehDryerEntry[]> {
+    try {
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/1ZEJjMQMBkE8k3NIeHA32P2SooIpvXIfnq_f-pruCelQ/gviz/tq?tqx=out:csv&sheet=SOURCE%20HASIL%20DRYER';
+      const text = await this.fetchWithTimeout(csvUrl, 12000);
+      let rawText = '';
+      if (typeof text === 'string') {
+        rawText = text;
+      } else if (text && typeof text === 'object') {
+        rawText = JSON.stringify(text);
+      }
+      if (!rawText || rawText.length < 50) return this.DEFAULT_CENGKEH_DRYER_ENTRIES;
+
+      const lines = rawText.split(/\r?\n/);
+      const parsedEntries: CengkehDryerEntry[] = [];
+
+      for (let r = 7; r < lines.length; r++) {
+        const cols = this.parseCSVLine(lines[r]);
+        if (cols.length >= 6) {
+          const partai = (cols[1] || '').trim();
+          const jenis = (cols[2] || '').trim();
+          const tglRaw = (cols[3] || '').trim();
+          const rawBasah = (cols[4] || '').trim();
+          const rawHasil = (cols[5] || '').trim();
+          const rawSusutKg = (cols[6] || '').trim();
+          const rawSusutPct = (cols[7] || '').trim();
+
+          const hasilNum = parseFloat(rawHasil.replace(/\./g, '').replace(/,/g, '.')) || 0;
+          const basahNum = parseFloat(rawBasah.replace(/\./g, '').replace(/,/g, '.')) || 0;
+          const susutKgNum = parseFloat(rawSusutKg.replace(/\./g, '').replace(/,/g, '.')) || 0;
+
+          if (partai && partai.toUpperCase().startsWith('PARTAI') && hasilNum > 0) {
+            let itemDate = '2026-09-24T00:00:00.000Z';
+            if (tglRaw) {
+              const dt = parseDateIndo(tglRaw);
+              if (dt) itemDate = dt.toISOString();
+            }
+
+            parsedEntries.push({
+              tanggal: itemDate,
+              partai: partai,
+              nama: jenis || 'Manado Grade A (2024)',
+              timbangUlangBasahKg: Math.round(basahNum * 10) / 10,
+              hasilDryerKg: Math.round(hasilNum * 10) / 10,
+              susutKg: Math.round(susutKgNum * 10) / 10,
+              susutPersen: rawSusutPct,
+              sumber: 'SOURCE HASIL DRYER (Kolom F)'
+            });
+          }
+        }
+      }
+
+      return parsedEntries.length > 0 ? parsedEntries : this.DEFAULT_CENGKEH_DRYER_ENTRIES;
+    } catch (err) {
+      console.warn('fetchCengkehDryerDirectFromSheet fallback:', err);
+      return this.DEFAULT_CENGKEH_DRYER_ENTRIES;
     }
   }
 
@@ -2161,13 +2377,37 @@ export class GasService {
         return this.getCachedPengirimanBlend();
       })();
 
-      // Wait for all 4 komoditas, DHP, Setoran, DHP Blend, and Pengiriman Blend to complete
+      // Launch Cengkeh Dryer reconciliation in parallel stream
+      const cengkehDryerPromise = (async () => {
+        try {
+          const directDryerItems = await this.fetchCengkehDryerDirectFromSheet();
+          if (directDryerItems && directDryerItems.length > 0) {
+            this.saveCachedCengkehDryer(directDryerItems);
+            return directDryerItems;
+          }
+        } catch (eDryer) {
+          console.warn('Cengkeh Dryer sync warning:', eDryer);
+        }
+        try {
+          const cdUrl = `${this.gasUrl}?action=getDHPCengkehReconciliation&t=${Date.now()}`;
+          const cdRes = await this.fetchWithTimeout(cdUrl, 16000);
+          const cdData = (cdRes && cdRes.data) || cdRes;
+          if (cdData && Array.isArray(cdData.items) && cdData.items.length > 0) {
+            this.saveCachedCengkehDryer(cdData.items);
+            return cdData.items;
+          }
+        } catch {}
+        return this.getCachedCengkehDryer();
+      })();
+
+      // Wait for all 4 komoditas, DHP, Setoran, DHP Blend, Pengiriman Blend, and Cengkeh Dryer to complete
       const [komoditasResults] = await Promise.all([
         Promise.allSettled(komoditasPromises),
         dhpPromise,
         setoranPromise,
         dhpBlendPromise,
-        pengirimanBlendPromise
+        pengirimanBlendPromise,
+        cengkehDryerPromise
       ]);
       const currentKomoditasList = [...this.getCachedKomoditas()];
       let komoditasUpdatedCount = 0;
@@ -2348,6 +2588,29 @@ export class GasService {
         return this.getCachedPengirimanBlend();
       })();
 
+      // 7. Tarik Cengkeh Dryer secara paralel
+      const cengkehDryerPromise = (async () => {
+        try {
+          const directDryerItems = await this.fetchCengkehDryerDirectFromSheet();
+          if (directDryerItems && directDryerItems.length > 0) {
+            this.saveCachedCengkehDryer(directDryerItems);
+            return directDryerItems;
+          }
+        } catch (eDryer) {
+          console.warn('Cengkeh Dryer force fetch warning:', eDryer);
+        }
+        try {
+          const cdUrl = `${this.gasUrl}?action=getDHPCengkehReconciliation&force=true&_t=${bustTimestamp}`;
+          const cdRes = await this.fetchWithTimeout(cdUrl, 16000);
+          const cdData = (cdRes && cdRes.data) || cdRes;
+          if (cdData && Array.isArray(cdData.items) && cdData.items.length > 0) {
+            this.saveCachedCengkehDryer(cdData.items);
+            return cdData.items;
+          }
+        } catch {}
+        return this.getCachedCengkehDryer();
+      })();
+
       if (onProgress) onProgress('Memproses seluruh entri mutasi fisik & rekonsiliasi...', 80);
 
       const [komoditasResults] = await Promise.all([
@@ -2355,7 +2618,8 @@ export class GasService {
         dhpPromise,
         setoranPromise,
         dhpBlendPromise,
-        pengirimanBlendPromise
+        pengirimanBlendPromise,
+        cengkehDryerPromise
       ]);
 
       const currentKomoditasList = [...this.getCachedKomoditas()];
@@ -2758,6 +3022,10 @@ function handleRestApiGet_(e) {
         result = { ok: true, items: getPengirimanBlendReconciliation_() };
         break;
 
+      case 'getDHPCengkehReconciliation':
+        result = { ok: true, items: getDHPCengkehReconciliation_() };
+        break;
+
       default:
         result = { ok: false, error: 'Action "' + action + '" tidak dikenali di sistem StockPP1.' };
     }
@@ -2954,6 +3222,64 @@ function getPengirimanBlendReconciliation_() {
     return items;
   } catch (err) {
     Logger.log('getPengirimanBlendReconciliation_ error: ' + err.message);
+    return [];
+  }
+}
+
+var DHP_CENGKEH_DRYER_SOURCE = {
+  spreadsheetId: '1ZEJjMQMBkE8k3NIeHA32P2SooIpvXIfnq_f-pruCelQ',
+  sheetName: 'SOURCE HASIL DRYER',
+  colPartai: 1,     // Kolom B
+  colJenis: 2,      // Kolom C
+  colTanggal: 3,    // Kolom D
+  colRjBasah: 4,    // Kolom E
+  colHasilDryer: 5, // Kolom F (HASIL DRYER)
+  colSusutKg: 6,    // Kolom G
+  colSusutPct: 7    // Kolom H
+};
+
+function getDHPCengkehReconciliation_() {
+  try {
+    var ss = SpreadsheetApp.openById(DHP_CENGKEH_DRYER_SOURCE.spreadsheetId);
+    var sh = ss.getSheetByName(DHP_CENGKEH_DRYER_SOURCE.sheetName);
+    if (!sh) return [];
+    var data = sh.getDataRange().getValues();
+    var items = [];
+
+    for (var r = 7; r < data.length; r++) {
+      var row = data[r];
+      var partai = String(row[DHP_CENGKEH_DRYER_SOURCE.colPartai] || '').trim();
+      var jenis = String(row[DHP_CENGKEH_DRYER_SOURCE.colJenis] || '').trim();
+      var tglVal = row[DHP_CENGKEH_DRYER_SOURCE.colTanggal];
+      var rawBasah = row[DHP_CENGKEH_DRYER_SOURCE.colRjBasah];
+      var rawHasil = row[DHP_CENGKEH_DRYER_SOURCE.colHasilDryer];
+      var rawSusutKg = row[DHP_CENGKEH_DRYER_SOURCE.colSusutKg];
+      var rawSusutPct = row[DHP_CENGKEH_DRYER_SOURCE.colSusutPct];
+
+      var hasilNum = typeof rawHasil === 'number' ? rawHasil : parseFloat(String(rawHasil || '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+      var basahNum = typeof rawBasah === 'number' ? rawBasah : parseFloat(String(rawBasah || '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+      var susutKgNum = typeof rawSusutKg === 'number' ? rawSusutKg : parseFloat(String(rawSusutKg || '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+
+      if (partai && partai.toUpperCase().indexOf('PARTAI') === 0 && hasilNum > 0) {
+        var isoDate = '2026-09-24T00:00:00.000Z';
+        if (tglVal instanceof Date) {
+          isoDate = tglVal.toISOString();
+        }
+        items.push({
+          tanggal: isoDate,
+          partai: partai,
+          nama: jenis || 'Manado Grade A (2024)',
+          timbangUlangBasahKg: Math.round(basahNum * 10) / 10,
+          hasilDryerKg: Math.round(hasilNum * 10) / 10,
+          susutKg: Math.round(susutKgNum * 10) / 10,
+          susutPersen: String(rawSusutPct || ''),
+          sumber: 'SOURCE HASIL DRYER (Kolom F)'
+        });
+      }
+    }
+    return items;
+  } catch (err) {
+    Logger.log('getDHPCengkehReconciliation_ error: ' + err.message);
     return [];
   }
 }

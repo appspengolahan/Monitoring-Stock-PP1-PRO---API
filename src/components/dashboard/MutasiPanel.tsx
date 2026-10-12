@@ -616,6 +616,30 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     return getLatestDateString(pengirimanBlendReconciliationEntries.map(e => ({ tanggal: e.mutasi.tanggal }))) || '2026-10-15';
   }, [pengirimanBlendReconciliationEntries]);
 
+  // Rekonsiliasi Hasil Pengeringan Cengkeh (Kertas Kerja SOURCE HASIL DRYER - Kolom F)
+  const cengkehDryerReconciliationEntries = useMemo(() => {
+    return allMutasi.filter(e => {
+      const isCengkeh = e.komoditas.toLowerCase().includes('cengkeh');
+      return isCengkeh && (e.mutasi.jenisMutasi === 'Pemasukan Hasil Proses' || !!e.mutasi.dhpMatch);
+    });
+  }, [allMutasi]);
+
+  const totalCengkehDryerNettoKg = useMemo(() => {
+    return cengkehDryerReconciliationEntries.reduce((acc, curr) => acc + (curr.mutasi.dhpMatch?.dhpNetto || curr.mutasi.masuk || 0), 0);
+  }, [cengkehDryerReconciliationEntries]);
+
+  const totalFisikCengkehMasukKg = useMemo(() => {
+    return cengkehDryerReconciliationEntries.reduce((acc, curr) => acc + (curr.mutasi.masuk || 0), 0);
+  }, [cengkehDryerReconciliationEntries]);
+
+  const totalCengkehDryerSelisihKg = useMemo(() => {
+    return Math.round((totalFisikCengkehMasukKg - totalCengkehDryerNettoKg) * 10) / 10;
+  }, [totalFisikCengkehMasukKg, totalCengkehDryerNettoKg]);
+
+  const latestCengkehDryerTanggal = useMemo(() => {
+    return getLatestDateString(cengkehDryerReconciliationEntries.map(e => ({ tanggal: e.mutasi.tanggal }))) || '2026-09-24';
+  }, [cengkehDryerReconciliationEntries]);
+
   const formatNumber = (num: number): string => {
     return Number(num).toLocaleString('id-ID', {
       minimumFractionDigits: 1,
@@ -1700,7 +1724,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                               title={`Auto-Check: Identik 100% dengan ${m.dhpMatch.sumber} (${formatNumber(m.dhpMatch.dhpNetto)} Kg). Klik untuk lihat audit.`}
                             >
                               <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
-                              <span>Match DHP</span>
+                              <span>{e.komoditas.toLowerCase().includes('cengkeh') ? 'Match Dryer' : 'Match DHP'}</span>
                             </button>
                           ) : (
                             <button
