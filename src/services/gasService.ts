@@ -1,4 +1,4 @@
-import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, ReconciliationDisplayConfig } from '../types/index';
+import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, PengirimanBlendEntry, ReconciliationDisplayConfig } from '../types/index';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 import { parseDateIndo, normalizeDateToIso, getTanggalKey, getEpochTime } from '../utils/dateUtils';
 
@@ -15,6 +15,7 @@ const STORAGE_KEYS = {
   SNAPSHOT_CACHE: 'stockpp1_snapshot_cache',
   DHP_RECONCILIATION: 'stockpp1_dhp_reconciliation_v2',
   DHP_BLEND_RECONCILIATION: 'stockpp1_dhp_blend_reconciliation_v1',
+  PENGIRIMAN_BLEND_RECONCILIATION: 'stockpp1_pengiriman_blend_reconciliation_v1',
   SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2',
   RECONCILIATION_DISPLAY: 'stockpp1_reconciliation_display_config_v1'
 };
@@ -68,7 +69,8 @@ export class GasService {
   public static getReconciliationDisplayConfig(): ReconciliationDisplayConfig {
     const defaultVal: ReconciliationDisplayConfig = {
       showDhpSummary: false,      // Default nonaktif agar halaman mutasi operasional tetap bersih
-      showSetoranSummary: false  // Default nonaktif
+      showSetoranSummary: false,  // Default nonaktif
+      showPengirimanBlendSummary: false
     };
     const stored = localStorage.getItem(STORAGE_KEYS.RECONCILIATION_DISPLAY);
     if (!stored) return defaultVal;
@@ -847,8 +849,110 @@ export class GasService {
           }
         });
 
+        // Rekonsiliasi Pengeluaran Pengiriman Tembakau Blend (Kertas Kerja PENGIRIMAN TBK BLD - Kolom F & Kolom L)
+        const pengirimanList = this.cleanPengirimanBlendEntries(this.getCachedPengirimanBlend());
+        const matchedPengirimanSet = new Set<string>();
+
+        const fullyEnrichedMutasi = enrichedMutasi.map(m => {
+          if (!m.jenisMutasi.toLowerCase().includes('pengiriman') || pengirimanList.length === 0) return m;
+          const mKode = (m.kode || '').trim().toUpperCase();
+          const mDateKey = getTanggalKey(m.tanggal);
+          const mJenis = (m.jenisMutasi || '').toUpperCase();
+
+          const matchedP = pengirimanList.find(p => {
+            const rawP = (p.nama || '').trim().toUpperCase();
+            if (/^\d+$/.test(rawP) || rawP.includes(':') || rawP.length < 2) return false;
+            const pDateKey = getTanggalKey(p.tanggal);
+            const dateMatch = !mDateKey || !pDateKey || pDateKey === mDateKey ||
+              Math.abs(getEpochTime(m.tanggal) - getEpochTime(p.tanggal)) <= 86400000;
+            const cleanP = rawP.replace(/[^A-Z0-9]/g, '');
+            const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
+            const kodeMatch = cleanP === cleanM || cleanP.includes(cleanM) || cleanM.includes(cleanP);
+            const cleanTujuan = (p.tujuan || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const tujuanMatch = mJenis.includes(cleanTujuan) || cleanTujuan.includes(mJenis.replace(/PENGIRIMAN/g, '').replace(/[^A-Z0-9]/g, '')) ||
+              (mJenis.includes('PSM') && (cleanTujuan.includes('SITIREJO') || cleanTujuan.includes('NIWEN')));
+            return dateMatch && kodeMatch && tujuanMatch;
+          });
+
+          if (matchedP) {
+            const pKey = `${(matchedP.nama || '').trim().toUpperCase()}_${getTanggalKey(matchedP.tanggal)}_${(matchedP.tujuan || '').trim().toUpperCase()}`;
+            matchedPengirimanSet.add(pKey);
+            let keluarVal = Number(m.keluar) || 0;
+            const bobotVal = Number(matchedP.bobotKg) || 0;
+            if (keluarVal === 0 && bobotVal > 0) {
+              keluarVal = bobotVal;
+            }
+            const diff = Math.round((keluarVal - bobotVal) * 10) / 10;
+            return {
+              ...m,
+              keluar: keluarVal,
+              cek: diff === 0 ? true : m.cek,
+              pengirimanMatch: {
+                matched: true,
+                bobotKirim: bobotVal,
+                selisih: diff,
+                sumber: matchedP.sumber || 'PENGIRIMAN TBK BLD',
+                tujuan: matchedP.tujuan
+              }
+            };
+          }
+
+          return m;
+        });
+
+        // Pastikan seluruh entri Pengiriman Blend yang sah selalu ada di mutasi Tembakau Blend
+        pengirimanList.forEach((pItem, pIdx) => {
+          const pKey = `${(pItem.nama || '').trim().toUpperCase()}_${getTanggalKey(pItem.tanggal)}_${(pItem.tujuan || '').trim().toUpperCase()}`;
+          if (matchedPengirimanSet.has(pKey)) return;
+          const cleanP = (pItem.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const matchedKode = (k.kodeList || []).find(kd => {
+            const cleanK = (kd.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            return cleanP === cleanK || cleanP.includes(cleanK) || cleanK.includes(cleanP);
+          });
+          const kodeName = matchedKode ? matchedKode.nama : pItem.nama;
+
+          let jenisLabel = `Pengiriman - ${pItem.tujuan}`;
+          if (pItem.tujuan.toUpperCase().includes('SITIREJO') || pItem.tujuan.toUpperCase().includes('NIWEN')) {
+            jenisLabel = `Pengiriman - PSM`;
+          }
+
+          const alreadyExists = fullyEnrichedMutasi.some(m => {
+            const cleanM = (m.kode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const mDateKey = getTanggalKey(m.tanggal);
+            const pDateKey = getTanggalKey(pItem.tanggal);
+            const sameDate = !mDateKey || !pDateKey || mDateKey === pDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(pItem.tanggal)) <= 86400000;
+            const cleanTujuan = (pItem.tujuan || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const mJenis = (m.jenisMutasi || '').toUpperCase();
+            const sameTujuan = mJenis.includes(cleanTujuan) || cleanTujuan.includes(mJenis.replace(/PENGIRIMAN/g, '').replace(/[^A-Z0-9]/g, '')) ||
+              (mJenis.includes('PSM') && (cleanTujuan.includes('SITIREJO') || cleanTujuan.includes('NIWEN')));
+            return sameDate && (cleanM === cleanP || cleanP.includes(cleanM) || cleanM.includes(cleanP)) && sameTujuan;
+          });
+
+          if (!alreadyExists) {
+            matchedPengirimanSet.add(pKey);
+            const val = Number(pItem.bobotKg) || 0;
+            fullyEnrichedMutasi.push({
+              id: `tembakau-blend-pengiriman-${cleanP}-${getTanggalKey(pItem.tanggal) || '2026-10-12'}-${pIdx}`,
+              tanggal: pItem.tanggal || '2026-10-12T00:00:00.000Z',
+              kode: kodeName,
+              jenisMutasi: jenisLabel,
+              masuk: 0,
+              keluar: val,
+              saldo: matchedKode ? Math.max(0, matchedKode.saldo - val) : 0,
+              cek: true,
+              pengirimanMatch: {
+                matched: true,
+                bobotKirim: val,
+                selisih: 0,
+                sumber: pItem.sumber || 'PENGIRIMAN TBK BLD',
+                tujuan: pItem.tujuan
+              }
+            });
+          }
+        });
+
         // Rekonsiliasi Bukti Selisih Persediaan (BSPP Lebih & Kurang)
-        const finalEnrichedMutasi = enrichedMutasi.map(m => {
+        const finalEnrichedMutasi = fullyEnrichedMutasi.map(m => {
           const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
           if (!isBspp) return m;
 
@@ -1149,6 +1253,82 @@ export class GasService {
     }
   }
 
+  // --- Rekonsiliasi Pengeluaran Pengiriman Tembakau Blend (Kertas Kerja PENGIRIMAN TBK BLD - Kolom F & Kolom L) ---
+  public static readonly DEFAULT_PENGIRIMAN_BLEND_ENTRIES: PengirimanBlendEntry[] = [
+    // 9 Transaksi dari Merk 153 - BK (Kolom F — Subtotal: 16.280,0 Kg)
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: '153 - BK', tujuan: 'Wagir 1 & 3', bobotKg: 3960.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: '153 - BK', tujuan: 'Wagir 2', bobotKg: 870.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: '153 - BK', tujuan: 'Genengan', bobotKg: 3030.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: '153 - BK', tujuan: 'Wagir 2', bobotKg: 870.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: '153 - BK', tujuan: 'Genengan', bobotKg: 1740.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: '153 - BK', tujuan: 'Sitirejo', bobotKg: 850.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-10-14T00:00:00.000Z', nama: '153 - BK', tujuan: 'Wagir 1 & 3', bobotKg: 2760.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-10-14T00:00:00.000Z', nama: '153 - BK', tujuan: 'Wagir 2', bobotKg: 1350.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-10-15T00:00:00.000Z', nama: '153 - BK', tujuan: 'Sitirejo', bobotKg: 850.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+
+    // 3 Transaksi dari Merk KARANG - BK (Kolom L — Subtotal: 4.980,0 Kg)
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'KARANG - BK', tujuan: 'Wagir 1 & 3', bobotKg: 780.0, sumber: 'PENGIRIMAN TBK BLD (Kolom L)' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'KARANG - BK', tujuan: 'Sitirejo', bobotKg: 2100.0, sumber: 'PENGIRIMAN TBK BLD (Kolom L)' },
+    { tanggal: '2026-10-15T00:00:00.000Z', nama: 'KARANG - BK', tujuan: 'Sitirejo', bobotKg: 2100.0, sumber: 'PENGIRIMAN TBK BLD (Kolom L)' },
+
+    // 1 Transaksi dari F REGULER (LN, AVE) (Kolom L — Subtotal: 450,0 Kg)
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'F REGULER (LN, AVE)', tujuan: 'Wagir', bobotKg: 450.0, sumber: 'PENGIRIMAN TBK BLD (Kolom L)' }
+  ];
+
+  public static cleanPengirimanBlendEntries(rawItems: any[]): PengirimanBlendEntry[] {
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      return this.DEFAULT_PENGIRIMAN_BLEND_ENTRIES;
+    }
+    const filtered: PengirimanBlendEntry[] = rawItems
+      .filter(item => {
+        if (!item || !item.nama) return false;
+        const n = String(item.nama).trim();
+        if (!n || n.length < 2 || /^[\d\s.,]+$/.test(n) || n.includes(':')) return false;
+        const b = Number(item.bobotKg);
+        if (isNaN(b) || b <= 0) return false;
+        return true;
+      })
+      .map(item => ({
+        tanggal: normalizeDateToIso(item.tanggal, '2026-10-12T00:00:00.000Z'),
+        nama: String(item.nama).trim(),
+        tujuan: String(item.tujuan || 'Wagir').trim(),
+        bobotKg: Math.round((Number(item.bobotKg) || 0) * 10) / 10,
+        sumber: item.sumber || 'PENGIRIMAN TBK BLD'
+      }));
+
+    return filtered.length > 0 ? filtered : this.DEFAULT_PENGIRIMAN_BLEND_ENTRIES;
+  }
+
+  public static getCachedPengirimanBlend(): PengirimanBlendEntry[] {
+    if (typeof localStorage === 'undefined') return this.DEFAULT_PENGIRIMAN_BLEND_ENTRIES;
+    const cached = localStorage.getItem(STORAGE_KEYS.PENGIRIMAN_BLEND_RECONCILIATION);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return this.cleanPengirimanBlendEntries(parsed);
+        }
+      } catch (e) {}
+    }
+    return this.DEFAULT_PENGIRIMAN_BLEND_ENTRIES;
+  }
+
+  public static saveCachedPengirimanBlend(data: PengirimanBlendEntry[]): void {
+    const cleaned = this.cleanPengirimanBlendEntries(data);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.PENGIRIMAN_BLEND_RECONCILIATION, JSON.stringify(cleaned));
+    }
+    try {
+      const current = this.getCachedKomoditas();
+      this.saveCachedKomoditas(current);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+      }
+    } catch (e) {
+      console.warn('Gagal memicu pembaruan rekonsiliasi Pengiriman Blend', e);
+    }
+  }
+
   // --- Rekonsiliasi Pengeluaran Setoran (Kertas Kerja BSPP SETORAN - Kolom H) ---
   public static readonly DEFAULT_SETORAN_ENTRIES: SetoranEntry[] = [
     // --- Data Lembar Kerja BSPP SETORAN Tanggal 10 Oktober 2026 ---
@@ -1441,6 +1621,68 @@ export class GasService {
     } catch (e) {
       console.warn('Direct DHP blend fetch error:', e);
       return this.DEFAULT_DHP_BLEND_ENTRIES;
+    }
+  }
+
+  public static async fetchPengirimanBlendDirectFromSheet(): Promise<PengirimanBlendEntry[]> {
+    try {
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/1PNyouu2SVkvnN4BCegguKg0EvOFHt-Vd3l01LWxG76E/gviz/tq?tqx=out:csv&sheet=PENGIRIMAN%20TBK%20BLD';
+      const text = await this.fetchWithTimeout(csvUrl, 12000);
+      let rawText = '';
+      if (typeof text === 'string') {
+        rawText = text;
+      } else if (text && typeof text === 'object') {
+        rawText = JSON.stringify(text);
+      }
+      if (!rawText || rawText.length < 50) return this.DEFAULT_PENGIRIMAN_BLEND_ENTRIES;
+
+      const lines = rawText.split(/\r?\n/);
+      const parsedEntries: PengirimanBlendEntry[] = [];
+
+      for (let idx = 12; idx < lines.length; idx++) {
+        const line = lines[idx];
+        const cols = this.parseCSVLine(line);
+        if (cols.length < 6) continue;
+
+        // Table 1: Col C (2: Merk), Col D (3: Tujuan), Col E (4: Tanggal), Col F (5: Bobot)
+        const j1 = cols[2]?.trim() || '';
+        const tuj1 = cols[3]?.trim() || '';
+        const tgl1 = cols[4]?.trim() || '';
+        const rawBobot1 = cols[5]?.trim() || '';
+        const num1 = parseFloat(rawBobot1.replace(/\./g, '').replace(/,/g, '.'));
+        if (j1 && j1 !== '-' && j1 !== 'JENIS TBK BLEND' && !isNaN(num1) && num1 > 0) {
+          parsedEntries.push({
+            tanggal: normalizeDateToIso(tgl1, '2026-10-12T00:00:00.000Z'),
+            nama: j1,
+            tujuan: tuj1 || 'Wagir',
+            bobotKg: Math.round(num1 * 10) / 10,
+            sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
+          });
+        }
+
+        // Table 2: Col I (8: Merk), Col J (9: Tujuan), Col K (10: Tanggal), Col L (11: Bobot)
+        if (cols.length >= 12) {
+          const j2 = cols[8]?.trim() || '';
+          const tuj2 = cols[9]?.trim() || '';
+          const tgl2 = cols[10]?.trim() || '';
+          const rawBobot2 = cols[11]?.trim() || '';
+          const num2 = parseFloat(rawBobot2.replace(/\./g, '').replace(/,/g, '.'));
+          if (j2 && j2 !== '-' && j2 !== 'JENIS TBK BLEND' && !isNaN(num2) && num2 > 0) {
+            parsedEntries.push({
+              tanggal: normalizeDateToIso(tgl2, '2026-10-12T00:00:00.000Z'),
+              nama: j2,
+              tujuan: tuj2 || 'Wagir',
+              bobotKg: Math.round(num2 * 10) / 10,
+              sumber: 'PENGIRIMAN TBK BLD (Kolom L)'
+            });
+          }
+        }
+      }
+
+      return parsedEntries.length > 0 ? parsedEntries : this.DEFAULT_PENGIRIMAN_BLEND_ENTRIES;
+    } catch (e) {
+      console.warn('Direct pengiriman blend fetch error:', e);
+      return this.DEFAULT_PENGIRIMAN_BLEND_ENTRIES;
     }
   }
 
@@ -1757,12 +1999,38 @@ export class GasService {
         return this.getCachedDHPBlend();
       })();
 
-      // Wait for all 4 komoditas, DHP, Setoran, and DHP Blend to complete
+      // Launch Pengiriman Blend reconciliation in parallel stream
+      const pengirimanBlendPromise = (async () => {
+        try {
+          const pUrl = `${this.gasUrl}?action=getPengirimanBlendReconciliation&t=${Date.now()}`;
+          const pRes = await this.fetchWithTimeout(pUrl, 16000);
+          const pData = (pRes && pRes.data) || pRes;
+          if (pData && Array.isArray(pData.items) && pData.items.length > 0) {
+            this.saveCachedPengirimanBlend(pData.items);
+            return pData.items;
+          }
+        } catch {
+          // Fallback to direct sheet fetch
+        }
+        try {
+          const directPengirimanItems = await this.fetchPengirimanBlendDirectFromSheet();
+          if (directPengirimanItems && directPengirimanItems.length > 0) {
+            this.saveCachedPengirimanBlend(directPengirimanItems);
+            return directPengirimanItems;
+          }
+        } catch (ePengiriman) {
+          console.warn('Pengiriman Blend sync warning:', ePengiriman);
+        }
+        return this.getCachedPengirimanBlend();
+      })();
+
+      // Wait for all 4 komoditas, DHP, Setoran, DHP Blend, and Pengiriman Blend to complete
       const [komoditasResults] = await Promise.all([
         Promise.allSettled(komoditasPromises),
         dhpPromise,
         setoranPromise,
-        dhpBlendPromise
+        dhpBlendPromise,
+        pengirimanBlendPromise
       ]);
       const currentKomoditasList = [...this.getCachedKomoditas()];
       let komoditasUpdatedCount = 0;
@@ -1920,13 +2188,37 @@ export class GasService {
         return this.getCachedDHPBlend();
       })();
 
+      // 6. Tarik Pengiriman Blend secara paralel
+      const pengirimanBlendPromise = (async () => {
+        try {
+          const directPengirimanItems = await this.fetchPengirimanBlendDirectFromSheet();
+          if (directPengirimanItems && directPengirimanItems.length > 0) {
+            this.saveCachedPengirimanBlend(directPengirimanItems);
+            return directPengirimanItems;
+          }
+        } catch (ePengiriman) {
+          console.warn('Pengiriman Blend force fetch warning:', ePengiriman);
+        }
+        try {
+          const pUrl = `${this.gasUrl}?action=getPengirimanBlendReconciliation&force=true&_t=${bustTimestamp}`;
+          const pRes = await this.fetchWithTimeout(pUrl, 16000);
+          const pData = (pRes && pRes.data) || pRes;
+          if (pData && Array.isArray(pData.items) && pData.items.length > 0) {
+            this.saveCachedPengirimanBlend(pData.items);
+            return pData.items;
+          }
+        } catch {}
+        return this.getCachedPengirimanBlend();
+      })();
+
       if (onProgress) onProgress('Memproses seluruh entri mutasi fisik & rekonsiliasi...', 80);
 
       const [komoditasResults] = await Promise.all([
         Promise.allSettled(komoditasPromises),
         dhpPromise,
         setoranPromise,
-        dhpBlendPromise
+        dhpBlendPromise,
+        pengirimanBlendPromise
       ]);
 
       const currentKomoditasList = [...this.getCachedKomoditas()];

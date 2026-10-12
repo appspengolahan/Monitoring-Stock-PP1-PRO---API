@@ -79,6 +79,13 @@ export interface MutasiItem {
     sumber: string;
     status?: string;
   };
+  pengirimanMatch?: {
+    matched: boolean;
+    bobotKirim: number;
+    selisih: number;
+    sumber: string;
+    tujuan?: string;
+  };
 }
 
 export interface DHPEntry {
@@ -97,9 +104,18 @@ export interface SetoranEntry {
   sumber: string;
 }
 
+export interface PengirimanBlendEntry {
+  tanggal: string | null;
+  nama: string;
+  tujuan: string;
+  bobotKg: number;
+  sumber: string;
+}
+
 export interface ReconciliationDisplayConfig {
   showDhpSummary: boolean;
   showSetoranSummary: boolean;
+  showPengirimanBlendSummary?: boolean;
 }
 
 export interface KomoditasData {
