@@ -1175,15 +1175,24 @@ export class GasService {
     {
       tanggal: '2026-10-12T00:00:00.000Z',
       nama: '153 - BK',
-      nettoKg: 4350.0,
+      nettoKg: 3493.2,
       jalur: 'Wagir',
       sumber: 'DHP Blend (Kolom I)',
       molenList: [
-        { no: 1, namaMolen: '153 - BK 01', nettoKg: 870.0 },
-        { no: 2, namaMolen: '153 - BK 02', nettoKg: 870.0 },
-        { no: 3, namaMolen: '153 - BK 03', nettoKg: 870.0 },
-        { no: 4, namaMolen: '153 - BK 04', nettoKg: 870.0 },
-        { no: 5, namaMolen: '153 - BK 05', nettoKg: 870.0 }
+        { no: 1, namaMolen: '153 - BK 01', nettoKg: 872.6 },
+        { no: 2, namaMolen: '153 - BK 02', nettoKg: 873.3 },
+        { no: 3, namaMolen: '153 - BK 03', nettoKg: 873.8 },
+        { no: 4, namaMolen: '153 - BK 04', nettoKg: 873.5 }
+      ]
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'FR LN - AVE',
+      nettoKg: 449.3,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: 'FR LN - AVE 01', nettoKg: 449.3 }
       ]
     }
   ];
@@ -1230,6 +1239,12 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // Jika cache lokal masih menyimpan nilai dummy lama 4.350,0 Kg, auto-reset ke data riil 3.493,2 Kg
+          const hasStaleMock = parsed.some(p => p.nama === '153 - BK' && Math.abs((Number(p.nettoKg) || 0) - 4350.0) < 0.1);
+          if (hasStaleMock) {
+            this.saveCachedDHPBlend(this.DEFAULT_DHP_BLEND_ENTRIES);
+            return this.DEFAULT_DHP_BLEND_ENTRIES;
+          }
           return this.cleanDHPBlendEntries(parsed);
         }
       } catch (e) {}
@@ -1580,6 +1595,7 @@ export class GasService {
 
       const lines = rawText.split(/\r?\n/);
       const molenMap: Record<string, { tanggal: string; nama: string; nettoKg: number; jalur: string; sumber: string; molenList: { no: number; namaMolen: string; nettoKg: number }[] }> = {};
+      let startProcessingMolen = false;
 
       for (let idx = 0; idx < lines.length; idx++) {
         const line = lines[idx];
@@ -1590,6 +1606,16 @@ export class GasService {
         const rawMolen = cols[3]?.trim() || '';
         const rawMerk = cols[4]?.trim() || '';
         const rawHasilJadi = cols[8]?.trim() || ''; // Kolom I: Index 8 (DATA KERTAS KERJA PROSES BLEND)
+
+        // Deteksi baris header pembagi data rincian per molen
+        if (rawMolen.toUpperCase() === 'MOLEN' && rawMerk.toUpperCase() === 'MERK') {
+          startProcessingMolen = true;
+          continue;
+        }
+
+        // Hindari membaca baris rekapitulasi atas (idx < 8 atau saat rawMolen identik dengan rawMerk)
+        if (!startProcessingMolen && idx < 8) continue;
+        if (rawMolen === rawMerk) continue;
 
         const cleanNum = rawHasilJadi.replace(/\./g, '').replace(/,/g, '.');
         const nettoVal = parseFloat(cleanNum);
@@ -1606,7 +1632,7 @@ export class GasService {
             };
           }
           molenMap[rawMerk].nettoKg = Math.round((molenMap[rawMerk].nettoKg + nettoVal) * 10) / 10;
-          if (rawMolen && rawMolen !== '-') {
+          if (rawMolen && rawMolen !== '-' && rawMolen.toUpperCase() !== 'MOLEN') {
             molenMap[rawMerk].molenList.push({
               no: molenMap[rawMerk].molenList.length + 1,
               namaMolen: rawMolen,
