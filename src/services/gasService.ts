@@ -2617,6 +2617,10 @@ function handleRestApiGet_(e) {
         result = { ok: true, items: getDHPBlendReconciliation_() };
         break;
 
+      case 'getPengirimanBlendReconciliation':
+        result = { ok: true, items: getPengirimanBlendReconciliation_() };
+        break;
+
       default:
         result = { ok: false, error: 'Action "' + action + '" tidak dikenali di sistem StockPP1.' };
     }
@@ -2757,6 +2761,62 @@ function getDHPBlendReconciliation_() {
     return items;
   } catch (err) {
     Logger.log('getDHPBlendReconciliation_ error: ' + err.message);
+    return [];
+  }
+}
+
+var PENGIRIMAN_BLEND_SOURCE = {
+  spreadsheetId: '1PNyouu2SVkvnN4BCegguKg0EvOFHt-Vd3l01LWxG76E',
+  sheetName: 'PENGIRIMAN TBK BLD'
+};
+
+function getPengirimanBlendReconciliation_() {
+  try {
+    var ss = SpreadsheetApp.openById(PENGIRIMAN_BLEND_SOURCE.spreadsheetId);
+    var sh = ss.getSheetByName(PENGIRIMAN_BLEND_SOURCE.sheetName);
+    if (!sh) return [];
+    var data = sh.getDataRange().getValues();
+    var items = [];
+
+    for (var r = 12; r < data.length; r++) {
+      var row = data[r];
+      // Table 1: Col C (2: Merk), Col D (3: Tujuan), Col E (4: Tanggal), Col F (5: Bobot)
+      var j1 = String(row[2] || '').trim();
+      var tuj1 = String(row[3] || '').trim();
+      var tgl1 = row[4];
+      var rawBobot1 = row[5];
+      var num1 = typeof rawBobot1 === 'number' ? rawBobot1 : parseFloat(String(rawBobot1 || '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+      if (j1 && j1 !== '-' && j1 !== 'JENIS TBK BLEND' && num1 > 0) {
+        items.push({
+          tanggal: tgl1 instanceof Date ? tgl1.toISOString() : '2026-10-12T00:00:00.000Z',
+          nama: j1,
+          tujuan: tuj1 || 'Wagir',
+          bobotKg: Math.round(num1 * 10) / 10,
+          sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
+        });
+      }
+
+      // Table 2: Col I (8: Merk), Col J (9: Tujuan), Col K (10: Tanggal), Col L (11: Bobot)
+      if (row.length >= 12) {
+        var j2 = String(row[8] || '').trim();
+        var tuj2 = String(row[9] || '').trim();
+        var tgl2 = row[10];
+        var rawBobot2 = row[11];
+        var num2 = typeof rawBobot2 === 'number' ? rawBobot2 : parseFloat(String(rawBobot2 || '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+        if (j2 && j2 !== '-' && j2 !== 'JENIS TBK BLEND' && num2 > 0) {
+          items.push({
+            tanggal: tgl2 instanceof Date ? tgl2.toISOString() : '2026-10-12T00:00:00.000Z',
+            nama: j2,
+            tujuan: tuj2 || 'Wagir',
+            bobotKg: Math.round(num2 * 10) / 10,
+            sumber: 'PENGIRIMAN TBK BLD (Kolom L)'
+          });
+        }
+      }
+    }
+    return items;
+  } catch (err) {
+    Logger.log('getPengirimanBlendReconciliation_ error: ' + err.message);
     return [];
   }
 }

@@ -777,16 +777,38 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                   </div>
                 </div>
 
-                {/* 3. Slot Mendatang */}
-                <div className="p-3.5 bg-slate-50/80 border border-dashed border-slate-300 rounded-2xl flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center shrink-0">
-                    <Database className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-xs text-slate-700">Slot Integrasi Rekonsiliasi Baru (Siap Bertambah)</h5>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Data rekonsiliasi berikutnya yang akan ditambahkan akan otomatis terdaftar dan dikontrol visibilitasnya di panel ini.
-                    </p>
+                {/* 3. Pengiriman Tembakau Blend (PENGIRIMAN TBK BLD - Kolom F & Kolom L) */}
+                <div className="p-4 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 transition-all shadow-2xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                          3. Rekonsiliasi Pengeluaran Pengiriman Tembakau Blend
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                          13 Pengiriman (Kolom F &amp; Kolom L)
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Acuan fisik Gudang Persediaan Tembakau Blend vs Kertas Kerja PENGIRIMAN TBK BLD (ID: 1PNyouu2SVkvnN4BCegguKg0EvOFHt-Vd3l01LWxG76E).
+                      </p>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none shrink-0 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={!!reconcileConfig.showPengirimanBlendSummary}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          GasService.setReconciliationDisplayConfig({ showPengirimanBlendSummary: val });
+                          setReconcileConfig(prev => ({ ...prev, showPengirimanBlendSummary: val }));
+                        }}
+                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span className={`text-xs font-bold ${reconcileConfig.showPengirimanBlendSummary ? 'text-emerald-700' : 'text-slate-600'}`}>
+                        {reconcileConfig.showPengirimanBlendSummary ? 'Tampilkan di Mutasi' : 'Disembunyikan (Default)'}
+                      </span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -796,7 +818,7 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    const defaultVal = { showDhpSummary: false, showSetoranSummary: false };
+                    const defaultVal = { showDhpSummary: false, showSetoranSummary: false, showPengirimanBlendSummary: false };
                     GasService.setReconciliationDisplayConfig(defaultVal);
                     setReconcileConfig(defaultVal);
                   }}
