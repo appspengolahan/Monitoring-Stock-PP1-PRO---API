@@ -1077,7 +1077,89 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
-    // 1 Bahan dari DHP Tembakau (Gambar 1)
+    // === DATA 12 OKTOBER 2026 (Live Worksheet DHP Tembakau & DHP Krosok) ===
+    // 7 Bahan dari DHP Tembakau (Senin, 12 Oktober 2026)
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Weleri 2024 (HK)',
+      nettoKg: 803.2,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Sapudi 2024 (GF)',
+      nettoKg: 216.5,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Besuki 2024 (ZN)',
+      nettoKg: 72.0,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Beringin 2024 (HS)',
+      nettoKg: 296.0,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Zimbabwe B1L (2023)',
+      nettoKg: 674.3,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Zimbabwe 2025 (HR) L1OF',
+      nettoKg: 765.3,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Zimbabwe M1L (2023)',
+      nettoKg: 412.8,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    // 4 Bahan dari DHP Krosok (Senin, 12 Oktober 2026)
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Brazil 2025 (BOA)',
+      nettoKg: 598.6,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Garut 2024 (FR)',
+      nettoKg: 112.6,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Garut 2025 (FR)',
+      nettoKg: 114.8,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-12T00:00:00.000Z',
+      nama: 'Ploso 2024 (MYN)',
+      nettoKg: 974.5,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+
+    // === DATA 07 OKTOBER 2026 (Historical) ===
+    // 1 Bahan dari DHP Tembakau
     {
       tanggal: '2026-10-07T00:00:00.000Z',
       nama: 'Madura 2024 (BAT) R',
@@ -1085,7 +1167,7 @@ export class GasService {
       jalur: 'SKT',
       sumber: 'DHP Tembakau'
     },
-    // 6 Bahan dari DHP Krosok (Gambar 2)
+    // 6 Bahan dari DHP Krosok
     {
       tanggal: '2026-10-07T00:00:00.000Z',
       nama: 'Kasturi 2024 (BE) - 1',
@@ -1158,7 +1240,7 @@ export class GasService {
         return true;
       })
       .map(item => ({
-        tanggal: normalizeDateToIso(item.tanggal, '2026-10-07T00:00:00.000Z'),
+        tanggal: normalizeDateToIso(item.tanggal, '2026-10-12T00:00:00.000Z'),
         nama: String(item.nama).trim(),
         nettoKg: Math.round((Number(item.nettoKg) || 0) * 10) / 10,
         jalur: item.jalur || 'SKT',

@@ -712,7 +712,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                 <span>Pemasukan Hasil Proses: Gudang Rajang II vs DHP</span>
               </h3>
               <p className="text-xs text-slate-300 mt-0.5 max-w-2xl leading-relaxed">
-                Acuan data adalah entri mutasi fisik yang tercatat di <strong className="text-emerald-200">Gudang Persediaan Tembakau &amp; Krosok (Rajang II)</strong>, divalidasi silang terhadap kertas kerja <strong className="text-blue-200">DHP Tembakau (1 bahan)</strong> dan <strong className="text-amber-200">DHP Krosok (6 bahan)</strong>.
+                Acuan data adalah entri mutasi fisik yang tercatat di <strong className="text-emerald-200">Gudang Persediaan Tembakau &amp; Krosok (Rajang II)</strong>, divalidasi silang terhadap kertas kerja <strong className="text-blue-200">DHP Tembakau ({dhpTembakauCount} bahan)</strong> dan <strong className="text-amber-200">DHP Krosok ({dhpKrosokCount} bahan)</strong>.
               </p>
             </div>
 
