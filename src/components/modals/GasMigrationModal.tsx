@@ -6,6 +6,7 @@ import {
   Database, 
   Check, 
   Copy, 
+  Download,
   Wifi, 
   AlertCircle, 
   ShieldCheck, 
@@ -365,13 +366,24 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                   </p>
                 </div>
 
-                <button
-                  onClick={handleCopyCode}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors shrink-0"
-                >
-                  {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedCode ? 'Tersalin Semua!' : 'Salin Seluruh File (100%)'}</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href="/download-gas-code"
+                    download="Code.gs"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                    title="Unduh langsung file Code.gs ke komputer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Unduh File Code.gs</span>
+                  </a>
+                  <button
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                  >
+                    {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedCode ? 'Tersalin Semua!' : 'Salin Seluruh File (100%)'}</span>
+                  </button>
+                </div>
               </div>
 
               <div className="bg-slate-900 text-slate-200 p-4 rounded-xl font-mono text-xs overflow-x-auto max-h-80 border border-slate-800">

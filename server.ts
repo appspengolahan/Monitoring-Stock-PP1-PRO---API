@@ -456,6 +456,26 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     }
   });
 
+  // Direct download / raw text endpoint for complete 100% Google Apps Script (Code.gs)
+  app.get(['/download-gas-code', '/Code.gs', '/api/gas-code'], (req, res) => {
+    try {
+      const gasServiceFile = fs.readFileSync(path.join(__dirname, 'src/services/gasService.ts'), 'utf8');
+      const startMarker = 'public static getHeadlessGasPatchCode(): string {\n    return `';
+      const start = gasServiceFile.indexOf(startMarker) + startMarker.length;
+      const end = gasServiceFile.indexOf('`;\n  }', start);
+      const code = gasServiceFile.substring(start, end);
+
+      const asAttachment = req.query.download === '1' || req.path === '/download-gas-code';
+      if (asAttachment) {
+        res.setHeader('Content-Disposition', 'attachment; filename="Code.gs"');
+      }
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.send(code);
+    } catch (err: any) {
+      return res.status(500).send('Error reading script template: ' + err.message);
+    }
+  });
+
   // In-memory micro-cache for GAS proxy to accelerate repeat calls and reduce latency to < 5ms
   const proxyMemoryCache = new Map<string, { data: any; expiry: number }>();
   const PROXY_CACHE_TTL_MS = 30000; // 30 seconds cache for rapid repeat queries

@@ -462,11 +462,35 @@ export class GasService {
     return { ok: true, session };
   }
 
+  /**
+   * Normalisasi alias kode bahan Tembakau Blend
+   * Menangani variasi penulisan seperti:
+   * "FR LN - AVE" (di DHP Blend) vs "F REGULER (LN, AVE)" (di Kartu Stok Gudang)
+   * "FR 153 HIJAU - BK" vs "F REG 153 HIJAU - BK (kode B)"
+   * "FR LA BOLD - BK" vs "F REG LA BOLD - BK (kode B)"
+   */
+  public static normalizeBlendKodeAlias(raw: string): string {
+    if (!raw) return '';
+    return raw
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .replace(/^FREG(?:ULER)?/, 'FR')
+      .replace(/^FILTERREG(?:ULER)?/, 'FR');
+  }
+
   // --- Local Cache Data Access (0.01 detik response) ---
   public static enrichKomoditasData(data: KomoditasData[]): KomoditasData[] {
     return data.map(k => {
       // Normalisasi seluruh tanggal mutasi ke format ISO kanonikal presisi WIB
-      const normalizedMutasi = (k.mutasiTerbaru || []).map(m => ({
+      // Bersihkan entri sintetis lama agar tidak terduplikasi jika mutasi kartu stok riil dari spreadsheet sudah memuatnya
+      const rawMutasi = (k.mutasiTerbaru || []).filter(m => {
+        if (!m.id) return true;
+        // Bersihkan entri sintetis DHP Blend lama agar dievaluasi ulang secara bersih
+        if (m.id.startsWith('tembakau-blend-dhp-')) return false;
+        return true;
+      });
+
+      const normalizedMutasi = rawMutasi.map(m => ({
         ...m,
         tanggal: normalizeDateToIso(m.tanggal, m.tanggal || '')
       }));
@@ -774,14 +798,17 @@ export class GasService {
             const dDateKey = getTanggalKey(d.tanggal);
             const dateMatch = !mDateKey || !dDateKey || dDateKey === mDateKey ||
               Math.abs(getEpochTime(m.tanggal) - getEpochTime(d.tanggal)) <= 86400000;
-            const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
-            const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
+            const cleanD = this.normalizeBlendKodeAlias(rawD);
+            const cleanM = this.normalizeBlendKodeAlias(mKode);
             const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
             return dateMatch && kodeMatch;
           });
 
           if (matchedDHP) {
             matchedDhpBlendSet.add((matchedDHP.nama || '').trim().toUpperCase());
+            matchedDhpBlendSet.add(this.normalizeBlendKodeAlias(matchedDHP.nama || ''));
+            matchedDhpBlendSet.add(mKode);
+            matchedDhpBlendSet.add(this.normalizeBlendKodeAlias(mKode));
             let masukVal = Number(m.masuk) || 0;
             const dhpVal = Number(matchedDHP.nettoKg) || 0;
             if (masukVal === 0 && dhpVal > 0) {
@@ -809,16 +836,17 @@ export class GasService {
         // Pastikan seluruh entri DHP Blend yang sah selalu ada di mutasi Tembakau Blend
         dhpBlendList.forEach(dhpItem => {
           const rawD = (dhpItem.nama || '').trim().toUpperCase();
-          if (matchedDhpBlendSet.has(rawD)) return;
-          const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
+          const cleanD = this.normalizeBlendKodeAlias(rawD);
+          if (matchedDhpBlendSet.has(rawD) || matchedDhpBlendSet.has(cleanD)) return;
+
           const matchedKode = (k.kodeList || []).find(kd => {
-            const cleanK = (kd.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const cleanK = this.normalizeBlendKodeAlias(kd.nama || '');
             return cleanD === cleanK || cleanD.includes(cleanK) || cleanK.includes(cleanD);
           });
           const kodeName = matchedKode ? matchedKode.nama : dhpItem.nama;
 
           const alreadyExists = enrichedMutasi.some(m => {
-            const cleanM = (m.kode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const cleanM = this.normalizeBlendKodeAlias(m.kode || '');
             const mDateKey = getTanggalKey(m.tanggal);
             const dDateKey = getTanggalKey(dhpItem.tanggal);
             const sameDate = !mDateKey || !dDateKey || mDateKey === dDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(dhpItem.tanggal)) <= 86400000;
@@ -827,6 +855,7 @@ export class GasService {
 
           if (!alreadyExists) {
             matchedDhpBlendSet.add(rawD);
+            matchedDhpBlendSet.add(cleanD);
             const val = Number(dhpItem.nettoKg) || 0;
             enrichedMutasi.unshift({
               id: `tembakau-blend-dhp-${cleanD}-${getTanggalKey(dhpItem.tanggal) || '2026-10-12'}`,
@@ -865,8 +894,8 @@ export class GasService {
             const pDateKey = getTanggalKey(p.tanggal);
             const dateMatch = !mDateKey || !pDateKey || pDateKey === mDateKey ||
               Math.abs(getEpochTime(m.tanggal) - getEpochTime(p.tanggal)) <= 86400000;
-            const cleanP = rawP.replace(/[^A-Z0-9]/g, '');
-            const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
+            const cleanP = this.normalizeBlendKodeAlias(rawP);
+            const cleanM = this.normalizeBlendKodeAlias(mKode);
             const kodeMatch = cleanP === cleanM || cleanP.includes(cleanM) || cleanM.includes(cleanP);
             const cleanTujuan = (p.tujuan || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             const tujuanMatch = mJenis.includes(cleanTujuan) || cleanTujuan.includes(mJenis.replace(/PENGIRIMAN/g, '').replace(/[^A-Z0-9]/g, '')) ||
@@ -904,9 +933,9 @@ export class GasService {
         pengirimanList.forEach((pItem, pIdx) => {
           const pKey = `${(pItem.nama || '').trim().toUpperCase()}_${getTanggalKey(pItem.tanggal)}_${(pItem.tujuan || '').trim().toUpperCase()}`;
           if (matchedPengirimanSet.has(pKey)) return;
-          const cleanP = (pItem.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const cleanP = this.normalizeBlendKodeAlias(pItem.nama || '');
           const matchedKode = (k.kodeList || []).find(kd => {
-            const cleanK = (kd.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const cleanK = this.normalizeBlendKodeAlias(kd.nama || '');
             return cleanP === cleanK || cleanP.includes(cleanK) || cleanK.includes(cleanP);
           });
           const kodeName = matchedKode ? matchedKode.nama : pItem.nama;
@@ -917,7 +946,7 @@ export class GasService {
           }
 
           const alreadyExists = fullyEnrichedMutasi.some(m => {
-            const cleanM = (m.kode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const cleanM = this.normalizeBlendKodeAlias(m.kode || '');
             const mDateKey = getTanggalKey(m.tanggal);
             const pDateKey = getTanggalKey(pItem.tanggal);
             const sameDate = !mDateKey || !pDateKey || mDateKey === pDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(pItem.tanggal)) <= 86400000;
