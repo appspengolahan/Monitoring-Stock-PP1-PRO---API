@@ -42,8 +42,16 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
   const [reconcileConfig, setReconcileConfig] = useState<ReconciliationDisplayConfig>(() => GasService.getReconciliationDisplayConfig());
   const [speedAuditLoading, setSpeedAuditLoading] = useState<boolean>(false);
   const [speedAuditResult, setSpeedAuditResult] = useState<any>(null);
+  const [baselineNotice, setBaselineNotice] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handleRestoreBaseline = () => {
+    GasService.restoreCleanBaseline();
+    onRefreshData();
+    setBaselineNotice('Data persediaan & mutasi berhasil dikembalikan ke baseline bersih dan seluruh cache kotor telah dibersihkan!');
+    setTimeout(() => setBaselineNotice(null), 6000);
+  };
 
   const handleTestConnection = async () => {
     setIsTesting(true);
@@ -320,6 +328,36 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Baseline Restoration & Cache Purge Box */}
+              <div className="p-4 bg-emerald-50/80 rounded-xl border border-emerald-200/90 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Pemulihan Baseline Data Stock Persediaan</span>
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    Pembersih Otomatis
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-800 leading-relaxed">
+                  Jika data mutasi bercampur aduk akibat update lembar rekap atau cache tersangkut, klik tombol di bawah untuk membersihkan cache lokal dan mengembalikan struktur data ke baseline yang bersih, akurat, dan super cepat (0% freeze/hang).
+                </p>
+                {baselineNotice && (
+                  <div className="p-2.5 bg-emerald-100 border border-emerald-300 rounded-lg text-emerald-900 text-xs font-semibold flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{baselineNotice}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleRestoreBaseline}
+                  className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Kembalikan ke Baseline Bersih &amp; Purge Cache</span>
+                </button>
               </div>
 
               {/* Review Analysis */}

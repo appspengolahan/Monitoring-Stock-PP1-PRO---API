@@ -481,19 +481,60 @@ export class GasService {
       .replace(/^FILTERREG(?:ULER)?/, 'FR');
   }
 
+  /**
+   * Identifikasi apakah suatu nama tab merupakan tab rekap/validasi/summary (bukan kartu stok bahan murni)
+   */
+  public static isNonMaterialSheetName(name?: string): boolean {
+    if (!name) return true;
+    const u = name.toUpperCase().trim();
+    if (u === 'MASTER' || u.includes('REKAP')) return true;
+    if (u.includes('VALIDASI') || u.includes('CROSSCHECK') || u.includes('CROSCHECK')) return true;
+    if (u.includes('KOMPARASI') || u.includes('SYNC')) return true;
+    if (u.includes('KARTUSTOCK') || u.includes('KARTU STOK') || u.includes('KARTU STOCK')) return true;
+    if (u.includes('MONITORING') || u.includes('LAPORAN') || u.includes('SUMMARY') || u.includes('DASHBOARD')) return true;
+    return false;
+  }
+
   // --- Local Cache Data Access (0.01 detik response) ---
   public static enrichKomoditasData(data: KomoditasData[]): KomoditasData[] {
     return data.map(k => {
       const komoditasLower = (k.komoditas || '').toLowerCase();
-      // Normalisasi seluruh tanggal mutasi ke format ISO kanonikal presisi WIB
-      // Bersihkan entri sintetis lama dan lembar rekap/kartu stok global yang bukan merupakan kode bahan spesifik
+
+      // 1. Bersihkan kodeList dari tab-tab rekap, validasi, komparasi, atau sheet non-bahan
+      const cleanKodeList = (k.kodeList || []).filter(item => {
+        if (!item || !item.nama) return false;
+        return !this.isNonMaterialSheetName(item.nama);
+      });
+
+      // Buat kamus nama bahan sah untuk memvalidasi apakah kolom jenisMutasi tercemar nama bahan
+      const validMaterialNamesSet = new Set(
+        cleanKodeList.map(item => (item.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, ''))
+      );
+
+      // 2. Normalisasi & sanitasi baris mutasi ke format ISO kanonikal WIB
+      // Bersihkan entri dari sheet rekap/validasi, baris angka, atau nama bahan yang tercampur di jenisMutasi
       const rawMutasi = (k.mutasiTerbaru || []).filter(m => {
         if (!m) return false;
         // Bersihkan entri sintetis DHP Blend lama agar dievaluasi ulang secara bersih
         if (m.id && m.id.startsWith('tembakau-blend-dhp-')) return false;
-        // Tolak lembar summary/rekap 'KARTUSTOCK' yang tidak sengaja terbaca sebagai kartu stok bahan
-        const kUpper = (m.kode || '').trim().toUpperCase();
-        if (kUpper.includes('KARTUSTOCK') || kUpper === 'REKAP' || kUpper === 'MASTER') return false;
+
+        // Tolak baris yang berasal dari tab summary/rekap/validasi
+        if (this.isNonMaterialSheetName(m.kode)) return false;
+
+        const j = String(m.jenisMutasi || '').trim();
+        if (!j) return false;
+
+        // Tolak jika jenisMutasi berupa angka numerik murni atau floating point (misal selisih timbangan atau baris rekap '2.00999...', '364.199...', '0.6999...')
+        if (!isNaN(Number(j.replace(',', '.')))) return false;
+        if (/^[-+]?[\d.,]+[A-Za-z]?$/.test(j) && j.length > 2) return false;
+
+        // Tolak jika jenisMutasi mengandung newline (khas merge-cell pada tabel rekap seperti 'MANADO\nGRADE A\n2023')
+        if (j.includes('\n') || j.includes('\r')) return false;
+
+        // Tolak jika jenisMutasi ternyata adalah nama bahan itu sendiri (dari sheet validasi/rekap yang menaruh nama bahan di Kolom C)
+        const cleanJ = j.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (validMaterialNamesSet.has(cleanJ)) return false;
+
         return true;
       });
 
@@ -505,7 +546,7 @@ export class GasService {
       if (k.komoditas.includes('Rajang II')) {
         let totalSKT = 0;
         let totalSKM = 0;
-        const enrichedKodeList = (k.kodeList || []).map(item => {
+        const enrichedKodeList = cleanKodeList.map(item => {
           let sSKT = item.saldoSKT ?? (item as any).tSaldo ?? (item as any).tsaldo;
           let sSKM = item.saldoSKM ?? (item as any).mSaldo ?? (item as any).msaldo;
           let kat = item.kategoriProduksi;
@@ -781,10 +822,13 @@ export class GasService {
           };
         });
 
+        const cleanSaldoTotal = Math.round(enrichedKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
         return {
           ...k,
+          saldoTotal: cleanSaldoTotal,
           kodeList: enrichedKodeList,
-          mutasiTerbaru: finalEnrichedMutasi,
+          jumlahKode: enrichedKodeList.length,
+          mutasiTerbaru: finalEnrichedMutasi.slice(0, 250),
           saldoSKTTotal: Math.round(totalSKT * 10) / 10,
           saldoSKMTotal: Math.round(totalSKM * 10) / 10
         };
@@ -1006,9 +1050,13 @@ export class GasService {
           };
         });
 
+        const cleanSaldoTotal = Math.round(cleanKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
         return {
           ...k,
-          mutasiTerbaru: finalEnrichedMutasi
+          saldoTotal: cleanSaldoTotal,
+          kodeList: cleanKodeList,
+          jumlahKode: cleanKodeList.length,
+          mutasiTerbaru: finalEnrichedMutasi.slice(0, 250)
         };
       }
 
@@ -1107,30 +1155,40 @@ export class GasService {
           }
         });
 
+        const cleanSaldoTotal = Math.round(cleanKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
         return {
           ...k,
-          mutasiTerbaru: enrichedMutasi
+          saldoTotal: cleanSaldoTotal,
+          kodeList: cleanKodeList,
+          jumlahKode: cleanKodeList.length,
+          mutasiTerbaru: enrichedMutasi.slice(0, 250)
         };
       }
 
+      const cleanSaldoTotal = Math.round(cleanKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
+      const finalMutasi = normalizedMutasi.map(m => {
+        const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
+        if (!isBspp) return m;
+        const val = Number(m.masuk || m.keluar || 0);
+        return {
+          ...m,
+          cek: true,
+          bsppMatch: {
+            matched: true,
+            selisihKg: val,
+            selisih: 0,
+            sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+            status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
+          }
+        };
+      });
+
       return {
         ...k,
-        mutasiTerbaru: normalizedMutasi.map(m => {
-          const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
-          if (!isBspp) return m;
-          const val = Number(m.masuk || m.keluar || 0);
-          return {
-            ...m,
-            cek: true,
-            bsppMatch: {
-              matched: true,
-              selisihKg: val,
-              selisih: 0,
-              sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
-              status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
-            }
-          };
-        })
+        saldoTotal: cleanSaldoTotal,
+        kodeList: cleanKodeList,
+        jumlahKode: cleanKodeList.length,
+        mutasiTerbaru: finalMutasi.slice(0, 250)
       };
     });
   }
@@ -1141,7 +1199,17 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return this.enrichKomoditasData(parsed);
+          // Deteksi apakah data cache tercemar dengan sheet rekap atau jenis mutasi angka/rusak
+          const isCorrupted = parsed.some((k: any) => 
+            (k.kodeList || []).some((item: any) => this.isNonMaterialSheetName(item.nama)) ||
+            (k.mutasiTerbaru || []).some((m: any) => this.isNonMaterialSheetName(m.kode) || !isNaN(Number(m.jenisMutasi)))
+          );
+          const enriched = this.enrichKomoditasData(parsed);
+          if (isCorrupted) {
+            console.warn('Cache tercemar terdeteksi. Otomatis membersihkan dan merestore ke baseline murni...');
+            this.saveCachedKomoditas(enriched);
+          }
+          return enriched;
         }
       } catch (e) {
         console.error('Failed to parse cached komoditas', e);
@@ -1151,6 +1219,22 @@ export class GasService {
     const enrichedInitial = this.enrichKomoditasData(INITIAL_KOMODITAS_DATA);
     this.saveCachedKomoditas(enrichedInitial);
     return enrichedInitial;
+  }
+
+  /**
+   * Mengembalikan seluruh data ke baseline bersih awal dan membersihkan cache kotor
+   */
+  public static restoreCleanBaseline(): KomoditasData[] {
+    console.log('Restoring clean baseline data...');
+    const cleanBaseline = this.enrichKomoditasData(INITIAL_KOMODITAS_DATA);
+    this.saveCachedKomoditas(cleanBaseline);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+    }
+    return cleanBaseline;
   }
 
   public static saveCachedKomoditas(data: KomoditasData[]): void {
@@ -3349,7 +3433,21 @@ function getDHPCengkehReconciliation_() {
 // 4. DATA ENGINE (BATCHGET & FALLBACK PEMBACA SPREADSHEET)
 // ============================================================================
 
+function isExcludedSheet_(name) {
+  if (!name) return true;
+  var u = String(name).toUpperCase().trim();
+  if (u === 'MASTER' || u.indexOf('REKAP') !== -1) return true;
+  if (u.indexOf('VALIDASI') !== -1 || u.indexOf('CROSSCHECK') !== -1 || u.indexOf('CROSCHECK') !== -1) return true;
+  if (u.indexOf('KOMPARASI') !== -1 || u.indexOf('SYNC') !== -1) return true;
+  if (u.indexOf('KARTUSTOCK') !== -1 || u.indexOf('KARTU STOK') !== -1 || u.indexOf('KARTU STOCK') !== -1) return true;
+  if (u.indexOf('MONITORING') !== -1 || u.indexOf('LAPORAN') !== -1 || u.indexOf('SUMMARY') !== -1 || u.indexOf('DASHBOARD') !== -1) return true;
+  return false;
+}
+
 function fetchAllSheetsData_(spreadsheetId, sheetNames) {
+  // Hanya proses sheet kartu stok bahan murni, abaikan tabel rekap/validasi
+  sheetNames = sheetNames.filter(function(name) { return !isExcludedSheet_(name); });
+
   // Coba gunakan Sheets API (Advanced Service) jika sudah diaktifkan di Editor
   if (typeof Sheets !== 'undefined' && Sheets.Spreadsheets && Sheets.Spreadsheets.Values) {
     try {
@@ -3466,10 +3564,10 @@ function findHeaderInfo_(values) {
 function cleanNumber_(val) {
   if (val === null || val === undefined || val === '') return 0;
   if (typeof val === 'number') return isNaN(val) ? 0 : val;
-  var s = String(val).trim().replace(/\s*kg$/i, '').trim();
-  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
-    s = s.replace(/\./g, '').replace(',', '.');
-  } else if (/^\d+(,\d+)$/.test(s)) {
+  var s = String(val).trim().replace(/\\s*kg$/i, '').trim();
+  if (/^\\d{1,3}(\\.\\d{3})+(,\\d+)?$/.test(s)) {
+    s = s.replace(/\\./g, '').replace(',', '.');
+  } else if (/^\\d+(,\\d+)$/.test(s)) {
     s = s.replace(',', '.');
   }
   var num = parseFloat(s);
@@ -3489,6 +3587,12 @@ function parseDataRows_(values, format) {
 
     if (tanggalCell) lastTanggal = tanggalCell;
     if (!jenisMutasi && !tanggalCell) continue;
+
+    // Lewati jika jenisMutasi berupa angka, desimal selisih, newline, atau format kode numerik
+    if (!jenisMutasi || !isNaN(Number(jenisMutasi.replace(',', '.'))) || jenisMutasi.indexOf('\\n') !== -1) {
+      continue;
+    }
+    if (/^[-+]?[\\d.,]+[A-Za-z]?$/.test(jenisMutasi) && jenisMutasi.length > 2) continue;
 
     var masuk = 0, keluar = 0, saldo = 0, cek = false;
     var tMasuk = 0, tKeluar = 0, tSaldo = 0;
@@ -3577,7 +3681,8 @@ function getSaldoTerkiniObj_(rows, format) {
  */
 function buildKomoditasSummary_(source) {
   var ss = SpreadsheetApp.openById(source.spreadsheetId);
-  var sheetNames = ss.getSheets().map(function(s) { return s.getName(); });
+  var rawSheetNames = ss.getSheets().map(function(s) { return s.getName(); });
+  var sheetNames = rawSheetNames.filter(function(s) { return !isExcludedSheet_(s); });
   var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1;
 
   var valueRanges = fetchAllSheetsData_(source.spreadsheetId, sheetNames);
@@ -3594,7 +3699,7 @@ function buildKomoditasSummary_(source) {
 
   for (var idx = 0; idx < sheetNames.length; idx++) {
     var shName = String(sheetNames[idx]).trim();
-    if (shName.toUpperCase() === 'MASTER' || shName.toUpperCase().indexOf('REKAP') !== -1) continue;
+    if (isExcludedSheet_(shName)) continue;
 
     var vr = valueRanges[idx];
     var values = (vr && vr.values) ? vr.values : [];
@@ -3644,8 +3749,8 @@ function buildKomoditasSummary_(source) {
       tanggalTerakhir: tanggalTerakhir
     });
 
-    // Ambil mutasi dari setiap sheet (tingkatkan buffer agar semua transaksi hari/periode terkini tidak terpotong)
-    rows.slice(-50).forEach(function(item) {
+    // Ambil mutasi dari setiap sheet (15 baris terakhir per bahan untuk kecepatan tinggi & respons instan)
+    rows.slice(-15).forEach(function(item) {
       if (!item.jenisMutasi) return;
       mutasiTerbaru.push({
         tanggal: item.tanggal || null,
@@ -3684,7 +3789,7 @@ function buildKomoditasSummary_(source) {
     entriTervalidasi: entriTotal ? round1_((entriTervalidasi / entriTotal) * 100) : 0,
     jumlahKode: kodeList.length,
     kodeList: kodeList.sort(function(a, b) { return a.nama.localeCompare(b.nama, 'id'); }),
-    mutasiTerbaru: mutasiTerbaru.slice(0, 1000)
+    mutasiTerbaru: mutasiTerbaru.slice(0, 300)
   };
 }
 
