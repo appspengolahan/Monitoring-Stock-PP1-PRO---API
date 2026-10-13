@@ -71,6 +71,7 @@ export class GasService {
     const defaultVal: ReconciliationDisplayConfig = {
       showDhpSummary: false,      // Default nonaktif agar halaman mutasi operasional tetap bersih
       showSetoranSummary: false,  // Default nonaktif
+      showDhpBlendSummary: false,
       showPengirimanBlendSummary: false,
       showCengkehDryerSummary: false
     };
@@ -485,11 +486,14 @@ export class GasService {
     return data.map(k => {
       const komoditasLower = (k.komoditas || '').toLowerCase();
       // Normalisasi seluruh tanggal mutasi ke format ISO kanonikal presisi WIB
-      // Bersihkan entri sintetis lama agar tidak terduplikasi jika mutasi kartu stok riil dari spreadsheet sudah memuatnya
+      // Bersihkan entri sintetis lama dan lembar rekap/kartu stok global yang bukan merupakan kode bahan spesifik
       const rawMutasi = (k.mutasiTerbaru || []).filter(m => {
-        if (!m.id) return true;
+        if (!m) return false;
         // Bersihkan entri sintetis DHP Blend lama agar dievaluasi ulang secara bersih
-        if (m.id.startsWith('tembakau-blend-dhp-')) return false;
+        if (m.id && m.id.startsWith('tembakau-blend-dhp-')) return false;
+        // Tolak lembar summary/rekap 'KARTUSTOCK' yang tidak sengaja terbaca sebagai kartu stok bahan
+        const kUpper = (m.kode || '').trim().toUpperCase();
+        if (kUpper.includes('KARTUSTOCK') || kUpper === 'REKAP' || kUpper === 'MASTER') return false;
         return true;
       });
 
@@ -1011,6 +1015,7 @@ export class GasService {
       // --- REKONSILIASI KHUSUS CENGKEH (Dryer Sheet Kolom F & BSPP) ---
       if (komoditasLower.includes('cengkeh')) {
         const dryerList = this.cleanCengkehDryerEntries(this.getCachedCengkehDryer());
+        const matchedDryerSet = new Set<string>();
 
         const enrichedMutasi = normalizedMutasi.map(m => {
           // 1. Rekonsiliasi BSPP (Penimbangan Ulang)
@@ -1045,6 +1050,7 @@ export class GasService {
             });
 
             if (matchedDryer) {
+              matchedDryerSet.add(matchedDryer.partai);
               let masukVal = Number(m.masuk) || 0;
               const dryerVal = Number(matchedDryer.hasilDryerKg) || 0;
               if (masukVal === 0 && dryerVal > 0) {
@@ -1067,6 +1073,38 @@ export class GasService {
           }
 
           return m;
+        });
+
+        // Pastikan entri sah dari SOURCE HASIL DRYER selalu ada di mutasi Cengkeh
+        dryerList.forEach(dryerItem => {
+          if (matchedDryerSet.has(dryerItem.partai)) return;
+          const cleanP = dryerItem.partai.replace(/[^A-Z0-9]/g, '');
+          const alreadyExists = enrichedMutasi.some(m => {
+            const mDateKey = getTanggalKey(m.tanggal);
+            const dDateKey = getTanggalKey(dryerItem.tanggal);
+            return mDateKey === dDateKey && m.jenisMutasi === 'Pemasukan Hasil Proses';
+          });
+          if (!alreadyExists) {
+            matchedDryerSet.add(dryerItem.partai);
+            const val = dryerItem.hasilDryerKg;
+            enrichedMutasi.unshift({
+              id: `cengkeh-dryer-${cleanP}`,
+              tanggal: dryerItem.tanggal || '2026-09-24T00:00:00.000Z',
+              kode: 'MANADO GRADE A (2024)',
+              jenisMutasi: 'Pemasukan Hasil Proses',
+              masuk: val,
+              keluar: 0,
+              saldo: val,
+              cek: true,
+              dhpMatch: {
+                matched: true,
+                dhpNetto: val,
+                selisih: 0,
+                sumber: `Dryer (${dryerItem.partai})`,
+                jalur: 'Cengkeh'
+              }
+            });
+          }
         });
 
         return {
@@ -1342,20 +1380,22 @@ export class GasService {
     return this.DEFAULT_DHP_ENTRIES;
   }
 
-  public static saveCachedDHP(data: DHPEntry[]): void {
+  public static saveCachedDHP(data: DHPEntry[], skipNotify: boolean = false): void {
     const cleaned = this.cleanDHPEntries(data);
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(cleaned));
     }
-    // Otomatis perbarui pencocokan rekonsiliasi dan badge pada data mutasi persediaan
-    try {
-      const current = this.getCachedKomoditas();
-      this.saveCachedKomoditas(current);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+    if (!skipNotify) {
+      // Otomatis perbarui pencocokan rekonsiliasi dan badge pada data mutasi persediaan
+      try {
+        const current = this.getCachedKomoditas();
+        this.saveCachedKomoditas(current);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+        }
+      } catch (e) {
+        console.warn('Gagal memicu pembaruan rekonsiliasi DHP', e);
       }
-    } catch (e) {
-      console.warn('Gagal memicu pembaruan rekonsiliasi DHP', e);
     }
   }
 
@@ -1441,19 +1481,21 @@ export class GasService {
     return this.DEFAULT_DHP_BLEND_ENTRIES;
   }
 
-  public static saveCachedDHPBlend(data: DHPEntry[]): void {
+  public static saveCachedDHPBlend(data: DHPEntry[], skipNotify: boolean = false): void {
     const cleaned = this.cleanDHPBlendEntries(data);
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.DHP_BLEND_RECONCILIATION, JSON.stringify(cleaned));
     }
-    try {
-      const current = this.getCachedKomoditas();
-      this.saveCachedKomoditas(current);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+    if (!skipNotify) {
+      try {
+        const current = this.getCachedKomoditas();
+        this.saveCachedKomoditas(current);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+        }
+      } catch (e) {
+        console.warn('Gagal memicu pembaruan rekonsiliasi DHP Blend', e);
       }
-    } catch (e) {
-      console.warn('Gagal memicu pembaruan rekonsiliasi DHP Blend', e);
     }
   }
 
@@ -1517,19 +1559,21 @@ export class GasService {
     return this.DEFAULT_PENGIRIMAN_BLEND_ENTRIES;
   }
 
-  public static saveCachedPengirimanBlend(data: PengirimanBlendEntry[]): void {
+  public static saveCachedPengirimanBlend(data: PengirimanBlendEntry[], skipNotify: boolean = false): void {
     const cleaned = this.cleanPengirimanBlendEntries(data);
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.PENGIRIMAN_BLEND_RECONCILIATION, JSON.stringify(cleaned));
     }
-    try {
-      const current = this.getCachedKomoditas();
-      this.saveCachedKomoditas(current);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+    if (!skipNotify) {
+      try {
+        const current = this.getCachedKomoditas();
+        this.saveCachedKomoditas(current);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+        }
+      } catch (e) {
+        console.warn('Gagal memicu pembaruan rekonsiliasi Pengiriman Blend', e);
       }
-    } catch (e) {
-      console.warn('Gagal memicu pembaruan rekonsiliasi Pengiriman Blend', e);
     }
   }
 
@@ -1605,19 +1649,21 @@ export class GasService {
     return this.DEFAULT_CENGKEH_DRYER_ENTRIES;
   }
 
-  public static saveCachedCengkehDryer(data: CengkehDryerEntry[]): void {
+  public static saveCachedCengkehDryer(data: CengkehDryerEntry[], skipNotify: boolean = false): void {
     const cleaned = this.cleanCengkehDryerEntries(data);
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.CENGKEH_DRYER_RECONCILIATION, JSON.stringify(cleaned));
     }
-    try {
-      const current = this.getCachedKomoditas();
-      this.saveCachedKomoditas(current);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+    if (!skipNotify) {
+      try {
+        const current = this.getCachedKomoditas();
+        this.saveCachedKomoditas(current);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+        }
+      } catch (e) {
+        console.warn('Gagal memicu pembaruan rekonsiliasi Cengkeh Dryer', e);
       }
-    } catch (e) {
-      console.warn('Gagal memicu pembaruan rekonsiliasi Cengkeh Dryer', e);
     }
   }
 
@@ -1819,20 +1865,22 @@ export class GasService {
     return this.DEFAULT_SETORAN_ENTRIES;
   }
 
-  public static saveCachedSetoran(data: SetoranEntry[]): void {
+  public static saveCachedSetoran(data: SetoranEntry[], skipNotify: boolean = false): void {
     const cleaned = this.cleanSetoranEntries(data);
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.SETORAN_RECONCILIATION, JSON.stringify(cleaned));
     }
-    // Otomatis perbarui pencocokan rekonsiliasi dan badge pada data mutasi persediaan
-    try {
-      const current = this.getCachedKomoditas();
-      this.saveCachedKomoditas(current);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+    if (!skipNotify) {
+      // Otomatis perbarui pencocokan rekonsiliasi dan badge pada data mutasi persediaan
+      try {
+        const current = this.getCachedKomoditas();
+        this.saveCachedKomoditas(current);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+        }
+      } catch (e) {
+        console.warn('Gagal memicu pembaruan rekonsiliasi Setoran', e);
       }
-    } catch (e) {
-      console.warn('Gagal memicu pembaruan rekonsiliasi Setoran', e);
     }
   }
 
@@ -2157,11 +2205,13 @@ export class GasService {
 
   // --- Network Fetch with Fast Direct Fetch & Proxy Fallback ---
   public static async fetchWithTimeout(url: string, timeoutMs: number = 18000, forceProxy: boolean = false): Promise<any> {
-    // 1. Direct browser fetch with redirect: follow (fastest ~0.7s, zero proxy hop overhead)
-    if (!forceProxy && typeof window !== 'undefined') {
+    const isGoogleSheets = url.includes('docs.google.com') || url.includes('spreadsheets');
+
+    // 1. Direct browser fetch with redirect: follow (only for GAS endpoint, sheets must use proxy due to CORS)
+    if (!forceProxy && !isGoogleSheets && typeof window !== 'undefined') {
       try {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 6500);
+        const id = setTimeout(() => controller.abort(), 400);
         const response = await fetch(url, {
           signal: controller.signal,
           redirect: 'follow',
@@ -2301,7 +2351,7 @@ export class GasService {
           const dhpRes = await this.fetchWithTimeout(dhpUrl, 16000);
           const dhpData = (dhpRes && dhpRes.data) || dhpRes;
           if (dhpData && Array.isArray(dhpData.items)) {
-            this.saveCachedDHP(dhpData.items);
+            this.saveCachedDHP(dhpData.items, true);
             return dhpData.items;
           }
         } catch (eDhp) {
@@ -2317,7 +2367,7 @@ export class GasService {
           const sRes = await this.fetchWithTimeout(sUrl, 16000);
           const sData = (sRes && sRes.data) || sRes;
           if (sData && Array.isArray(sData.items) && sData.items.length > 0) {
-            this.saveCachedSetoran(sData.items);
+            this.saveCachedSetoran(sData.items, true);
             return sData.items;
           }
         } catch {
@@ -2326,7 +2376,7 @@ export class GasService {
         try {
           const directItems = await this.fetchSetoranDirectFromSheet();
           if (directItems && directItems.length > 0) {
-            this.saveCachedSetoran(directItems);
+            this.saveCachedSetoran(directItems, true);
             return directItems;
           }
         } catch (eDirect) {
@@ -2342,7 +2392,7 @@ export class GasService {
           const bRes = await this.fetchWithTimeout(bUrl, 16000);
           const bData = (bRes && bRes.data) || bRes;
           if (bData && Array.isArray(bData.items) && bData.items.length > 0) {
-            this.saveCachedDHPBlend(bData.items);
+            this.saveCachedDHPBlend(bData.items, true);
             return bData.items;
           }
         } catch {
@@ -2351,7 +2401,7 @@ export class GasService {
         try {
           const directBlendItems = await this.fetchDHPBlendDirectFromSheet();
           if (directBlendItems && directBlendItems.length > 0) {
-            this.saveCachedDHPBlend(directBlendItems);
+            this.saveCachedDHPBlend(directBlendItems, true);
             return directBlendItems;
           }
         } catch (eBlend) {
@@ -2367,7 +2417,7 @@ export class GasService {
           const pRes = await this.fetchWithTimeout(pUrl, 16000);
           const pData = (pRes && pRes.data) || pRes;
           if (pData && Array.isArray(pData.items) && pData.items.length > 0) {
-            this.saveCachedPengirimanBlend(pData.items);
+            this.saveCachedPengirimanBlend(pData.items, true);
             return pData.items;
           }
         } catch {
@@ -2376,7 +2426,7 @@ export class GasService {
         try {
           const directPengirimanItems = await this.fetchPengirimanBlendDirectFromSheet();
           if (directPengirimanItems && directPengirimanItems.length > 0) {
-            this.saveCachedPengirimanBlend(directPengirimanItems);
+            this.saveCachedPengirimanBlend(directPengirimanItems, true);
             return directPengirimanItems;
           }
         } catch (ePengiriman) {
@@ -2390,7 +2440,7 @@ export class GasService {
         try {
           const directDryerItems = await this.fetchCengkehDryerDirectFromSheet();
           if (directDryerItems && directDryerItems.length > 0) {
-            this.saveCachedCengkehDryer(directDryerItems);
+            this.saveCachedCengkehDryer(directDryerItems, true);
             return directDryerItems;
           }
         } catch (eDryer) {
@@ -2401,7 +2451,7 @@ export class GasService {
           const cdRes = await this.fetchWithTimeout(cdUrl, 16000);
           const cdData = (cdRes && cdRes.data) || cdRes;
           if (cdData && Array.isArray(cdData.items) && cdData.items.length > 0) {
-            this.saveCachedCengkehDryer(cdData.items);
+            this.saveCachedCengkehDryer(cdData.items, true);
             return cdData.items;
           }
         } catch {}
@@ -2429,9 +2479,10 @@ export class GasService {
 
       if (onProgress) onProgress('Data 4 Komoditas diterima, memproses sinkronisasi BSPP...', 70);
 
-      // Save komoditas immediately if any was updated
-      if (komoditasUpdatedCount > 0) {
-        this.saveCachedKomoditas(currentKomoditasList);
+      // Save and re-enrich komoditas once for all updated commodities & reconciliation streams
+      this.saveCachedKomoditas(currentKomoditasList);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
       }
 
       // Wait for BSPP to complete
@@ -2518,7 +2569,7 @@ export class GasService {
           const dhpRes = await this.fetchWithTimeout(dhpUrl, 16000);
           const dhpData = (dhpRes && dhpRes.data) || dhpRes;
           if (dhpData && Array.isArray(dhpData.items)) {
-            this.saveCachedDHP(dhpData.items);
+            this.saveCachedDHP(dhpData.items, true);
             return dhpData.items;
           }
         } catch (eDhp) {
@@ -2532,7 +2583,7 @@ export class GasService {
         try {
           const directItems = await this.fetchSetoranDirectFromSheet();
           if (directItems && directItems.length > 0) {
-            this.saveCachedSetoran(directItems);
+            this.saveCachedSetoran(directItems, true);
             return directItems;
           }
         } catch (eSetoran) {
@@ -2543,7 +2594,7 @@ export class GasService {
           const sRes = await this.fetchWithTimeout(sUrl, 16000);
           const sData = (sRes && sRes.data) || sRes;
           if (sData && Array.isArray(sData.items) && sData.items.length > 0) {
-            this.saveCachedSetoran(sData.items);
+            this.saveCachedSetoran(sData.items, true);
             return sData.items;
           }
         } catch {}
@@ -2555,7 +2606,7 @@ export class GasService {
         try {
           const directBlendItems = await this.fetchDHPBlendDirectFromSheet();
           if (directBlendItems && directBlendItems.length > 0) {
-            this.saveCachedDHPBlend(directBlendItems);
+            this.saveCachedDHPBlend(directBlendItems, true);
             return directBlendItems;
           }
         } catch (eBlend) {
@@ -2566,7 +2617,7 @@ export class GasService {
           const bRes = await this.fetchWithTimeout(bUrl, 16000);
           const bData = (bRes && bRes.data) || bRes;
           if (bData && Array.isArray(bData.items) && bData.items.length > 0) {
-            this.saveCachedDHPBlend(bData.items);
+            this.saveCachedDHPBlend(bData.items, true);
             return bData.items;
           }
         } catch {}
@@ -2578,7 +2629,7 @@ export class GasService {
         try {
           const directPengirimanItems = await this.fetchPengirimanBlendDirectFromSheet();
           if (directPengirimanItems && directPengirimanItems.length > 0) {
-            this.saveCachedPengirimanBlend(directPengirimanItems);
+            this.saveCachedPengirimanBlend(directPengirimanItems, true);
             return directPengirimanItems;
           }
         } catch (ePengiriman) {
@@ -2589,7 +2640,7 @@ export class GasService {
           const pRes = await this.fetchWithTimeout(pUrl, 16000);
           const pData = (pRes && pRes.data) || pRes;
           if (pData && Array.isArray(pData.items) && pData.items.length > 0) {
-            this.saveCachedPengirimanBlend(pData.items);
+            this.saveCachedPengirimanBlend(pData.items, true);
             return pData.items;
           }
         } catch {}
@@ -2601,7 +2652,7 @@ export class GasService {
         try {
           const directDryerItems = await this.fetchCengkehDryerDirectFromSheet();
           if (directDryerItems && directDryerItems.length > 0) {
-            this.saveCachedCengkehDryer(directDryerItems);
+            this.saveCachedCengkehDryer(directDryerItems, true);
             return directDryerItems;
           }
         } catch (eDryer) {
@@ -2612,7 +2663,7 @@ export class GasService {
           const cdRes = await this.fetchWithTimeout(cdUrl, 16000);
           const cdData = (cdRes && cdRes.data) || cdRes;
           if (cdData && Array.isArray(cdData.items) && cdData.items.length > 0) {
-            this.saveCachedCengkehDryer(cdData.items);
+            this.saveCachedCengkehDryer(cdData.items, true);
             return cdData.items;
           }
         } catch {}
@@ -2640,8 +2691,10 @@ export class GasService {
         }
       });
 
-      if (komoditasUpdatedCount > 0) {
-        this.saveCachedKomoditas(currentKomoditasList);
+      // Save and re-enrich komoditas once for all updated commodities & reconciliation streams
+      this.saveCachedKomoditas(currentKomoditasList);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
       }
 
       const bsppResults = await Promise.allSettled(bsppPromises);

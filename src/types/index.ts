@@ -126,6 +126,7 @@ export interface CengkehDryerEntry {
 export interface ReconciliationDisplayConfig {
   showDhpSummary: boolean;
   showSetoranSummary: boolean;
+  showDhpBlendSummary?: boolean;
   showPengirimanBlendSummary?: boolean;
   showCengkehDryerSummary?: boolean;
 }

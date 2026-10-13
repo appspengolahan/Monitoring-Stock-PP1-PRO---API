@@ -103,13 +103,20 @@ export default function App() {
     } catch (e) {}
   }, []);
 
-  // Auto-refresh komoditasList when reconciliation data is fetched or updated
+  // Auto-refresh komoditasList when reconciliation data is fetched or updated (debounced to avoid freeze)
   useEffect(() => {
+    let timeoutId: any = null;
     const handleReconUpdate = () => {
-      setKomoditasList(GasService.getCachedKomoditas());
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setKomoditasList(GasService.getCachedKomoditas());
+      }, 150);
     };
     window.addEventListener('stockpp1_reconciliation_data_updated', handleReconUpdate);
-    return () => window.removeEventListener('stockpp1_reconciliation_data_updated', handleReconUpdate);
+    return () => {
+      window.removeEventListener('stockpp1_reconciliation_data_updated', handleReconUpdate);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   // Filtered Komoditas list according to user RBAC allowedKomoditas
@@ -278,7 +285,7 @@ export default function App() {
   // 10. Fast tab selection handler
   const handleSelectTab = useCallback((tab: string) => {
     setCurrentTab(tab);
-    if (tab !== 'mutasi') setTargetCommodityFilter('all');
+    setTargetCommodityFilter('all');
   }, []);
 
   return (

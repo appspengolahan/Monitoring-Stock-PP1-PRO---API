@@ -50,6 +50,9 @@ interface FlattenedMutasi {
   keluarSKT?: number;
   masukSKM?: number;
   keluarSKM?: number;
+  _epoch: number;
+  _dateKey: string;
+  _formattedDate: string;
 }
 
 export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
@@ -67,10 +70,15 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterHideZero, setFilterHideZero] = useState<boolean>(false);
   const [showAllDates, setShowAllDates] = useState<boolean>(false);
-  const [showDhpSection, setShowDhpSection] = useState<boolean>(true);
-  const [showDhpBlendSection, setShowDhpBlendSection] = useState<boolean>(true);
-  const [showPengirimanBlendSection, setShowPengirimanBlendSection] = useState<boolean>(true);
-  const [showSetoranSection, setShowSetoranSection] = useState<boolean>(true);
+  const [showDhpSection, setShowDhpSection] = useState<boolean>(false);
+  const [showDhpBlendSection, setShowDhpBlendSection] = useState<boolean>(false);
+  const [showPengirimanBlendSection, setShowPengirimanBlendSection] = useState<boolean>(false);
+  const [showSetoranSection, setShowSetoranSection] = useState<boolean>(false);
+  const [showCengkehDryerSection, setShowCengkehDryerSection] = useState<boolean>(false);
+  const [showAllReconSection, setShowAllReconSection] = useState<boolean>(false);
+  // Pagination state (default 50 entries per page for instant render)
+  const [pageSize, setPageSize] = useState<number | 'all'>(50);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [reconcileDisplay, setReconcileDisplay] = useState<ReconciliationDisplayConfig>(() => GasService.getReconciliationDisplayConfig());
   const [isSktSkmModalOpen, setIsSktSkmModalOpen] = useState<boolean>(false);
   const [sktSkmVersion, setSktSkmVersion] = useState<number>(0);
@@ -194,6 +202,10 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         }
 
         const rowId = m.id || `${k.komoditas}_${m.tanggal || ''}_${m.kode}_${m.masuk || 0}_${m.keluar || 0}_${list.length}`;
+        const _epoch = getEpochTime(m.tanggal);
+        const _dateKey = getTanggalKey(m.tanggal);
+        const _formattedDate = formatTanggalIndo(m.tanggal || '');
+
         list.push({
           id: rowId,
           komoditas: k.komoditas,
@@ -203,26 +215,25 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
           masukSKT,
           keluarSKT,
           masukSKM,
-          keluarSKM
+          keluarSKM,
+          _epoch,
+          _dateKey,
+          _formattedDate
         });
       });
     });
 
-    // Sort by date descending (terbaru di atas) dengan epoch time berstandar Locale Indonesia
-    return list.sort((a, b) => {
-      const dateA = getEpochTime(a.mutasi.tanggal);
-      const dateB = getEpochTime(b.mutasi.tanggal);
-      return dateB - dateA;
-    });
+    // Sort by date descending (terbaru di atas) dengan perbandingan epoch numerik instan (< 1ms)
+    return list.sort((a, b) => b._epoch - a._epoch);
   }, [data, sktSkmVersion]);
 
   // Tanggal terbaru yang tercatat pada mutasi (format YYYY-MM-DD berbasis epoch numerik)
   const latestTanggal = useMemo(() => {
-    const pool = filterKomoditas === 'all' 
-      ? allMutasi 
-      : allMutasi.filter(e => e.komoditas === filterKomoditas);
-
-    return getLatestDateString(pool.map(item => ({ tanggal: item.mutasi.tanggal })));
+    if (filterKomoditas === 'all') {
+      return allMutasi[0]?._dateKey || '';
+    }
+    const target = allMutasi.find(e => e.komoditas === filterKomoditas);
+    return target?._dateKey || '';
   }, [allMutasi, filterKomoditas]);
 
   // Available Kode options based on selected Komoditas
@@ -321,34 +332,28 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     }
   }, [filterKomoditas, filterKode, jenisOptions, customJenisList, filterJenis]);
 
-  // Counts for BSPP mutation categories
-  const countBSPP = useMemo(() => {
-    return allMutasi.filter(e => {
-      if (filterKomoditas !== 'all' && e.komoditas !== filterKomoditas) return false;
+  // Counts for BSPP mutation categories (single pass for speed)
+  const { countBSPP, countBSPPLebih, countBSPPKurang } = useMemo(() => {
+    let bspp = 0;
+    let lebih = 0;
+    let kurang = 0;
+    for (let i = 0; i < allMutasi.length; i++) {
+      const e = allMutasi[i];
+      if (filterKomoditas !== 'all' && e.komoditas !== filterKomoditas) continue;
       const jUpper = (e.mutasi.jenisMutasi || '').toUpperCase();
       const tagUpper = (mutasiTags[e.id] || '').toUpperCase();
-      return jUpper.includes('BSPP') || tagUpper.includes('BSPP');
-    }).length;
-  }, [allMutasi, filterKomoditas, mutasiTags]);
-
-  const countBSPPLebih = useMemo(() => {
-    return allMutasi.filter(e => {
-      if (filterKomoditas !== 'all' && e.komoditas !== filterKomoditas) return false;
-      const jUpper = (e.mutasi.jenisMutasi || '').toUpperCase();
-      const tagUpper = (mutasiTags[e.id] || '').toUpperCase();
-      if (tagUpper === 'BSPP LEBIH') return true;
-      return jUpper.includes('BSPP') && (jUpper.includes('LEBIH') || ((e.mutasi.masuk || 0) > 0 && !(e.mutasi.keluar || 0)));
-    }).length;
-  }, [allMutasi, filterKomoditas, mutasiTags]);
-
-  const countBSPPKurang = useMemo(() => {
-    return allMutasi.filter(e => {
-      if (filterKomoditas !== 'all' && e.komoditas !== filterKomoditas) return false;
-      const jUpper = (e.mutasi.jenisMutasi || '').toUpperCase();
-      const tagUpper = (mutasiTags[e.id] || '').toUpperCase();
-      if (tagUpper === 'BSPP KURANG') return true;
-      return jUpper.includes('BSPP') && (jUpper.includes('KURANG') || ((e.mutasi.keluar || 0) > 0 && !(e.mutasi.masuk || 0)));
-    }).length;
+      const isBspp = jUpper.includes('BSPP') || tagUpper.includes('BSPP');
+      if (isBspp) {
+        bspp++;
+        if (tagUpper === 'BSPP LEBIH' || jUpper.includes('LEBIH') || ((e.mutasi.masuk || 0) > 0 && !(e.mutasi.keluar || 0))) {
+          lebih++;
+        }
+        if (tagUpper === 'BSPP KURANG' || jUpper.includes('KURANG') || ((e.mutasi.keluar || 0) > 0 && !(e.mutasi.masuk || 0))) {
+          kurang++;
+        }
+      }
+    }
+    return { countBSPP: bspp, countBSPPLebih: lebih, countBSPPKurang: kurang };
   }, [allMutasi, filterKomoditas, mutasiTags]);
 
   // Filtered mutasi items
@@ -439,14 +444,16 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
       }
 
       // Filter Date Range:
-      // Request: Tampilkan hanya mutasi tanggal terbaru secara default. Jika ingin mencari data tertentu, gunakan rentang periode.
-      const itemDate = getTanggalKey(m.tanggal);
+      const itemDate = e._dateKey;
       if (filterFrom || filterTo) {
         if (filterFrom && itemDate < filterFrom) return false;
         if (filterTo && itemDate > filterTo) return false;
-      } else if (!showAllDates && latestTanggal) {
-        // Mode default mutasi terbaru: hanya tanggal terkini
-        if (itemDate !== latestTanggal) return false;
+      } else if (!showAllDates) {
+        // Jika komoditas spesifik dipilih, tampilkan tanggal terbaru komoditas tersebut secara default
+        if (filterKomoditas !== 'all' && latestTanggal) {
+          if (itemDate !== latestTanggal) return false;
+        }
+        // Ketika 'Semua Bahan' aktif, tampilkan mutasi terkini lintas bahan (semua bahan tetap muncul)
       }
 
       // Text search
@@ -465,42 +472,44 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     });
   }, [allMutasi, filterKomoditas, filterKode, filterJenis, filterProduksi, filterHideZero, filterFrom, filterTo, showAllDates, latestTanggal, searchQuery, sktSkmVersion, mutasiTags]);
 
-  // Totals for filtered data
-  const totalMasuk = useMemo(() => {
-    return filteredEntries.reduce((acc, curr) => acc + (curr.mutasi.masuk || 0), 0);
-  }, [filteredEntries]);
-
-  const totalKeluar = useMemo(() => {
-    return filteredEntries.reduce((acc, curr) => acc + (curr.mutasi.keluar || 0), 0);
-  }, [filteredEntries]);
-
-  const totalMasukSKT = useMemo(() => {
-    return filteredEntries.reduce((acc, curr) => {
-      if (!GasService.isSktSkmActiveForKomoditas(curr.komoditas)) return acc;
-      return acc + (curr.masukSKT || 0);
-    }, 0);
+  // Totals for filtered data (single pass for instant responsiveness)
+  const { totalMasuk, totalKeluar, totalMasukSKT, totalKeluarSKT, totalMasukSKM, totalKeluarSKM } = useMemo(() => {
+    let masuk = 0;
+    let keluar = 0;
+    let masukSKT = 0;
+    let keluarSKT = 0;
+    let masukSKM = 0;
+    let keluarSKM = 0;
+    for (let i = 0; i < filteredEntries.length; i++) {
+      const curr = filteredEntries[i];
+      masuk += curr.mutasi.masuk || 0;
+      keluar += curr.mutasi.keluar || 0;
+      if (GasService.isSktSkmActiveForKomoditas(curr.komoditas)) {
+        masukSKT += curr.masukSKT || 0;
+        keluarSKT += curr.keluarSKT || 0;
+        masukSKM += curr.masukSKM || 0;
+        keluarSKM += curr.keluarSKM || 0;
+      }
+    }
+    return { totalMasuk: masuk, totalKeluar: keluar, totalMasukSKT: masukSKT, totalKeluarSKT: keluarSKT, totalMasukSKM: masukSKM, totalKeluarSKM: keluarSKM };
   }, [filteredEntries, sktSkmVersion]);
 
-  const totalKeluarSKT = useMemo(() => {
-    return filteredEntries.reduce((acc, curr) => {
-      if (!GasService.isSktSkmActiveForKomoditas(curr.komoditas)) return acc;
-      return acc + (curr.keluarSKT || 0);
-    }, 0);
-  }, [filteredEntries, sktSkmVersion]);
+  // Auto-reset page to 1 when any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterKomoditas, filterKode, filterJenis, filterProduksi, filterHideZero, filterFrom, filterTo, showAllDates, searchQuery]);
 
-  const totalMasukSKM = useMemo(() => {
-    return filteredEntries.reduce((acc, curr) => {
-      if (!GasService.isSktSkmActiveForKomoditas(curr.komoditas)) return acc;
-      return acc + (curr.masukSKM || 0);
-    }, 0);
-  }, [filteredEntries, sktSkmVersion]);
+  // Total pages and paginated slice (< 5ms instant render)
+  const totalPages = useMemo(() => {
+    if (pageSize === 'all') return 1;
+    return Math.max(1, Math.ceil(filteredEntries.length / pageSize));
+  }, [filteredEntries.length, pageSize]);
 
-  const totalKeluarSKM = useMemo(() => {
-    return filteredEntries.reduce((acc, curr) => {
-      if (!GasService.isSktSkmActiveForKomoditas(curr.komoditas)) return acc;
-      return acc + (curr.keluarSKM || 0);
-    }, 0);
-  }, [filteredEntries, sktSkmVersion]);
+  const paginatedEntries = useMemo(() => {
+    if (pageSize === 'all') return filteredEntries;
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredEntries.slice(startIndex, startIndex + pageSize);
+  }, [filteredEntries, currentPage, pageSize]);
 
   // Rekonsiliasi Pemasukan Hasil Proses: Mengacu pada mutasi fisik gudang persediaan Tembakau & Krosok (Rajang II)
   // yang divalidasi silang terhadap DHP Tembakau (1 bahan) dan DHP Krosok (6 bahan)
@@ -718,8 +727,262 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         </div>
       </div>
 
+      {/* Filter Controls Bar - Front & Center */}
+      <div className="px-4 py-3 sm:px-5 sm:py-3 bg-slate-50/70 border-b border-slate-200 space-y-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {/* Bahan Filter */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+              Bahan
+            </label>
+            <select
+              value={filterKomoditas}
+              onChange={e => {
+                setFilterKomoditas(e.target.value);
+                setFilterKode('all');
+                setFilterJenis('all');
+              }}
+              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="all">Semua Bahan</option>
+              {data.map(k => (
+                <option key={k.komoditas} value={k.komoditas}>
+                  {k.komoditas}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Kode Filter */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+              Kode / Grade
+            </label>
+            <select
+              value={filterKode}
+              onChange={e => setFilterKode(e.target.value)}
+              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="all">Semua Kode / Grade</option>
+              {kodeOptions.map(group => (
+                <optgroup key={group.komoditas} label={group.komoditas}>
+                  {group.kodes.map(kode => (
+                    <option key={kode} value={kode}>
+                      {kode}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          {/* Jenis Mutasi Filter */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+              Jenis Mutasi
+            </label>
+            <select
+              value={filterJenis}
+              onChange={e => setFilterJenis(e.target.value)}
+              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500 font-medium"
+            >
+              <option value="all">
+                {filterKomoditas === 'all' 
+                  ? 'Semua Jenis Mutasi' 
+                  : `Semua Mutasi (${filterKomoditas})`}
+              </option>
+
+              {/* Opsi Khusus BSPP (Bukti Selisih Persediaan) */}
+              <optgroup label="⚖️ Mutasi BSPP (Selisih Timbangan)">
+                <option value="BSPP">
+                  ⚖️ BSPP (Semua: Nilai Plus &amp; Minus) {countBSPP > 0 ? `(${countBSPP})` : ''}
+                </option>
+                <option value="BSPP Lebih">
+                  ➕ BSPP Lebih (Hanya Nilai Plus / Masuk) {countBSPPLebih > 0 ? `(${countBSPPLebih})` : ''}
+                </option>
+                <option value="BSPP Kurang">
+                  ➖ BSPP Kurang (Hanya Nilai Minus / Keluar) {countBSPPKurang > 0 ? `(${countBSPPKurang})` : ''}
+                </option>
+              </optgroup>
+              
+              {/* Opsi Asli dari Google Spreadsheet */}
+              {filterKomoditas === 'all' && groupedJenisOptions ? (
+                groupedJenisOptions.map(group => (
+                  <optgroup key={group.komoditas} label={`📋 Sheet ${group.komoditas}`}>
+                    {group.jenisList.map(j => (
+                      <option key={`${group.komoditas}-${j}`} value={j}>
+                        {j}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))
+              ) : (
+                <optgroup label={filterKomoditas === 'all' ? "📋 Bawaan Sheet Asli" : `📋 Sheet Asli (${filterKomoditas})`}>
+                  {jenisOptions.map(j => (
+                    <option key={j} value={j}>
+                      {j}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          </div>
+
+          {/* Quick Search */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+              Pencarian Cepat
+            </label>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Cari kode, mutasi..."
+                className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Date Ranges & Toggle Zero - Compact */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-slate-500" />
+              <span>Cari Periode:</span>
+            </span>
+            <input
+              type="date"
+              value={filterFrom}
+              onChange={e => {
+                setFilterFrom(e.target.value);
+                setShowAllDates(false);
+              }}
+              className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
+              title="Dari tanggal"
+            />
+            <span className="text-[11px] text-slate-400">s/d</span>
+            <input
+              type="date"
+              value={filterTo}
+              onChange={e => {
+                setFilterTo(e.target.value);
+                setShowAllDates(false);
+              }}
+              className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
+              title="Sampai tanggal"
+            />
+
+            {(filterFrom || filterTo || showAllDates) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterFrom('');
+                  setFilterTo('');
+                  setShowAllDates(false);
+                }}
+                className="text-[10.5px] text-blue-700 hover:text-blue-900 underline px-1 font-semibold flex items-center gap-0.5 cursor-pointer"
+                title="Kembalikan ke tampilan mutasi tanggal terbaru saja"
+              >
+                ↺ Tanggal Terbaru
+              </button>
+            )}
+
+            {!filterFrom && !filterTo && !showAllDates && (
+              filterKomoditas !== 'all' && latestTanggal ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-900 border border-blue-200 rounded text-[11px] font-semibold">
+                  <span>⚡ Tanggal Terbaru: {formatTanggalIndo(latestTanggal)}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllDates(true)}
+                    className="text-[10px] text-blue-600 hover:text-blue-900 underline font-normal cursor-pointer"
+                    title="Lihat seluruh mutasi dari semua tanggal"
+                  >
+                    Semua Tanggal
+                  </button>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 rounded text-[11px] font-semibold">
+                  <span>⚡ Mutasi Terkini Lintas Bahan Baku</span>
+                </span>
+              )
+            )}
+            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterKomoditas('all');
+                  setFilterKode('all');
+                  setFilterJenis('all');
+                  setSearchQuery('');
+                  setFilterHideZero(false);
+                }}
+                className="text-[10.5px] text-slate-500 hover:text-slate-800 underline px-1 font-medium flex items-center gap-0.5 cursor-pointer"
+                title="Reset semua filter ke default"
+              >
+                Reset Filter
+              </button>
+            )}
+          </div>
+
+          <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={filterHideZero}
+              onChange={e => setFilterHideZero(e.target.checked)}
+              className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+            />
+            <span className="text-[11px]">Sembunyikan mutasi bernilai 0</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Summary Strip (Sleek & Low-Profile) */}
+      <div className="px-4 py-2 sm:px-5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-bold text-slate-700 flex items-center gap-1">
+            <span>Hasil Filter:</span>
+            <span className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-900">
+              {filteredEntries.length} entri
+            </span>
+          </span>
+
+          <span className="text-slate-300">|</span>
+
+          <span className="font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-mono">
+            Masuk: +{formatNumber(totalMasuk)} Kg
+          </span>
+
+          <span className="font-medium text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-mono">
+            Keluar: -{formatNumber(totalKeluar)} Kg
+          </span>
+
+          {hasProduksiBreakdown && (totalMasukSKT > 0 || totalKeluarSKT > 0 || totalMasukSKM > 0 || totalKeluarSKM > 0) && (
+            <>
+              <span className="text-slate-300">|</span>
+              <span className="text-amber-800 text-[11px] font-mono">
+                SKT: +{formatNumber(totalMasukSKT)} / -{formatNumber(totalKeluarSKT)}
+              </span>
+              <span className="text-blue-800 text-[11px] font-mono">
+                SKM: +{formatNumber(totalMasukSKM)} / -{formatNumber(totalKeluarSKM)}
+              </span>
+            </>
+          )}
+        </div>
+
+        <span className="text-[11px] text-slate-500 font-mono">
+          {filterFrom || filterTo 
+            ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}` 
+            : !showAllDates && filterKomoditas !== 'all' && latestTanggal 
+              ? `Tanggal: ${formatTanggalIndo(latestTanggal)}` 
+              : 'Semua Periode / Log Terkini'}
+        </span>
+      </div>
+
       {/* Panel Rekonsiliasi Khusus: Pemasukan Hasil Proses Gudang Persediaan Rajang II vs Kertas Kerja DHP (Diatur via Headless GAS Center) */}
-      {reconcileDisplay.showDhpSummary && (filterKomoditas === 'all' || filterKomoditas.includes('Rajang II')) && dhpReconciliationEntries.length > 0 && (
+      {reconcileDisplay.showDhpSummary && (filterKomoditas === 'all' ? showAllReconSection : filterKomoditas.includes('Rajang II')) && dhpReconciliationEntries.length > 0 && (
         <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border-b border-emerald-800/50 p-4 sm:p-5">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
@@ -893,7 +1156,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
       )}
 
       {/* Panel Rekonsiliasi Khusus: Pemasukan Hasil Blend Gudang Persediaan Tembakau Blend vs DHP Blend (Kolom I) */}
-      {reconcileDisplay.showDhpSummary && (filterKomoditas === 'all' || filterKomoditas.toLowerCase().includes('blend')) && dhpBlendReconciliationEntries.length > 0 && (
+      {(reconcileDisplay.showDhpBlendSummary ?? reconcileDisplay.showDhpSummary) && (filterKomoditas === 'all' ? showAllReconSection : filterKomoditas.toLowerCase().includes('blend')) && dhpBlendReconciliationEntries.length > 0 && (
         <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-indigo-950 text-white border-b border-teal-800/50 p-4 sm:p-5">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
@@ -1076,7 +1339,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
       )}
 
       {/* Panel Rekonsiliasi Khusus: Pengeluaran Pengiriman Tembakau Blend (Kertas Kerja PENGIRIMAN TBK BLD - Kolom F & Kolom L) */}
-      {(reconcileDisplay.showPengirimanBlendSummary ?? reconcileDisplay.showDhpSummary) && (filterKomoditas === 'all' || filterKomoditas.toLowerCase().includes('blend')) && pengirimanBlendReconciliationEntries.length > 0 && (
+      {(reconcileDisplay.showPengirimanBlendSummary ?? reconcileDisplay.showDhpSummary) && (filterKomoditas === 'all' ? showAllReconSection : filterKomoditas.toLowerCase().includes('blend')) && pengirimanBlendReconciliationEntries.length > 0 && (
         <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-yellow-950 text-white border-b border-amber-800/50 p-4 sm:p-5">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
@@ -1243,7 +1506,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
       )}
 
       {/* Panel Rekonsiliasi Khusus: Pengeluaran Setoran (Diatur via Headless GAS Center) */}
-      {reconcileDisplay.showSetoranSummary && setoranReconciliationEntries.length > 0 && (
+      {reconcileDisplay.showSetoranSummary && (filterKomoditas === 'all' ? showAllReconSection : filterKomoditas.includes('Rajang II')) && setoranReconciliationEntries.length > 0 && (
         <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 text-white border-b border-blue-800/50 p-4 sm:p-5">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
@@ -1406,253 +1669,128 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         </div>
       )}
 
-      {/* Filter Controls Bar - Compact */}
-      <div className="px-4 py-3 sm:px-5 sm:py-3 bg-slate-50/70 border-b border-slate-200 space-y-2.5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          {/* Bahan Filter */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-              Bahan
-            </label>
-            <select
-              value={filterKomoditas}
-              onChange={e => {
-                setFilterKomoditas(e.target.value);
-                setFilterKode('all');
-                setFilterJenis('all');
-              }}
-              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="all">Semua Bahan</option>
-              {data.map(k => (
-                <option key={k.komoditas} value={k.komoditas}>
-                  {k.komoditas}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* Panel Rekonsiliasi Khusus: Hasil Pengeringan Cengkeh vs Pemasukan Mutasi (SOURCE HASIL DRYER - Kolom F) */}
+      {(filterKomoditas === 'all' ? showAllReconSection : filterKomoditas.toLowerCase().includes('cengkeh')) && cengkehDryerReconciliationEntries.length > 0 && (
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border-b border-emerald-800/50 p-4 sm:p-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Rekonsiliasi Otomatis (2-Way Matching)</span>
+                </span>
+                <span className="text-[11px] text-slate-300 font-medium">
+                  {formatTanggalIndo(latestCengkehDryerTanggal)}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/10 text-slate-300 border border-white/10" title="ID Sheet Kertas Kerja Dryer Cengkeh">
+                  Tab: SOURCE HASIL DRYER (Kolom F)
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                <span>Pemasukan Hasil Proses: Gudang Cengkeh vs Hasil Dryer</span>
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5 max-w-2xl leading-relaxed">
+                Pencocokan entri <strong className="text-emerald-200">Pemasukan Hasil Proses</strong> di Gudang Cengkeh terhadap kertas kerja <strong className="text-emerald-300">SOURCE HASIL DRYER Kolom F</strong> ({cengkehDryerReconciliationEntries.length} Sesi Pengeringan).
+              </p>
+            </div>
 
-          {/* Kode Filter */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-              Kode / Grade
-            </label>
-            <select
-              value={filterKode}
-              onChange={e => setFilterKode(e.target.value)}
-              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="all">Semua Kode / Grade</option>
-              {kodeOptions.map(group => (
-                <optgroup key={group.komoditas} label={group.komoditas}>
-                  {group.kodes.map(kode => (
-                    <option key={kode} value={kode}>
-                      {kode}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
-
-          {/* Jenis Mutasi Filter */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-              Jenis Mutasi
-            </label>
-            <select
-              value={filterJenis}
-              onChange={e => setFilterJenis(e.target.value)}
-              className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500 font-medium"
-            >
-              <option value="all">
-                {filterKomoditas === 'all' 
-                  ? 'Semua Jenis Mutasi' 
-                  : `Semua Mutasi (${filterKomoditas})`}
-              </option>
-
-              {/* Opsi Khusus BSPP (Bukti Selisih Persediaan) */}
-              <optgroup label="⚖️ Mutasi BSPP (Selisih Timbangan)">
-                <option value="BSPP">
-                  ⚖️ BSPP (Semua: Nilai Plus &amp; Minus) {countBSPP > 0 ? `(${countBSPP})` : ''}
-                </option>
-                <option value="BSPP Lebih">
-                  ➕ BSPP Lebih (Hanya Nilai Plus / Masuk) {countBSPPLebih > 0 ? `(${countBSPPLebih})` : ''}
-                </option>
-                <option value="BSPP Kurang">
-                  ➖ BSPP Kurang (Hanya Nilai Minus / Keluar) {countBSPPKurang > 0 ? `(${countBSPPKurang})` : ''}
-                </option>
-              </optgroup>
-              
-              {/* Opsi Asli dari Google Spreadsheet */}
-              {filterKomoditas === 'all' && groupedJenisOptions ? (
-                groupedJenisOptions.map(group => (
-                  <optgroup key={group.komoditas} label={`📋 Sheet ${group.komoditas}`}>
-                    {group.jenisList.map(j => (
-                      <option key={`${group.komoditas}-${j}`} value={j}>
-                        {j}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))
-              ) : (
-                <optgroup label={filterKomoditas === 'all' ? "📋 Bawaan Sheet Asli" : `📋 Sheet Asli (${filterKomoditas})`}>
-                  {jenisOptions.map(j => (
-                    <option key={j} value={j}>
-                      {j}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
-
-          {/* Quick Search */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-              Pencarian Cepat
-            </label>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Cari kode, mutasi..."
-                className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="bg-white/10 backdrop-blur-xs rounded-xl px-3 py-2 border border-white/10 text-center">
+                <span className="text-[10px] text-slate-300 uppercase tracking-wider block">Mutasi Fisik</span>
+                <span className="text-sm font-bold text-white font-mono">{formatNumber(totalFisikCengkehMasukKg)} Kg</span>
+              </div>
+              <div className="bg-emerald-500/15 backdrop-blur-xs rounded-xl px-3 py-2 border border-emerald-400/30 text-center">
+                <span className="text-[10px] text-emerald-200 uppercase tracking-wider block">Hasil Dryer (Kolom F)</span>
+                <span className="text-sm font-bold text-emerald-300 font-mono">{formatNumber(totalCengkehDryerNettoKg)} Kg</span>
+              </div>
+              <div className="bg-emerald-500/20 backdrop-blur-xs rounded-xl px-3 py-2 border border-emerald-400/40 text-center">
+                <span className="text-[10px] text-emerald-200 uppercase tracking-wider block">Status Keselarasan</span>
+                <span className="text-sm font-bold text-emerald-300 font-mono">
+                  {totalCengkehDryerSelisihKg === 0 ? '100% IDENTIK' : `Selisih ${formatNumber(totalCengkehDryerSelisihKg)} Kg`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCengkehDryerSection(!showCengkehDryerSection)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer border border-white/15"
+                title={showCengkehDryerSection ? 'Sembunyikan rincian tabel perbandingan' : 'Buka rincian tabel perbandingan'}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>{showCengkehDryerSection ? 'Tutup Rincian' : 'Lihat Rincian'}</span>
+                {showCengkehDryerSection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Date Ranges & Toggle Zero - Compact */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
-              <Calendar className="w-3 h-3 text-slate-500" />
-              <span>Cari Periode:</span>
-            </span>
-            <input
-              type="date"
-              value={filterFrom}
-              onChange={e => {
-                setFilterFrom(e.target.value);
-                setShowAllDates(false);
-              }}
-              className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
-              title="Dari tanggal"
-            />
-            <span className="text-[11px] text-slate-400">s/d</span>
-            <input
-              type="date"
-              value={filterTo}
-              onChange={e => {
-                setFilterTo(e.target.value);
-                setShowAllDates(false);
-              }}
-              className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
-              title="Sampai tanggal"
-            />
-
-            {(filterFrom || filterTo || showAllDates) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterFrom('');
-                  setFilterTo('');
-                  setShowAllDates(false);
-                }}
-                className="text-[10.5px] text-blue-700 hover:text-blue-900 underline px-1 font-semibold flex items-center gap-0.5 cursor-pointer"
-                title="Kembalikan ke tampilan mutasi tanggal terbaru saja"
-              >
-                ↺ Tanggal Terbaru
-              </button>
-            )}
-
-            {!filterFrom && !filterTo && !showAllDates && latestTanggal && (
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-900 border border-blue-200 rounded text-[11px] font-semibold">
-                <span>⚡ Menampilkan Tanggal Terbaru ({formatTanggalIndo(latestTanggal)})</span>
-                <button
-                  type="button"
-                  onClick={() => setShowAllDates(true)}
-                  className="text-[10px] text-blue-600 hover:text-blue-900 underline font-normal cursor-pointer"
-                  title="Lihat seluruh mutasi dari semua tanggal"
-                >
-                  Semua Tanggal
-                </button>
-              </span>
-            )}
-            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterKomoditas('all');
-                  setFilterKode('all');
-                  setFilterJenis('all');
-                  setSearchQuery('');
-                  setFilterHideZero(false);
-                }}
-                className="text-[10.5px] text-slate-500 hover:text-slate-800 underline px-1 font-medium flex items-center gap-0.5 cursor-pointer"
-                title="Reset semua filter ke default"
-              >
-                Reset Filter
-              </button>
-            )}
-          </div>
-
-          <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={filterHideZero}
-              onChange={e => setFilterHideZero(e.target.checked)}
-              className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
-            />
-            <span className="text-[11px]">Sembunyikan mutasi bernilai 0</span>
-          </label>
-        </div>
-      </div>
-
-      {/* Summary Strip (Sleek & Low-Profile) */}
-      <div className="px-4 py-2 sm:px-5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-slate-700 flex items-center gap-1">
-            <span>Hasil Filter:</span>
-            <span className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-900">
-              {filteredEntries.length} entri
-            </span>
-          </span>
-
-          <span className="text-slate-300">|</span>
-
-          <span className="font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-mono">
-            Masuk: +{formatNumber(totalMasuk)} Kg
-          </span>
-
-          <span className="font-medium text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-mono">
-            Keluar: -{formatNumber(totalKeluar)} Kg
-          </span>
-
-          {hasProduksiBreakdown && (totalMasukSKT > 0 || totalKeluarSKT > 0 || totalMasukSKM > 0 || totalKeluarSKM > 0) && (
-            <>
-              <span className="text-slate-300">|</span>
-              <span className="text-amber-800 text-[11px] font-mono">
-                SKT: +{formatNumber(totalMasukSKT)} / -{formatNumber(totalKeluarSKT)}
-              </span>
-              <span className="text-blue-800 text-[11px] font-mono">
-                SKM: +{formatNumber(totalMasukSKM)} / -{formatNumber(totalKeluarSKM)}
-              </span>
-            </>
+          {showCengkehDryerSection && (
+            <div className="mt-4 pt-3.5 border-t border-emerald-800/40">
+              <div className="overflow-x-auto rounded-xl border border-slate-700/80 bg-slate-900/80 shadow-inner">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-800/90 text-[10.5px] uppercase font-bold text-slate-300 border-b border-slate-700">
+                    <tr>
+                      <th className="py-2.5 px-3">Tanggal</th>
+                      <th className="py-2.5 px-3">Sesi / Partai Dryer</th>
+                      <th className="py-2.5 px-3">Kode Bahan</th>
+                      <th className="py-2.5 px-3 text-right">Hasil Dryer (Kolom F)</th>
+                      <th className="py-2.5 px-3 text-right">Fisik Mutasi Masuk</th>
+                      <th className="py-2.5 px-3 text-right">Selisih (Kg)</th>
+                      <th className="py-2.5 px-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 font-mono">
+                    {cengkehDryerReconciliationEntries.map((e, idx) => {
+                      const dryerVal = e.mutasi.dhpMatch?.dhpNetto || e.mutasi.masuk || 0;
+                      const fisikVal = e.mutasi.masuk || 0;
+                      const selisih = Math.round((fisikVal - dryerVal) * 10) / 10;
+                      return (
+                        <tr key={idx} className="hover:bg-slate-800/50">
+                          <td className="py-2 px-3 text-slate-300 font-sans">{e._formattedDate}</td>
+                          <td className="py-2 px-3 text-emerald-300 font-semibold">{e.mutasi.dhpMatch?.sumber || 'Dryer'}</td>
+                          <td className="py-2 px-3 text-white font-bold">{e.mutasi.kode}</td>
+                          <td className="py-2 px-3 text-right text-emerald-300">{formatNumber(dryerVal)} Kg</td>
+                          <td className="py-2 px-3 text-right text-white">{formatNumber(fisikVal)} Kg</td>
+                          <td className="py-2 px-3 text-right text-emerald-400 font-bold">{selisih === 0 ? '0,0 Kg' : `${formatNumber(selisih)} Kg`}</td>
+                          <td className="py-2 px-3 text-center">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                              <span>100% Cocok</span>
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
+      )}
 
-        <span className="text-[11px] text-slate-500 font-mono">
-          {filterFrom || filterTo 
-            ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}` 
-            : !showAllDates && latestTanggal 
-              ? `Tanggal: ${formatTanggalIndo(latestTanggal)}` 
-              : 'Semua Periode'}
-        </span>
-      </div>
+      {/* Quick Reconciliation Status Bar for All Commodities */}
+      {filterKomoditas === 'all' && (
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-4 py-2 sm:px-5 flex flex-wrap items-center justify-between gap-2 text-xs border-b border-slate-700/80">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Rekonsiliasi Otomatis (5 Sumber)</span>
+            </span>
+            <span className="text-[11px] text-slate-300">
+              DHP Rajang II ({dhpReconciliationEntries.length}) · DHP Blend ({dhpBlendReconciliationEntries.length}) · Pengiriman ({pengirimanBlendReconciliationEntries.length}) · Setoran ({setoranReconciliationEntries.length}) · Dryer Cengkeh ({cengkehDryerReconciliationEntries.length})
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAllReconSection(!showAllReconSection)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer border border-white/15"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-blue-300" />
+            <span>{showAllReconSection ? 'Sembunyikan Rincian Komparasi' : 'Lihat Rincian Komparasi 5 Sumber'}</span>
+            {showAllReconSection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      )}
 
       {/* Table Data - Dynamic proportional columns, fits viewport completely */}
       <div id="mutasi-table-section" className="overflow-x-auto w-full">
@@ -1676,7 +1814,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                 </td>
               </tr>
             ) : (
-              filteredEntries.map((e, index) => {
+              paginatedEntries.map((e, index) => {
                 const m = e.mutasi;
                 return (
                   <tr 
@@ -1684,7 +1822,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                     className="hover:bg-slate-50/90 transition-colors"
                   >
                     <td className="py-1.5 px-2.5 sm:px-3 whitespace-nowrap text-slate-700 font-medium text-[11px] sm:text-xs">
-                      {formatTanggalIndo(m.tanggal || '')}
+                      {e._formattedDate}
                     </td>
                     <td className="py-1.5 px-2.5 sm:px-3">
                       {e.komoditas.includes('Rajang II') ? (
@@ -1904,6 +2042,73 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Controls Bar */}
+      <div className="px-4 py-3 sm:px-5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs select-none">
+        <div className="flex items-center gap-2 text-slate-600">
+          <span>Menampilkan</span>
+          <span className="font-bold text-slate-900 font-mono">
+            {filteredEntries.length === 0 ? '0' : (
+              pageSize === 'all' 
+                ? `1 - ${filteredEntries.length}` 
+                : `${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, filteredEntries.length)}`
+            )}
+          </span>
+          <span>dari</span>
+          <span className="font-bold text-slate-900 font-mono">{filteredEntries.length}</span>
+          <span>entri mutasi</span>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Page Size Selector */}
+          <div className="flex items-center gap-1.5 text-slate-600 text-xs">
+            <span>Per halaman:</span>
+            <select
+              value={pageSize}
+              onChange={e => {
+                const val = e.target.value;
+                setPageSize(val === 'all' ? 'all' : Number(val));
+                setCurrentPage(1);
+              }}
+              className="bg-white border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-800 font-medium focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+              <option value="all">Semua ({filteredEntries.length})</option>
+            </select>
+          </div>
+
+          {/* Page Navigation Buttons */}
+          {pageSize !== 'all' && totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 transition-colors cursor-pointer flex items-center gap-1"
+                title="Halaman sebelumnya"
+              >
+                <span>‹ Prev</span>
+              </button>
+
+              <span className="px-2 py-1 text-slate-700 font-mono font-semibold">
+                {currentPage} / {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 transition-colors cursor-pointer flex items-center gap-1"
+                title="Halaman berikutnya"
+              >
+                <span>Next ›</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* SktSkmSettingsModal for toggling SKT/SKM */}

@@ -30,6 +30,9 @@ export function serialToDate(serial: number): Date {
   return new Date(epoch + serial * 86400000);
 }
 
+// In-memory memoization cache for date parsing to prevent UI freeze and 1000s of regex runs
+const DATE_PARSE_CACHE = new Map<string, Date | null>();
+
 /**
  * Parsing tanggal dari berbagai variasi format (ISO, DD/MM/YYYY, DD-MM-YYYY, teks Indonesia, serial)
  * Menjamin format Indonesia DD/MM/YYYY tidak terbalik menjadi MM/DD/YYYY.
@@ -54,6 +57,20 @@ export function parseDateIndo(input: unknown): Date | null {
   const str = String(input).trim();
   if (!str) return null;
 
+  const cached = DATE_PARSE_CACHE.get(str);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const result = parseDateIndoInternal(str);
+  if (DATE_PARSE_CACHE.size > 2000) {
+    DATE_PARSE_CACHE.clear();
+  }
+  DATE_PARSE_CACHE.set(str, result);
+  return result;
+}
+
+function parseDateIndoInternal(str: string): Date | null {
   // 3. Serial number sebagai string numerik (mis. "46305" atau "46305.5")
   if (/^\d{5,6}(\.\d+)?$/.test(str)) {
     const num = parseFloat(str);
