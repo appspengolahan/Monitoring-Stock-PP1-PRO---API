@@ -13,7 +13,7 @@ const STORAGE_KEYS = {
   LAST_SYNC: 'stockpp1_last_sync_timestamp',
   CUSTOM_MUTASI: 'stockpp1_custom_mutasi_v1',
   SNAPSHOT_CACHE: 'stockpp1_snapshot_cache',
-  DHP_RECONCILIATION: 'stockpp1_dhp_reconciliation_v2',
+  DHP_RECONCILIATION: 'stockpp1_dhp_reconciliation_v3',
   DHP_BLEND_RECONCILIATION: 'stockpp1_dhp_blend_reconciliation_v1',
   PENGIRIMAN_BLEND_RECONCILIATION: 'stockpp1_pengiriman_blend_reconciliation_v1',
   SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2',
@@ -1327,10 +1327,18 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return this.cleanDHPEntries(parsed);
+          // Pastikan cache memiliki entri 12 Oktober (Weleri 2024 / Brazil BOA); jika tidak, reset ke DEFAULT
+          const hasOct12 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-12'));
+          if (hasOct12) {
+            return this.cleanDHPEntries(parsed);
+          }
         }
       } catch (e) {}
     }
+    // Jika belum ada entri 12 Okt, simpan DEFAULT_DHP_ENTRIES ke cache baru
+    try {
+      localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(this.DEFAULT_DHP_ENTRIES));
+    } catch {}
     return this.DEFAULT_DHP_ENTRIES;
   }
 
