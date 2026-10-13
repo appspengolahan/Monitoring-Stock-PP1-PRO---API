@@ -300,25 +300,53 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   }, [allMutasi, data, filterKomoditas, filterKode]);
 
   // Grouped Jenis Mutasi for categorized display when 'Semua Bahan' is selected
-  const groupedJenisOptions = useMemo(() => {
+  // Mengelompokkan berdasarkan kategori alur transaksi (Pemasukan, Pengeluaran, Pengiriman, Penyesuaian)
+  // BUKAN berdasarkan nama bahan, agar opsi jenis mutasi murni berisi jenis pergerakan barang
+  const groupedJenisCategories = useMemo(() => {
     if (filterKomoditas !== 'all') return null;
     const isBsppName = (name: string) => name.toUpperCase().includes('BSPP');
 
-    return data.map(k => {
-      const set = new Set<string>();
-      k.mutasiTerbaru.forEach(m => {
-        if (m.jenisMutasi && !isBsppName(m.jenisMutasi)) {
-          if (filterKode === 'all' || m.kode === filterKode) {
-            set.add(m.jenisMutasi);
-          }
+    // Kumpulkan semua jenis mutasi unik di seluruh dataset
+    const uniqueTypes = new Set<string>();
+    allMutasi.forEach(e => {
+      const j = (e.mutasi.jenisMutasi || '').replace(/^[`'\s]+/, '').trim();
+      if (j && !isBsppName(j)) {
+        if (filterKode === 'all' || e.mutasi.kode === filterKode) {
+          uniqueTypes.add(j);
         }
-      });
-      return {
-        komoditas: k.komoditas,
-        jenisList: Array.from(set).sort()
-      };
-    }).filter(g => g.jenisList.length > 0);
-  }, [data, filterKomoditas, filterKode]);
+      }
+    });
+
+    const categoryBuckets: Record<string, string[]> = {
+      '📥 Mutasi Pemasukan': [],
+      '📤 Mutasi Pengeluaran': [],
+      '🚚 Mutasi Pengiriman Antar Gudang': [],
+      '⚖️ Selisih & Penyiapan': [],
+      '📋 Penyesuaian & Stock Opname': [],
+      '📌 Saldo & Transaksi Lainnya': []
+    };
+
+    Array.from(uniqueTypes).sort().forEach(j => {
+      const lower = j.toLowerCase();
+      if (lower.includes('kirim') || lower.includes('pengiriman')) {
+        categoryBuckets['🚚 Mutasi Pengiriman Antar Gudang'].push(j);
+      } else if (lower.includes('masuk') || lower.includes('terima') || lower.includes('hasil')) {
+        categoryBuckets['📥 Mutasi Pemasukan'].push(j);
+      } else if (lower.includes('setoran') || lower.includes('keluar') || lower.includes('pruf') || lower.includes('ke rj')) {
+        categoryBuckets['📤 Mutasi Pengeluaran'].push(j);
+      } else if (lower.includes('selisih') || lower.includes('penyiapan')) {
+        categoryBuckets['⚖️ Selisih & Penyiapan'].push(j);
+      } else if (lower.includes('opname') || lower.includes('penyesuaian') || lower.includes('ba ')) {
+        categoryBuckets['📋 Penyesuaian & Stock Opname'].push(j);
+      } else {
+        categoryBuckets['📌 Saldo & Transaksi Lainnya'].push(j);
+      }
+    });
+
+    return Object.entries(categoryBuckets)
+      .filter(([_, list]) => list.length > 0)
+      .map(([label, list]) => ({ label, list }));
+  }, [allMutasi, filterKomoditas, filterKode]);
 
   // Automatically reset filterJenis if it's no longer present in available options, custom list, or BSPP special options
   useEffect(() => {
@@ -410,7 +438,9 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                 return false;
               }
             } else {
-              if (m.jenisMutasi !== filterJenis && userTag !== filterJenis) {
+              const cleanM = (m.jenisMutasi || '').replace(/^[`'\s]+/, '').trim().toLowerCase();
+              const cleanF = filterJenis.replace(/^[`'\s]+/, '').trim().toLowerCase();
+              if (m.jenisMutasi !== filterJenis && cleanM !== cleanF && userTag !== filterJenis) {
                 return false;
               }
             }
@@ -805,19 +835,19 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                 </option>
               </optgroup>
               
-              {/* Opsi Asli dari Google Spreadsheet */}
-              {filterKomoditas === 'all' && groupedJenisOptions ? (
-                groupedJenisOptions.map(group => (
-                  <optgroup key={group.komoditas} label={`📋 Sheet ${group.komoditas}`}>
-                    {group.jenisList.map(j => (
-                      <option key={`${group.komoditas}-${j}`} value={j}>
+              {/* Opsi Terkategori (Pemasukan, Pengeluaran, Pengiriman, Penyesuaian, dll) */}
+              {filterKomoditas === 'all' && groupedJenisCategories ? (
+                groupedJenisCategories.map(group => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.list.map(j => (
+                      <option key={j} value={j}>
                         {j}
                       </option>
                     ))}
                   </optgroup>
                 ))
               ) : (
-                <optgroup label={filterKomoditas === 'all' ? "📋 Bawaan Sheet Asli" : `📋 Sheet Asli (${filterKomoditas})`}>
+                <optgroup label={filterKomoditas === 'all' ? "📋 Semua Jenis Mutasi" : `📋 Jenis Mutasi (${filterKomoditas})`}>
                   {jenisOptions.map(j => (
                     <option key={j} value={j}>
                       {j}
