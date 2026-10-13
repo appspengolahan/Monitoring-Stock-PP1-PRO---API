@@ -1269,6 +1269,78 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 13 OKTOBER 2026 (Live Worksheet DHP Tembakau & DHP Krosok) ===
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Maesan 2024 (HS)',
+      nettoKg: 169.5,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Amerika 2025 (BO1)',
+      nettoKg: 721.6,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Hang Boyolali 2024 (FS)',
+      nettoKg: 80.9,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Janturan Jombang 2024 (MYN)',
+      nettoKg: 68.4,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Kasturi 2023 (ST)',
+      nettoKg: 135.9,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Krs. Garut 2025 (MYN)',
+      nettoKg: 237.4,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Lombok 2024 (BE) - 1',
+      nettoKg: 440.0,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Lombok 2024 (FS) - 1',
+      nettoKg: 124.4,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Mranggen 2024 (LL)',
+      nettoKg: 512.4,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-13T00:00:00.000Z',
+      nama: 'Paiton 2024 (VJI)',
+      nettoKg: 320.5,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+
     // === DATA 12 OKTOBER 2026 (Live Worksheet DHP Tembakau & DHP Krosok) ===
     // 7 Bahan dari DHP Tembakau (Senin, 12 Oktober 2026)
     {
@@ -1449,15 +1521,19 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Pastikan cache memiliki entri 12 Oktober (Weleri 2024 / Brazil BOA); jika tidak, reset ke DEFAULT
-          const hasOct12 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-12'));
-          if (hasOct12) {
+          // Pastikan cache memiliki entri 13 Oktober (Maesan 2024 / Amerika 2025); jika belum ada, otomatis gabungkan
+          const hasOct13 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-13'));
+          if (hasOct13) {
             return this.cleanDHPEntries(parsed);
+          } else {
+            const merged = [...parsed, ...this.DEFAULT_DHP_ENTRIES.filter(d => d.tanggal && String(d.tanggal).startsWith('2026-10-13'))];
+            this.saveCachedDHP(merged, true);
+            return this.cleanDHPEntries(merged);
           }
         }
       } catch (e) {}
     }
-    // Jika belum ada entri 12 Okt, simpan DEFAULT_DHP_ENTRIES ke cache baru
+    // Jika belum ada entri di cache, simpan DEFAULT_DHP_ENTRIES ke cache baru
     try {
       localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(this.DEFAULT_DHP_ENTRIES));
     } catch {}
@@ -3171,6 +3247,10 @@ function handleRestApiGet_(e) {
         result = { ok: true, items: getDHPCengkehReconciliation_() };
         break;
 
+      case 'getDHPReconciliation':
+        result = { ok: true, items: getDHPReconciliation_() };
+        break;
+
       default:
         result = { ok: false, error: 'Action "' + action + '" tidak dikenali di sistem StockPP1.' };
     }
@@ -3180,6 +3260,39 @@ function handleRestApiGet_(e) {
 
   return ContentService.createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getDHPReconciliation_() {
+  return [
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Maesan 2024 (HS)', nettoKg: 169.5, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Amerika 2025 (BO1)', nettoKg: 721.6, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Hang Boyolali 2024 (FS)', nettoKg: 80.9, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Janturan Jombang 2024 (MYN)', nettoKg: 68.4, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Kasturi 2023 (ST)', nettoKg: 135.9, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Krs. Garut 2025 (MYN)', nettoKg: 237.4, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Lombok 2024 (BE) - 1', nettoKg: 440.0, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Lombok 2024 (FS) - 1', nettoKg: 124.4, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Mranggen 2024 (LL)', nettoKg: 512.4, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Paiton 2024 (VJI)', nettoKg: 320.5, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Weleri 2024 (HK)', nettoKg: 803.2, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Sapudi 2024 (GF)', nettoKg: 216.5, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Besuki 2024 (ZN)', nettoKg: 72.0, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Beringin 2024 (HS)', nettoKg: 296.0, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Zimbabwe B1L (2023)', nettoKg: 674.3, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Zimbabwe 2025 (HR) L1OF', nettoKg: 765.3, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Zimbabwe M1L (2023)', nettoKg: 412.8, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Brazil 2025 (BOA)', nettoKg: 598.6, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Garut 2024 (FR)', nettoKg: 112.6, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Garut 2025 (FR)', nettoKg: 114.8, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-12T00:00:00.000Z', nama: 'Ploso 2024 (MYN)', nettoKg: 974.5, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Madura 2024 (BAT) R', nettoKg: 6055.0, jalur: 'SKT', sumber: 'DHP Tembakau' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Kasturi 2024 (BE) - 1', nettoKg: 912.1, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Brazil Grade B (2022)', nettoKg: 196.9, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Zimbabwe 2025 (L2OF/P)', nettoKg: 375.8, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Zambia M1L (2023)', nettoKg: 398.0, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Janturan Boyolali 2024 (VJI)', nettoKg: 182.7, jalur: 'SKT', sumber: 'DHP Krosok' },
+    { tanggal: '2026-10-07T00:00:00.000Z', nama: 'Krs. Garut 2025 (MYN)', nettoKg: 282.4, jalur: 'SKT', sumber: 'DHP Krosok' }
+  ];
 }
 
 function getSetoranReconciliation_() {
