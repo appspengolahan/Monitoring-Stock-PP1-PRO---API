@@ -90,7 +90,8 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<string | null>(null);
   const [activeAuditItem, setActiveAuditItem] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
   const [activeAuditIndex, setActiveAuditIndex] = useState<number | null>(null);
-  const [auditScope, setAuditScope] = useState<'all' | 'commodity'>('all');
+  const [modalFilterBahan, setModalFilterBahan] = useState<string>('all');
+  const [modalFilterJenis, setModalFilterJenis] = useState<string>('all');
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
   const [touchDiffX, setTouchDiffX] = useState<number>(0);
@@ -515,28 +516,52 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     return list.length > 0 ? list : allMutasi;
   }, [allMutasi]);
 
-  // Daftar entri rekonsiliasi khusus bahan yang saat ini aktif di modal
-  const commodityReconcilableEntries = useMemo(() => {
-    if (!activeAuditItem) return [];
-    return allReconcilableEntries.filter(e => e.komoditas === activeAuditItem.komoditas);
-  }, [allReconcilableEntries, activeAuditItem?.komoditas]);
+  // Daftar pilihan komoditas/bahan yang memiliki entri rekonsiliasi
+  const modalBahanOptions = useMemo(() => {
+    const list = data.map(k => k.komoditas);
+    allReconcilableEntries.forEach(e => {
+      if (!list.includes(e.komoditas)) list.push(e.komoditas);
+    });
+    return list;
+  }, [data, allReconcilableEntries]);
 
-  // Daftar aktif yang digunakan untuk navigasi modal (geser kiri/kanan)
+  // Daftar pilihan jenis mutasi rekonsiliasi yang tersedia, otomatis menyesuaikan bahan yang dipilih
+  const modalJenisMutasiOptions = useMemo(() => {
+    const set = new Set<string>();
+    allReconcilableEntries.forEach(e => {
+      if (modalFilterBahan === 'all' || e.komoditas === modalFilterBahan) {
+        if (e.mutasi.jenisMutasi) {
+          set.add(e.mutasi.jenisMutasi);
+        }
+      }
+    });
+    return Array.from(set).sort();
+  }, [allReconcilableEntries, modalFilterBahan]);
+
+  // Daftar mutasi rekonsiliasi aktif yang disaring berdasarkan filter Jenis Bahan & Jenis Mutasi di dalam modal
   const activeReconcilableList = useMemo(() => {
-    if (auditScope === 'commodity' && commodityReconcilableEntries.length > 0) {
-      return commodityReconcilableEntries;
-    }
-    return allReconcilableEntries;
-  }, [auditScope, commodityReconcilableEntries, allReconcilableEntries]);
+    return allReconcilableEntries.filter(e => {
+      if (modalFilterBahan !== 'all' && e.komoditas !== modalFilterBahan) {
+        return false;
+      }
+      if (modalFilterJenis !== 'all' && e.mutasi.jenisMutasi !== modalFilterJenis) {
+        return false;
+      }
+      return true;
+    });
+  }, [allReconcilableEntries, modalFilterBahan, modalFilterJenis]);
 
   // Backward compatibility alias
   const reconcilableEntries = activeReconcilableList;
 
   const openAuditModal = (mutasi: MutasiItem, komoditas: string) => {
+    // Opsi B: Otomatis sinkronkan filter bahan dengan bahan baris yang diklik
+    setModalFilterBahan(komoditas);
+    setModalFilterJenis('all');
     setActiveAuditItem({ mutasi, komoditas });
-    const targetList = auditScope === 'commodity'
-      ? allReconcilableEntries.filter(e => e.komoditas === komoditas)
-      : allReconcilableEntries;
+    
+    // Cari index mutasi ini di dalam daftar bahan tersebut
+    const targetList = allReconcilableEntries.filter(e => e.komoditas === komoditas);
     const idx = targetList.findIndex(e => 
       (e.mutasi.id && e.mutasi.id === mutasi.id) || 
       (e.komoditas === komoditas && e.mutasi.kode === mutasi.kode && e.mutasi.tanggal === mutasi.tanggal && e.mutasi.jenisMutasi === mutasi.jenisMutasi)
@@ -551,6 +576,67 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     setTouchEndX(null);
     setTouchDiffX(0);
     setIsSwiping(false);
+  };
+
+  const handleModalBahanChange = (newBahan: string) => {
+    setModalFilterBahan(newBahan);
+
+    // Periksa apakah jenis mutasi saat ini masih ada di bahan baru
+    let newJenis = modalFilterJenis;
+    if (newJenis !== 'all') {
+      const existsInNewBahan = allReconcilableEntries.some(e => 
+        (newBahan === 'all' || e.komoditas === newBahan) && e.mutasi.jenisMutasi === newJenis
+      );
+      if (!existsInNewBahan) {
+        newJenis = 'all';
+        setModalFilterJenis('all');
+      }
+    }
+
+    // Filter daftar baru
+    const newList = allReconcilableEntries.filter(e => {
+      if (newBahan !== 'all' && e.komoditas !== newBahan) return false;
+      if (newJenis !== 'all' && e.mutasi.jenisMutasi !== newJenis) return false;
+      return true;
+    });
+
+    if (newList.length > 0) {
+      const currentIdx = activeAuditItem ? newList.findIndex(e =>
+        (e.mutasi.id && e.mutasi.id === activeAuditItem.mutasi.id) ||
+        (e.komoditas === activeAuditItem.komoditas && e.mutasi.kode === activeAuditItem.mutasi.kode && e.mutasi.tanggal === activeAuditItem.mutasi.tanggal)
+      ) : -1;
+
+      if (currentIdx >= 0) {
+        setActiveAuditIndex(currentIdx);
+      } else {
+        setActiveAuditItem({ mutasi: newList[0].mutasi, komoditas: newList[0].komoditas });
+        setActiveAuditIndex(0);
+      }
+    }
+  };
+
+  const handleModalJenisChange = (newJenis: string) => {
+    setModalFilterJenis(newJenis);
+
+    const newList = allReconcilableEntries.filter(e => {
+      if (modalFilterBahan !== 'all' && e.komoditas !== modalFilterBahan) return false;
+      if (newJenis !== 'all' && e.mutasi.jenisMutasi !== newJenis) return false;
+      return true;
+    });
+
+    if (newList.length > 0) {
+      const currentIdx = activeAuditItem ? newList.findIndex(e =>
+        (e.mutasi.id && e.mutasi.id === activeAuditItem.mutasi.id) ||
+        (e.komoditas === activeAuditItem.komoditas && e.mutasi.kode === activeAuditItem.mutasi.kode && e.mutasi.tanggal === activeAuditItem.mutasi.tanggal)
+      ) : -1;
+
+      if (currentIdx >= 0) {
+        setActiveAuditIndex(currentIdx);
+      } else {
+        setActiveAuditItem({ mutasi: newList[0].mutasi, komoditas: newList[0].komoditas });
+        setActiveAuditIndex(0);
+      }
+    }
   };
 
   const handlePrevAudit = () => {
@@ -581,17 +667,6 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         setActiveAuditIndex(index);
       }
     }
-  };
-
-  const handleToggleScope = (scope: 'all' | 'commodity') => {
-    setAuditScope(scope);
-    if (!activeAuditItem) return;
-    const newList = scope === 'commodity' ? commodityReconcilableEntries : allReconcilableEntries;
-    const idx = newList.findIndex(e =>
-      (e.mutasi.id && e.mutasi.id === activeAuditItem.mutasi.id) ||
-      (e.komoditas === activeAuditItem.komoditas && e.mutasi.kode === activeAuditItem.mutasi.kode && e.mutasi.tanggal === activeAuditItem.mutasi.tanggal && e.mutasi.jenisMutasi === activeAuditItem.mutasi.jenisMutasi)
-    );
-    setActiveAuditIndex(idx >= 0 ? idx : 0);
   };
 
   // Touch swipe gesture handlers (responsive on mobile & tablet)
@@ -2405,47 +2480,66 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                     </div>
                   </div>
 
-                  {/* Sub-bar: Navigasi Lintas Bahan & Selector Cepat */}
-                  <div className="px-3.5 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/50 bg-white/50">
-                    <div className="flex items-center gap-1.5 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleScope('all')}
-                        className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                          auditScope === 'all'
-                            ? 'bg-slate-900 text-white shadow-2xs font-bold'
-                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                        }`}
-                      >
-                        Semua Bahan ({allReconcilableEntries.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleScope('commodity')}
-                        disabled={commodityReconcilableEntries.length === 0}
-                        className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer truncate max-w-[170px] ${
-                          auditScope === 'commodity'
-                            ? 'bg-slate-900 text-white shadow-2xs font-bold'
-                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                        }`}
-                        title={kom}
-                      >
-                        Hanya {kom.split(' ')[0]} ({commodityReconcilableEntries.length})
-                      </button>
+                  {/* Sub-bar: Filter Dropdown Jenis Bahan & Jenis Mutasi + Lompat Cepat */}
+                  <div className="px-3.5 sm:px-4 py-2.5 space-y-2 border-t border-slate-200/60 bg-white/70">
+                    {/* Baris 1: Dropdown Jenis Bahan & Jenis Mutasi Berdampingan */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* 1. Dropdown Jenis Bahan */}
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                          <span>Jenis Bahan</span>
+                          <span className="text-slate-400 font-normal font-mono text-[9.5px]">({activeReconcilableList.length})</span>
+                        </label>
+                        <select
+                          value={modalFilterBahan}
+                          onChange={(e) => handleModalBahanChange(e.target.value)}
+                          className="w-full text-xs font-semibold bg-white text-slate-800 border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1.5 focus:ring-emerald-500 truncate cursor-pointer shadow-2xs"
+                        >
+                          <option value="all">Semua Bahan ({allReconcilableEntries.length})</option>
+                          {modalBahanOptions.map((bName) => {
+                            const count = allReconcilableEntries.filter(e => e.komoditas === bName).length;
+                            if (count === 0) return null;
+                            return (
+                              <option key={bName} value={bName}>
+                                {bName} ({count})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+
+                      {/* 2. Dropdown Jenis Mutasi (Reaktif terhadap Bahan) */}
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          Jenis Mutasi
+                        </label>
+                        <select
+                          value={modalFilterJenis}
+                          onChange={(e) => handleModalJenisChange(e.target.value)}
+                          className="w-full text-xs font-semibold bg-white text-slate-800 border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1.5 focus:ring-emerald-500 truncate cursor-pointer shadow-2xs"
+                        >
+                          <option value="all">Semua Jenis Mutasi</option>
+                          {modalJenisMutasiOptions.map((jName) => (
+                            <option key={jName} value={jName}>
+                              {jName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
-                    {/* Quick Jump Selector Dropdown */}
+                    {/* Baris 2: Quick Jump Selector Dropdown */}
                     {totalItems > 1 && (
-                      <div className="flex items-center gap-1 min-w-0">
-                        <span className="text-[10px] text-slate-400 font-medium shrink-0">Lompat:</span>
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        <span className="text-[10.5px] font-semibold text-slate-400 shrink-0">Lompat:</span>
                         <select
                           value={activeAuditIndex ?? 0}
                           onChange={(e) => handleSelectAuditByIndex(Number(e.target.value))}
-                          className="text-[11px] font-medium bg-white text-slate-700 border border-slate-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 max-w-[175px] sm:max-w-[210px] truncate cursor-pointer shadow-2xs"
+                          className="w-full text-xs font-medium bg-white text-slate-700 border border-slate-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 truncate cursor-pointer shadow-2xs"
                         >
                           {activeReconcilableList.map((entry, idx) => (
                             <option key={`${entry.id}_${idx}`} value={idx}>
-                              {idx + 1}. [{entry.komoditas.split(' ')[0]}] {entry.mutasi.kode} ({entry.mutasi.jenisMutasi || 'Mutasi'})
+                              {idx + 1}. [{entry.komoditas.split(' ')[0]}] {entry.mutasi.kode} — {entry.mutasi.jenisMutasi || 'Mutasi'}
                             </option>
                           ))}
                         </select>
