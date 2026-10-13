@@ -19,6 +19,8 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   FileSpreadsheet
 } from 'lucide-react';
 import { exportToPdf } from '../../services/pdfExport';
@@ -86,10 +88,13 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   const [customJenisVersion, setCustomJenisVersion] = useState<number>(0);
   const [mutasiTags, setMutasiTags] = useState<Record<string, string>>(() => GasService.getMutasiTagsMap());
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<string | null>(null);
-  const [selectedDhpAudit, setSelectedDhpAudit] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
-  const [selectedSetoranAudit, setSelectedSetoranAudit] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
-  const [selectedBsppAudit, setSelectedBsppAudit] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
-  const [selectedPengirimanAudit, setSelectedPengirimanAudit] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
+  const [activeAuditItem, setActiveAuditItem] = useState<{ mutasi: MutasiItem; komoditas: string } | null>(null);
+  const [activeAuditIndex, setActiveAuditIndex] = useState<number | null>(null);
+  const [auditScope, setAuditScope] = useState<'all' | 'commodity'>('all');
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+  const [touchDiffX, setTouchDiffX] = useState<number>(0);
+  const [isSwiping, setIsSwiping] = useState<boolean>(false);
 
   // Sync initialCommodity if parent changes it
   useEffect(() => {
@@ -501,6 +506,164 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
       return true;
     });
   }, [allMutasi, filterKomoditas, filterKode, filterJenis, filterProduksi, filterHideZero, filterFrom, filterTo, showAllDates, latestTanggal, searchQuery, sktSkmVersion, mutasiTags]);
+
+  // Daftar SEMUA entri mutasi yang memiliki data audit rekonsiliasi (lintas seluruh jenis bahan & jenis mutasi)
+  const allReconcilableEntries = useMemo(() => {
+    const list = allMutasi.filter(e => 
+      !!(e.mutasi.dhpMatch || e.mutasi.setoranMatch || e.mutasi.bsppMatch || e.mutasi.pengirimanMatch)
+    );
+    return list.length > 0 ? list : allMutasi;
+  }, [allMutasi]);
+
+  // Daftar entri rekonsiliasi khusus bahan yang saat ini aktif di modal
+  const commodityReconcilableEntries = useMemo(() => {
+    if (!activeAuditItem) return [];
+    return allReconcilableEntries.filter(e => e.komoditas === activeAuditItem.komoditas);
+  }, [allReconcilableEntries, activeAuditItem?.komoditas]);
+
+  // Daftar aktif yang digunakan untuk navigasi modal (geser kiri/kanan)
+  const activeReconcilableList = useMemo(() => {
+    if (auditScope === 'commodity' && commodityReconcilableEntries.length > 0) {
+      return commodityReconcilableEntries;
+    }
+    return allReconcilableEntries;
+  }, [auditScope, commodityReconcilableEntries, allReconcilableEntries]);
+
+  // Backward compatibility alias
+  const reconcilableEntries = activeReconcilableList;
+
+  const openAuditModal = (mutasi: MutasiItem, komoditas: string) => {
+    setActiveAuditItem({ mutasi, komoditas });
+    const targetList = auditScope === 'commodity'
+      ? allReconcilableEntries.filter(e => e.komoditas === komoditas)
+      : allReconcilableEntries;
+    const idx = targetList.findIndex(e => 
+      (e.mutasi.id && e.mutasi.id === mutasi.id) || 
+      (e.komoditas === komoditas && e.mutasi.kode === mutasi.kode && e.mutasi.tanggal === mutasi.tanggal && e.mutasi.jenisMutasi === mutasi.jenisMutasi)
+    );
+    setActiveAuditIndex(idx >= 0 ? idx : 0);
+  };
+
+  const closeAuditModal = () => {
+    setActiveAuditItem(null);
+    setActiveAuditIndex(null);
+    setTouchStartX(null);
+    setTouchEndX(null);
+    setTouchDiffX(0);
+    setIsSwiping(false);
+  };
+
+  const handlePrevAudit = () => {
+    if (activeAuditIndex === null || activeAuditIndex <= 0) return;
+    const prevIdx = activeAuditIndex - 1;
+    const prevEntry = activeReconcilableList[prevIdx];
+    if (prevEntry) {
+      setActiveAuditItem({ mutasi: prevEntry.mutasi, komoditas: prevEntry.komoditas });
+      setActiveAuditIndex(prevIdx);
+    }
+  };
+
+  const handleNextAudit = () => {
+    if (activeAuditIndex === null || activeAuditIndex >= activeReconcilableList.length - 1) return;
+    const nextIdx = activeAuditIndex + 1;
+    const nextEntry = activeReconcilableList[nextIdx];
+    if (nextEntry) {
+      setActiveAuditItem({ mutasi: nextEntry.mutasi, komoditas: nextEntry.komoditas });
+      setActiveAuditIndex(nextIdx);
+    }
+  };
+
+  const handleSelectAuditByIndex = (index: number) => {
+    if (index >= 0 && index < activeReconcilableList.length) {
+      const entry = activeReconcilableList[index];
+      if (entry) {
+        setActiveAuditItem({ mutasi: entry.mutasi, komoditas: entry.komoditas });
+        setActiveAuditIndex(index);
+      }
+    }
+  };
+
+  const handleToggleScope = (scope: 'all' | 'commodity') => {
+    setAuditScope(scope);
+    if (!activeAuditItem) return;
+    const newList = scope === 'commodity' ? commodityReconcilableEntries : allReconcilableEntries;
+    const idx = newList.findIndex(e =>
+      (e.mutasi.id && e.mutasi.id === activeAuditItem.mutasi.id) ||
+      (e.komoditas === activeAuditItem.komoditas && e.mutasi.kode === activeAuditItem.mutasi.kode && e.mutasi.tanggal === activeAuditItem.mutasi.tanggal && e.mutasi.jenisMutasi === activeAuditItem.mutasi.jenisMutasi)
+    );
+    setActiveAuditIndex(idx >= 0 ? idx : 0);
+  };
+
+  // Touch swipe gesture handlers (responsive on mobile & tablet)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchDiffX(0);
+    setIsSwiping(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const currentX = e.targetTouches[0].clientX;
+    setTouchEndX(currentX);
+    setTouchDiffX(currentX - touchStartX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX !== null && touchEndX !== null) {
+      const distance = touchStartX - touchEndX;
+      const minSwipeDistance = 45;
+      if (distance > minSwipeDistance) {
+        // Swiped left -> data selanjutnya
+        handleNextAudit();
+      } else if (distance < -minSwipeDistance) {
+        // Swiped right -> data sebelumnya
+        handlePrevAudit();
+      }
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+    setTouchDiffX(0);
+    setIsSwiping(false);
+  };
+
+  const setSelectedDhpAudit = (val: { mutasi: MutasiItem; komoditas: string } | null) => {
+    if (val) openAuditModal(val.mutasi, val.komoditas);
+    else closeAuditModal();
+  };
+  const setSelectedSetoranAudit = (val: { mutasi: MutasiItem; komoditas: string } | null) => {
+    if (val) openAuditModal(val.mutasi, val.komoditas);
+    else closeAuditModal();
+  };
+  const setSelectedBsppAudit = (val: { mutasi: MutasiItem; komoditas: string } | null) => {
+    if (val) openAuditModal(val.mutasi, val.komoditas);
+    else closeAuditModal();
+  };
+  const setSelectedPengirimanAudit = (val: { mutasi: MutasiItem; komoditas: string } | null) => {
+    if (val) openAuditModal(val.mutasi, val.komoditas);
+    else closeAuditModal();
+  };
+
+  useEffect(() => {
+    if (!activeAuditItem) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNextAudit();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevAudit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeAuditModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeAuditItem, activeAuditIndex, activeReconcilableList]);
 
   // Totals for filtered data (single pass for instant responsiveness)
   const { totalMasuk, totalKeluar, totalMasukSKT, totalKeluarSKT, totalMasukSKM, totalKeluarSKM } = useMemo(() => {
@@ -2059,610 +2222,657 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         komoditasList={data.map(k => k.komoditas)}
       />
 
-      {/* Modal Dialog Audit Rekonsiliasi DHP */}
-      {selectedDhpAudit && selectedDhpAudit.mutasi.dhpMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
-            {/* Modal Header */}
-            <div className={`p-4 sm:p-5 flex items-center justify-between border-b ${
-              selectedDhpAudit.mutasi.dhpMatch.selisih === 0
-                ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100'
-                : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100'
-            }`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                  selectedDhpAudit.mutasi.dhpMatch.selisih === 0
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-amber-600 text-white shadow-xs'
-                }`}>
-                  {selectedDhpAudit.mutasi.dhpMatch.selisih === 0 ? (
-                    <ShieldCheck className="w-5 h-5" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5" />
+      {/* Modal Dialog: Audit Rekonsiliasi Otomatis Terpadu (Navigasi Geser Kiri/Kanan & Arrow Keys) */}
+      {activeAuditItem && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150 select-none"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeAuditModal();
+          }}
+        >
+          {/* Floating Left Arrow (Desktop / Tablet) */}
+          {activeReconcilableList.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrevAudit();
+              }}
+              disabled={(activeAuditIndex ?? 0) <= 0}
+              title="Data Sebelumnya (←)"
+              className={`hidden lg:flex fixed left-6 top-1/2 -translate-y-1/2 z-60 w-12 h-12 rounded-full items-center justify-center shadow-2xl border transition-all ${
+                (activeAuditIndex ?? 0) > 0
+                  ? 'bg-white/95 text-slate-800 hover:bg-white hover:scale-110 border-slate-300 cursor-pointer active:scale-95'
+                  : 'bg-white/30 text-slate-400 border-white/20 cursor-not-allowed opacity-40'
+              }`}
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+
+          {/* Floating Right Arrow (Desktop / Tablet) */}
+          {activeReconcilableList.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNextAudit();
+              }}
+              disabled={(activeAuditIndex ?? 0) >= activeReconcilableList.length - 1}
+              title="Data Selanjutnya (→)"
+              className={`hidden lg:flex fixed right-6 top-1/2 -translate-y-1/2 z-60 w-12 h-12 rounded-full items-center justify-center shadow-2xl border transition-all ${
+                (activeAuditIndex ?? 0) < activeReconcilableList.length - 1
+                  ? 'bg-white/95 text-slate-800 hover:bg-white hover:scale-110 border-slate-300 cursor-pointer active:scale-95'
+                  : 'bg-white/30 text-slate-400 border-white/20 cursor-not-allowed opacity-40'
+              }`}
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          )}
+
+          <div 
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150 transition-transform"
+            style={{
+              transform: isSwiping ? `translateX(${Math.max(Math.min(touchDiffX, 70), -70)}px)` : undefined,
+              transition: isSwiping ? 'none' : 'transform 0.15s ease-out'
+            }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Modal Header dengan Navigasi Cepat & Switcher Bahan */}
+            {(() => {
+              const m = activeAuditItem.mutasi;
+              const kom = activeAuditItem.komoditas;
+              const isDhp = !!m.dhpMatch;
+              const isSetoran = !!m.setoranMatch;
+              const isBspp = !!m.bsppMatch;
+              const isPengiriman = !!m.pengirimanMatch;
+
+              const isIdentik = isDhp 
+                ? m.dhpMatch?.selisih === 0
+                : isSetoran 
+                ? m.setoranMatch?.selisih === 0
+                : isBspp 
+                ? m.bsppMatch?.selisih === 0
+                : isPengiriman 
+                ? m.pengirimanMatch?.selisih === 0
+                : !!m.cek;
+
+              const headerTheme = isDhp
+                ? (isIdentik ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100' : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100')
+                : isSetoran
+                ? (isIdentik ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100' : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100')
+                : isBspp
+                ? (isIdentik ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-100' : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100')
+                : (isIdentik ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-100' : 'bg-gradient-to-r from-rose-50 to-orange-50 border-rose-100');
+
+              const iconBg = isDhp
+                ? (isIdentik ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white')
+                : isSetoran
+                ? (isIdentik ? 'bg-blue-600 text-white' : 'bg-amber-600 text-white')
+                : isBspp
+                ? (isIdentik ? 'bg-purple-600 text-white' : 'bg-amber-600 text-white')
+                : (isIdentik ? 'bg-amber-600 text-white' : 'bg-rose-600 text-white');
+
+              const modalTitle = isDhp
+                ? (kom.toLowerCase().includes('cengkeh') ? 'Audit Rekonsiliasi Dryer Cengkeh' : kom.toLowerCase().includes('blend') ? 'Audit Rekonsiliasi DHP Blend' : 'Audit Rekonsiliasi Otomatis (DHP)')
+                : isSetoran
+                ? 'Audit Rekonsiliasi Pengeluaran Setoran'
+                : isBspp
+                ? 'Audit Rekonsiliasi Bukti Selisih (BSPP)'
+                : isPengiriman
+                ? 'Audit Validasi Pengeluaran Pengiriman'
+                : 'Audit Rekonsiliasi Mutasi Persediaan';
+
+              const modalSubtitle = isDhp
+                ? (kom.toLowerCase().includes('cengkeh') ? 'Validasi Hasil Dryer (Kolom F) vs Mutasi Masuk Fisik' : `Validasi Fisik Gudang vs Kertas Kerja ${m.dhpMatch?.sumber || 'DHP'}`)
+                : isSetoran
+                ? 'Validasi Silang Fisik Gudang vs Kertas Kerja BSPP SETORAN (Kolom H)'
+                : isBspp
+                ? 'Validasi Deviasi Penimbangan Fisik vs Lembar Kerja BSPP'
+                : isPengiriman
+                ? `Fisik Gudang vs Lembar Kerja Pengiriman (${m.pengirimanMatch?.tujuan || 'Wagir'})`
+                : 'Pencocokan Data Fisik Gudang Persediaan';
+
+              const currDisplayIndex = (activeAuditIndex ?? 0) + 1;
+              const totalItems = activeReconcilableList.length;
+              const hasPrev = (activeAuditIndex ?? 0) > 0;
+              const hasNext = (activeAuditIndex ?? 0) < totalItems - 1;
+
+              return (
+                <div className={`border-b ${headerTheme}`}>
+                  {/* Top Bar: Title + Nav Buttons + Close */}
+                  <div className="p-3.5 sm:p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${iconBg}`}>
+                        {isIdentik ? <ShieldCheck className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                          {modalTitle}
+                        </h3>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {modalSubtitle}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Kontrol Navigasi Geser & Tutup */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {totalItems > 1 && (
+                        <div className="flex items-center bg-white/95 border border-slate-200/90 rounded-xl p-0.5 shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={handlePrevAudit}
+                            disabled={!hasPrev}
+                            title="Sebelumnya (tekan panah ← atau geser kanan)"
+                            className={`p-1.5 rounded-lg transition-all ${
+                              hasPrev 
+                                ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 cursor-pointer active:scale-95' 
+                                : 'text-slate-300 cursor-not-allowed'
+                            }`}
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="text-[10.5px] font-mono font-bold text-slate-700 px-1.5 select-none whitespace-nowrap">
+                            {currDisplayIndex}/{totalItems}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleNextAudit}
+                            disabled={!hasNext}
+                            title="Selanjutnya (tekan panah → atau geser kiri)"
+                            className={`p-1.5 rounded-lg transition-all ${
+                              hasNext 
+                                ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 cursor-pointer active:scale-95' 
+                                : 'text-slate-300 cursor-not-allowed'
+                            }`}
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={closeAuditModal}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-white/80 transition-colors cursor-pointer ml-1"
+                        title="Tutup Modal (Esc)"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sub-bar: Navigasi Lintas Bahan & Selector Cepat */}
+                  <div className="px-3.5 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/50 bg-white/50">
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleScope('all')}
+                        className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                          auditScope === 'all'
+                            ? 'bg-slate-900 text-white shadow-2xs font-bold'
+                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                      >
+                        Semua Bahan ({allReconcilableEntries.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleScope('commodity')}
+                        disabled={commodityReconcilableEntries.length === 0}
+                        className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer truncate max-w-[170px] ${
+                          auditScope === 'commodity'
+                            ? 'bg-slate-900 text-white shadow-2xs font-bold'
+                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                        title={kom}
+                      >
+                        Hanya {kom.split(' ')[0]} ({commodityReconcilableEntries.length})
+                      </button>
+                    </div>
+
+                    {/* Quick Jump Selector Dropdown */}
+                    {totalItems > 1 && (
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-[10px] text-slate-400 font-medium shrink-0">Lompat:</span>
+                        <select
+                          value={activeAuditIndex ?? 0}
+                          onChange={(e) => handleSelectAuditByIndex(Number(e.target.value))}
+                          className="text-[11px] font-medium bg-white text-slate-700 border border-slate-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 max-w-[175px] sm:max-w-[210px] truncate cursor-pointer shadow-2xs"
+                        >
+                          {activeReconcilableList.map((entry, idx) => (
+                            <option key={`${entry.id}_${idx}`} value={idx}>
+                              {idx + 1}. [{entry.komoditas.split(' ')[0]}] {entry.mutasi.kode} ({entry.mutasi.jenisMutasi || 'Mutasi'})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Modal Body dengan Info Transaksi & Rincian Rekonsiliasi */}
+            {(() => {
+              const m = activeAuditItem.mutasi;
+              const kom = activeAuditItem.komoditas;
+              const isDhp = !!m.dhpMatch;
+              const isSetoran = !!m.setoranMatch;
+              const isBspp = !!m.bsppMatch;
+              const isPengiriman = !!m.pengirimanMatch;
+
+              return (
+                <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto text-xs">
+                  {/* Kartu Informasi Kode Bahan & Tanggal */}
+                  <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-200/90">
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-slate-500 font-medium">Bahan / Kode Mutasi:</span>
+                      <span className="font-bold text-slate-900 font-sans text-sm">
+                        {m.kode}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-slate-500 font-medium">Gudang Penyimpanan:</span>
+                      <span className="font-semibold text-slate-800">
+                        {kom}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-slate-500 font-medium">Tanggal Transaksi:</span>
+                      <span className="font-semibold text-slate-800 font-mono">
+                        {formatTanggalIndo(m.tanggal || '')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Jenis Mutasi:</span>
+                      <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                        isDhp 
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                          : isSetoran 
+                          ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                          : isBspp 
+                          ? 'bg-purple-100 text-purple-800 border border-purple-200' 
+                          : 'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}>
+                        {m.jenisMutasi || 'Pemasukan Hasil Proses'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 1. KONTEN DHP / DRYER */}
+                  {isDhp && m.dhpMatch && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                          <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">
+                            1. Persediaan Gudang
+                          </span>
+                          <p className="text-slate-500 text-[11px] leading-tight truncate" title={kom}>
+                            {kom}
+                          </p>
+                          <div className="pt-2 border-t border-slate-100">
+                            <span className="text-[10px] text-slate-400 block">{m.jenisMutasi || 'Pemasukan Hasil Proses'}</span>
+                            <span className="text-lg font-bold font-mono text-emerald-700">
+                              +{formatNumber(m.masuk || 0)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
+                            2. Sumber DHP Proses
+                          </span>
+                          <p className="text-slate-500 text-[11px] leading-tight truncate" title={m.dhpMatch.sumber}>
+                            {m.dhpMatch.sumber}
+                          </p>
+                          <div className="pt-2 border-t border-slate-100">
+                            <span className="text-[10px] text-slate-400 block">Total Netto Hasil Jadi</span>
+                            <span className="text-lg font-bold font-mono text-emerald-700">
+                              {formatNumber(m.dhpMatch.dhpNetto)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rincian Batch Molen jika tersedia (DHP Blend) */}
+                      {m.dhpMatch.molenList && m.dhpMatch.molenList.length > 0 && (
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
+                              Rincian Penimbangan Batch Molen (DHP Blend)
+                            </span>
+                            <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-full">
+                              {m.dhpMatch.molenList.length} Batch Molen
+                            </span>
+                          </div>
+                          <div className="max-h-36 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                            <table className="w-full text-left text-xs">
+                              <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-600 border-b border-slate-200 sticky top-0">
+                                <tr>
+                                  <th className="py-1 px-2.5 text-center w-8">No</th>
+                                  <th className="py-1 px-2.5">Batch Molen</th>
+                                  <th className="py-1 px-2.5 text-right">Hasil Jadi Netto</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                                {m.dhpMatch.molenList.map((ml, mIdx) => (
+                                  <tr key={mIdx} className="hover:bg-slate-50">
+                                    <td className="py-1 px-2.5 text-center text-slate-400 font-sans">{ml.no || mIdx + 1}</td>
+                                    <td className="py-1 px-2.5 font-sans font-semibold text-slate-800">{ml.namaMolen}</td>
+                                    <td className="py-1 px-2.5 text-right font-bold text-emerald-700">{formatNumber(ml.nettoKg)} Kg</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Result Status Banner */}
+                      <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                        m.dhpMatch.selisih === 0
+                          ? 'bg-emerald-50/90 border-emerald-200 text-emerald-950'
+                          : 'bg-amber-50/90 border-amber-200 text-amber-950'
+                      }`}>
+                        <div>
+                          <span className="font-bold text-xs block">
+                            {m.dhpMatch.selisih === 0
+                              ? '✓ Status: 100% IDENTIK (BALANCE)'
+                              : '⚠ Status: DITEMUKAN SELISIH TIMBANG'}
+                          </span>
+                          <p className="text-[11px] mt-0.5 opacity-90">
+                            {m.dhpMatch.selisih === 0
+                              ? 'Data pemasukan fisik di persediaan cocok sempurna dengan laporan pengolahan DHP.'
+                              : 'Terdapat selisih antara data fisik gudang dan lembar kerja pengolahan.'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0 pl-3">
+                          <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih Netto</span>
+                          <span className="font-mono font-extrabold text-base text-emerald-800">
+                            {m.dhpMatch.selisih > 0 ? '+' : ''}
+                            {formatNumber(m.dhpMatch.selisih)} Kg
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 2. KONTEN SETORAN */}
+                  {isSetoran && m.setoranMatch && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                          <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">
+                            1. Fisik Keluar Gudang
+                          </span>
+                          <p className="text-slate-500 text-[11px] leading-tight truncate" title={kom}>
+                            {kom}
+                          </p>
+                          <div className="pt-2 border-t border-slate-100">
+                            <span className="text-[10px] text-slate-400 block">Bobot Fisik Keluar</span>
+                            <span className="text-lg font-bold font-mono text-rose-700">
+                              -{formatNumber(m.keluar || 0)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                          <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">
+                            2. BSPP SETORAN (Kolom H)
+                          </span>
+                          <p className="text-slate-500 text-[11px] leading-tight truncate" title="Kertas Kerja BSPP SETORAN">
+                            Tab: BSPP SETORAN
+                          </p>
+                          <div className="pt-2 border-t border-slate-100">
+                            <span className="text-[10px] text-slate-400 block">Label Netto (Kolom H)</span>
+                            <span className="text-lg font-bold font-mono text-blue-700">
+                              {formatNumber(m.setoranMatch.labelNetto)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                        m.setoranMatch.selisih === 0
+                          ? 'bg-blue-50/90 border-blue-200 text-blue-950'
+                          : 'bg-amber-50/90 border-amber-200 text-amber-950'
+                      }`}>
+                        <div>
+                          <span className="font-bold text-xs block">
+                            {m.setoranMatch.selisih === 0
+                              ? '✓ Status: 100% IDENTIK (BALANCE)'
+                              : '⚠ Status: DITEMUKAN SELISIH TIMBANG'}
+                          </span>
+                          <p className="text-[11px] mt-0.5 opacity-90">
+                            {m.setoranMatch.selisih === 0
+                              ? 'Data pengeluaran fisik di persediaan cocok sempurna dengan label penimbangan kertas kerja BSPP SETORAN (Kolom H).'
+                              : 'Terdapat selisih antara data fisik gudang dan bobot label di lembar kerja BSPP SETORAN.'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0 pl-3">
+                          <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih Netto</span>
+                          <span className="font-mono font-extrabold text-base text-blue-800">
+                            {m.setoranMatch.selisih > 0 ? '+' : ''}
+                            {formatNumber(m.setoranMatch.selisih)} Kg
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-[10.5px] text-slate-400 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
+                        <span className="font-medium text-slate-600 block mb-0.5">Spreadsheet Acuan Kertas Kerja:</span>
+                        <span className="font-mono text-[10px] text-slate-500 break-all">ID: 1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA</span>
+                        <span className="block text-slate-500 mt-0.5">Kolom Acuan: <strong>Kolom H</strong> (Bobot Label Netto Setoran Kg)</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 3. KONTEN BSPP */}
+                  {isBspp && m.bsppMatch && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                            1. Catatan Mutasi Fisik
+                          </span>
+                          <p className="text-slate-500 text-[11px] leading-tight truncate">
+                            Gudang Persediaan
+                          </p>
+                          <div className="pt-2 border-t border-slate-100">
+                            <span className="text-[10px] text-slate-400 block">Bobot Penyesuaian</span>
+                            <span className={`text-lg font-bold font-mono ${m.masuk ? 'text-emerald-700' : 'text-rose-700'}`}>
+                              {m.masuk ? `+${formatNumber(m.masuk)}` : `-${formatNumber(m.keluar)}`} <span className="text-xs font-normal text-slate-500">Kg</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
+                          <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider block">
+                            2. Lembar Kerja BSPP
+                          </span>
+                          <p className="text-slate-500 text-[11px] leading-tight truncate" title="Kertas Kerja BSPP">
+                            {m.bsppMatch.sumber}
+                          </p>
+                          <div className="pt-2 border-t border-slate-100">
+                            <span className="text-[10px] text-slate-400 block">Deviasi Selisih Timbang</span>
+                            <span className="text-lg font-bold font-mono text-purple-700">
+                              {formatNumber(m.bsppMatch.selisihKg)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                        m.bsppMatch.selisih === 0
+                          ? 'bg-purple-50/90 border-purple-200 text-purple-950'
+                          : 'bg-amber-50/90 border-amber-200 text-amber-950'
+                      }`}>
+                        <div>
+                          <span className="font-bold text-xs block">
+                            {m.bsppMatch.selisih === 0
+                              ? '✓ Status: 100% TERVALIDASI (BALANCE)'
+                              : '⚠ Status: DITEMUKAN SELISIH TIMBANG'}
+                          </span>
+                          <p className="text-[11px] mt-0.5 opacity-90">
+                            {m.bsppMatch.selisih === 0
+                              ? 'Data selisih fisik di persediaan cocok sempurna dengan lembar kerja penimbangan ulang BSPP.'
+                              : 'Terdapat selisih antara data fisik gudang dan lembar kerja BSPP.'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0 pl-3">
+                          <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih Netto</span>
+                          <span className="font-mono font-extrabold text-base text-purple-800">
+                            {m.bsppMatch.selisih > 0 ? '+' : ''}
+                            {formatNumber(m.bsppMatch.selisih)} Kg
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-[10.5px] text-slate-400 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
+                        <span className="font-medium text-slate-600 block mb-0.5">Spreadsheet Acuan Kertas Kerja:</span>
+                        <span className="font-mono text-[10px] text-slate-500 break-all">ID: 1SQO6MMyCX9WRlT8Nk-cpu1in7UbkY90uPPVX2P5F_IA &amp; 1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA</span>
+                        <span className="block text-slate-500 mt-0.5">Modul Acuan: <strong>Bukti Selisih Persediaan (BSPP)</strong> — Penimbangan Ulang Shift</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 4. KONTEN PENGIRIMAN BLEND */}
+                  {isPengiriman && m.pengirimanMatch && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3.5 bg-rose-50/60 rounded-xl border border-rose-200 space-y-2">
+                          <div className="flex items-center gap-1.5 text-rose-900 font-bold">
+                            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                            <span>Fisik Keluar Gudang</span>
+                          </div>
+                          <p className="text-slate-500 text-[11px] leading-tight">
+                            Buku Persediaan Gudang Tembakau Blend
+                          </p>
+                          <div className="pt-1 border-t border-rose-200">
+                            <span className="text-[10px] text-slate-500 block uppercase font-medium">Bobot Keluar:</span>
+                            <span className="font-mono text-base sm:text-lg font-extrabold text-rose-700">
+                              {formatNumber(m.keluar || 0)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2">
+                          <div className="flex items-center gap-1.5 text-amber-900 font-bold">
+                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                            <span>Kertas Kerja Kirim</span>
+                          </div>
+                          <p className="text-slate-500 text-[11px] leading-tight truncate" title={m.pengirimanMatch.sumber}>
+                            {m.pengirimanMatch.sumber}
+                          </p>
+                          <div className="pt-1 border-t border-amber-200">
+                            <span className="text-[10px] text-slate-500 block uppercase font-medium">Bobot Lembar Kerja:</span>
+                            <span className="font-mono text-base sm:text-lg font-extrabold text-amber-700">
+                              {formatNumber(m.pengirimanMatch.bobotKirim)} <span className="text-xs font-normal text-slate-500">Kg</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                        m.pengirimanMatch.selisih === 0
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                          : 'bg-rose-50 border-rose-200 text-rose-950'
+                      }`}>
+                        <div>
+                          <span className="font-bold text-xs flex items-center gap-1.5">
+                            {m.pengirimanMatch.selisih === 0
+                              ? '✓ Status: IDENTIK 100% (TERVERIFIKASI)'
+                              : '⚠ Status: DITEMUKAN SELISIH BOBOT'}
+                          </span>
+                          <p className="text-[11px] mt-0.5 opacity-90">
+                            {m.pengirimanMatch.selisih === 0
+                              ? 'Data mutasi pengeluaran fisik cocok sempurna dengan Kertas Kerja PENGIRIMAN TBK BLD.'
+                              : 'Terdapat perbedaan bobot antara mutasi fisik gudang dan lembar kerja pengiriman.'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0 pl-3">
+                          <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih</span>
+                          <span className="font-mono font-extrabold text-base text-emerald-800">
+                            {m.pengirimanMatch.selisih > 0 ? '+' : ''}
+                            {formatNumber(m.pengirimanMatch.selisih)} Kg
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-[10.5px] text-slate-400 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
+                        <span className="font-medium text-slate-600 block mb-0.5">Spreadsheet Acuan Kertas Kerja:</span>
+                        <span className="font-mono text-[10px] text-slate-500 break-all">ID: 1PNyouu2SVkvnN4BCegguKg0EvOFHt-Vd3l01LWxG76E</span>
+                        <span className="block text-slate-500 mt-0.5">Tab Acuan: <strong>PENGIRIMAN TBK BLD</strong> (Kolom F &amp; Kolom L)</span>
+                      </div>
+                    </>
                   )}
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Audit Rekonsiliasi Otomatis
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Pencocokan Data Fisik Gudang vs Kertas Kerja DHP
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedDhpAudit(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-white/80 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+              );
+            })()}
 
-            {/* Modal Body */}
-            <div className="p-4 sm:p-5 space-y-4">
-              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Kode / Grade Bahan</span>
-                  <span className="font-bold text-slate-900 text-sm">{selectedDhpAudit.mutasi.kode}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Tanggal Transaksi</span>
-                  <span className="font-semibold text-slate-700">
-                    {selectedDhpAudit.mutasi.tanggal
-                      ? new Date(selectedDhpAudit.mutasi.tanggal).toLocaleDateString('id-ID', {
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric'
-                        })
-                      : '—'}
-                  </span>
-                </div>
-              </div>
+            {/* Modal Footer dengan Navigasi Bawah & Hint Keyboard/Gestur */}
+            {(() => {
+              const totalItems = activeReconcilableList.length;
+              const currDisplayIndex = (activeAuditIndex ?? 0) + 1;
+              const hasPrev = (activeAuditIndex ?? 0) > 0;
+              const hasNext = (activeAuditIndex ?? 0) < totalItems - 1;
 
-              {/* Side by side comparison */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
-                  <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">
-                    1. Persediaan Gudang
-                  </span>
-                  <p className="text-slate-500 text-[11px] leading-tight truncate" title={selectedDhpAudit.komoditas}>
-                    {selectedDhpAudit.komoditas}
-                  </p>
-                  <div className="pt-2 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400 block">{selectedDhpAudit.mutasi.jenisMutasi || 'Pemasukan Hasil Proses'}</span>
-                    <span className="text-lg font-bold font-mono text-slate-900">
-                      {formatNumber(selectedDhpAudit.mutasi.masuk || 0)} <span className="text-xs font-normal text-slate-500">Kg</span>
+              return (
+                <div className="p-3 sm:p-3.5 bg-slate-50/90 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    {totalItems > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handlePrevAudit}
+                          disabled={!hasPrev}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 font-semibold rounded-xl border transition-all ${
+                            hasPrev
+                              ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900 cursor-pointer shadow-2xs active:scale-95'
+                              : 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed'
+                          }`}
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                          <span>Sebelumnya</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleNextAudit}
+                          disabled={!hasNext}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 font-semibold rounded-xl border transition-all ${
+                            hasNext
+                              ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900 cursor-pointer shadow-2xs active:scale-95'
+                              : 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed'
+                          }`}
+                        >
+                          <span>Selanjutnya</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-[11px] font-medium text-slate-500 pl-1 font-mono">
+                          ({currDisplayIndex}/{totalItems})
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="hidden sm:inline-block text-[10.5px] text-slate-400 font-medium">
+                      💡 Geser layar (swipe) atau gunakan tombol panah ← →
                     </span>
+                    <button
+                      type="button"
+                      onClick={closeAuditModal}
+                      className="px-4 py-1.5 font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer shadow-2xs active:scale-95"
+                    >
+                      Tutup
+                    </button>
                   </div>
                 </div>
-
-                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
-                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
-                    2. Sumber DHP Proses
-                  </span>
-                  <p className="text-slate-500 text-[11px] leading-tight truncate" title={selectedDhpAudit.mutasi.dhpMatch.sumber}>
-                    {selectedDhpAudit.mutasi.dhpMatch.sumber}
-                  </p>
-                  <div className="pt-2 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400 block">Total Netto Hasil Jadi</span>
-                    <span className="text-lg font-bold font-mono text-emerald-700">
-                      {formatNumber(selectedDhpAudit.mutasi.dhpMatch.dhpNetto)} <span className="text-xs font-normal text-slate-500">Kg</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Rincian Batch Molen jika tersedia (DHP Blend) */}
-              {selectedDhpAudit.mutasi.dhpMatch.molenList && selectedDhpAudit.mutasi.dhpMatch.molenList.length > 0 && (
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
-                      Rincian Penimbangan Batch Molen (DHP Blend)
-                    </span>
-                    <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-full">
-                      {selectedDhpAudit.mutasi.dhpMatch.molenList.length} Batch Molen
-                    </span>
-                  </div>
-                  <div className="max-h-36 overflow-y-auto rounded-lg border border-slate-200 bg-white">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-600 border-b border-slate-200 sticky top-0">
-                        <tr>
-                          <th className="py-1 px-2.5 text-center w-8">No</th>
-                          <th className="py-1 px-2.5">Batch Molen</th>
-                          <th className="py-1 px-2.5 text-right">Hasil Jadi Netto</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
-                        {selectedDhpAudit.mutasi.dhpMatch.molenList.map((ml, mIdx) => (
-                          <tr key={mIdx} className="hover:bg-slate-50">
-                            <td className="py-1 px-2.5 text-center text-slate-400 font-sans">{ml.no || mIdx + 1}</td>
-                            <td className="py-1 px-2.5 font-sans font-semibold text-slate-800">{ml.namaMolen}</td>
-                            <td className="py-1 px-2.5 text-right font-bold text-emerald-700">{formatNumber(ml.nettoKg)} Kg</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-slate-50 font-mono text-[11px] font-bold border-t border-slate-200 text-slate-900 sticky bottom-0">
-                        <tr>
-                          <td colSpan={2} className="py-1.5 px-2.5 font-sans text-right uppercase tracking-wider text-[10px]">
-                            Total Batch Molen:
-                          </td>
-                          <td className="py-1.5 px-2.5 text-right text-emerald-800">
-                            {formatNumber(selectedDhpAudit.mutasi.dhpMatch.dhpNetto)} Kg
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Result Status Banner */}
-              <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
-                selectedDhpAudit.mutasi.dhpMatch.selisih === 0
-                  ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
-                  : 'bg-amber-50/80 border-amber-200 text-amber-900'
-              }`}>
-                <div>
-                  <span className="font-bold text-xs block">
-                    {selectedDhpAudit.mutasi.dhpMatch.selisih === 0
-                      ? '✓ Status: 100% IDENTIK (BALANCE)'
-                      : '⚠ Status: DITEMUKAN SELISIH TIMBANG'}
-                  </span>
-                  <p className="text-[11px] mt-0.5 opacity-90">
-                    {selectedDhpAudit.mutasi.dhpMatch.selisih === 0
-                      ? 'Data pemasukan fisik di persediaan cocok sempurna dengan laporan pengolahan DHP.'
-                      : `Terdapat selisih antara data fisik gudang dan lembar kerja pengolahan.`}
-                  </p>
-                </div>
-                <div className="text-right shrink-0 pl-3">
-                  <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih Netto</span>
-                  <span className="font-mono font-extrabold text-base">
-                    {selectedDhpAudit.mutasi.dhpMatch.selisih > 0 ? '+' : ''}
-                    {formatNumber(selectedDhpAudit.mutasi.dhpMatch.selisih)} Kg
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSelectedDhpAudit(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Dialog Audit Rekonsiliasi Pengeluaran Setoran (BSPP SETORAN - Kolom H) */}
-      {selectedSetoranAudit && selectedSetoranAudit.mutasi.setoranMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
-            {/* Modal Header */}
-            <div className={`p-4 sm:p-5 flex items-center justify-between border-b ${
-              selectedSetoranAudit.mutasi.setoranMatch.selisih === 0
-                ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100'
-                : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100'
-            }`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                  selectedSetoranAudit.mutasi.setoranMatch.selisih === 0
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-amber-600 text-white shadow-xs'
-                }`}>
-                  {selectedSetoranAudit.mutasi.setoranMatch.selisih === 0 ? (
-                    <ShieldCheck className="w-5 h-5" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Audit Rekonsiliasi Pengeluaran Setoran
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Validasi Silang Fisik Gudang Rajang II vs Kertas Kerja BSPP SETORAN (Kolom H)
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedSetoranAudit(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-white/60 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 sm:p-5 space-y-4">
-              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/80">
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-slate-500 font-medium">Bahan / Kode Mutasi:</span>
-                  <span className="font-bold text-slate-900 font-sans">
-                    {selectedSetoranAudit.mutasi.kode}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-slate-500 font-medium">Tanggal Transaksi:</span>
-                  <span className="font-semibold text-slate-800">
-                    {formatTanggalIndo(selectedSetoranAudit.mutasi.tanggal || '')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-medium">Jenis Mutasi:</span>
-                  <span className="font-semibold text-blue-700">
-                    Pengeluaran Setoran
-                  </span>
-                </div>
-              </div>
-
-              {/* 2-Column Comparison */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">
-                    1. Fisik Keluar Gudang
-                  </span>
-                  <p className="text-slate-500 text-[11px] leading-tight truncate" title={selectedSetoranAudit.komoditas}>
-                    {selectedSetoranAudit.komoditas}
-                  </p>
-                  <div className="pt-2 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400 block">Bobot Fisik Keluar</span>
-                    <span className="text-lg font-bold font-mono text-rose-700">
-                      -{formatNumber(selectedSetoranAudit.mutasi.keluar || 0)} <span className="text-xs font-normal text-slate-500">Kg</span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
-                  <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">
-                    2. BSPP SETORAN (Kolom H)
-                  </span>
-                  <p className="text-slate-500 text-[11px] leading-tight truncate" title="Kertas Kerja BSPP SETORAN">
-                    Tab: BSPP SETORAN
-                  </p>
-                  <div className="pt-2 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400 block">Label Netto (Kolom H)</span>
-                    <span className="text-lg font-bold font-mono text-blue-700">
-                      {formatNumber(selectedSetoranAudit.mutasi.setoranMatch.labelNetto)} <span className="text-xs font-normal text-slate-500">Kg</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Result Status Banner */}
-              <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
-                selectedSetoranAudit.mutasi.setoranMatch.selisih === 0
-                  ? 'bg-blue-50/80 border-blue-200 text-blue-900'
-                  : 'bg-amber-50/80 border-amber-200 text-amber-900'
-              }`}>
-                <div>
-                  <span className="font-bold text-xs block">
-                    {selectedSetoranAudit.mutasi.setoranMatch.selisih === 0
-                      ? '✓ Status: 100% IDENTIK (BALANCE)'
-                      : '⚠ Status: DITEMUKAN SELISIH TIMBANG'}
-                  </span>
-                  <p className="text-[11px] mt-0.5 opacity-90">
-                    {selectedSetoranAudit.mutasi.setoranMatch.selisih === 0
-                      ? 'Data pengeluaran fisik di persediaan cocok sempurna dengan label penimbangan kertas kerja BSPP SETORAN (Kolom H).'
-                      : `Terdapat selisih antara data fisik gudang dan bobot label di lembar kerja BSPP SETORAN.`}
-                  </p>
-                </div>
-                <div className="text-right shrink-0 pl-3">
-                  <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih Netto</span>
-                  <span className="font-mono font-extrabold text-base">
-                    {selectedSetoranAudit.mutasi.setoranMatch.selisih > 0 ? '+' : ''}
-                    {formatNumber(selectedSetoranAudit.mutasi.setoranMatch.selisih)} Kg
-                  </span>
-                </div>
-              </div>
-
-              {/* Reference Info */}
-              <div className="text-[10.5px] text-slate-400 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
-                <span className="font-medium text-slate-600 block mb-0.5">Spreadsheet Acuan Kertas Kerja:</span>
-                <span className="font-mono text-[10px] text-slate-500 break-all">ID: 1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA</span>
-                <span className="block text-slate-500 mt-0.5">Kolom Acuan: <strong>Kolom H</strong> (Bobot Label Netto Setoran Kg)</span>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSelectedSetoranAudit(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Dialog Audit Rekonsiliasi Bukti Selisih Persediaan (BSPP) */}
-      {selectedBsppAudit && selectedBsppAudit.mutasi.bsppMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
-            {/* Modal Header */}
-            <div className={`p-4 sm:p-5 flex items-center justify-between border-b ${
-              selectedBsppAudit.mutasi.bsppMatch.selisih === 0
-                ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-100'
-                : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100'
-            }`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                  selectedBsppAudit.mutasi.bsppMatch.selisih === 0
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'bg-amber-600 text-white shadow-xs'
-                }`}>
-                  {selectedBsppAudit.mutasi.bsppMatch.selisih === 0 ? (
-                    <ShieldCheck className="w-5 h-5" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Audit Rekonsiliasi Bukti Selisih Persediaan (BSPP)
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Validasi Deviasi Penimbangan Fisik vs Lembar Kerja BSPP
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedBsppAudit(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-white/80 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 sm:p-6 space-y-4">
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Bahan Baku:</span>
-                  <span className="font-bold text-slate-900">{selectedBsppAudit.mutasi.kode}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Gudang Penyimpanan:</span>
-                  <span className="font-semibold text-slate-800">{selectedBsppAudit.komoditas}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Tanggal Transaksi:</span>
-                  <span className="font-mono text-slate-700">
-                    {formatTanggalIndo(selectedBsppAudit.mutasi.tanggal || '')}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Kategori Penyesuaian:</span>
-                  <span className={`font-bold ${selectedBsppAudit.mutasi.jenisMutasi.includes('Lebih') ? 'text-emerald-700' : 'text-rose-700'}`}>
-                    {selectedBsppAudit.mutasi.jenisMutasi}
-                  </span>
-                </div>
-              </div>
-
-              {/* Comparison Cards */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                    1. Catatan Mutasi Fisik
-                  </span>
-                  <p className="text-slate-500 text-[11px] leading-tight truncate">
-                    Gudang Persediaan
-                  </p>
-                  <div className="pt-2 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400 block">Bobot Penyesuaian</span>
-                    <span className={`text-lg font-bold font-mono ${selectedBsppAudit.mutasi.masuk ? 'text-emerald-700' : 'text-rose-700'}`}>
-                      {selectedBsppAudit.mutasi.masuk ? `+${formatNumber(selectedBsppAudit.mutasi.masuk)}` : `-${formatNumber(selectedBsppAudit.mutasi.keluar)}`} <span className="text-xs font-normal text-slate-500">Kg</span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
-                  <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider block">
-                    2. Lembar Kerja BSPP
-                  </span>
-                  <p className="text-slate-500 text-[11px] leading-tight truncate" title="Kertas Kerja BSPP">
-                    {selectedBsppAudit.mutasi.bsppMatch.sumber}
-                  </p>
-                  <div className="pt-2 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400 block">Deviasi Selisih Timbang</span>
-                    <span className="text-lg font-bold font-mono text-purple-700">
-                      {formatNumber(selectedBsppAudit.mutasi.bsppMatch.selisihKg)} <span className="text-xs font-normal text-slate-500">Kg</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Result Status Banner */}
-              <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
-                selectedBsppAudit.mutasi.bsppMatch.selisih === 0
-                  ? 'bg-purple-50/80 border-purple-200 text-purple-900'
-                  : 'bg-amber-50/80 border-amber-200 text-amber-900'
-              }`}>
-                <div>
-                  <span className="font-bold text-xs block">
-                    {selectedBsppAudit.mutasi.bsppMatch.selisih === 0
-                      ? '✓ Status: 100% TERVALIDASI (BALANCE)'
-                      : '⚠ Status: DITEMUKAN SELISIH TIMBANG'}
-                  </span>
-                  <p className="text-[11px] mt-0.5 opacity-90">
-                    {selectedBsppAudit.mutasi.bsppMatch.selisih === 0
-                      ? 'Data selisih fisik di persediaan cocok sempurna dengan lembar kerja penimbangan ulang BSPP.'
-                      : 'Terdapat selisih antara data fisik gudang dan lembar kerja BSPP.'}
-                  </p>
-                </div>
-                <div className="text-right shrink-0 pl-3">
-                  <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih Netto</span>
-                  <span className="font-mono font-extrabold text-base">
-                    {selectedBsppAudit.mutasi.bsppMatch.selisih > 0 ? '+' : ''}
-                    {formatNumber(selectedBsppAudit.mutasi.bsppMatch.selisih)} Kg
-                  </span>
-                </div>
-              </div>
-
-              {/* Reference Info */}
-              <div className="text-[10.5px] text-slate-400 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
-                <span className="font-medium text-slate-600 block mb-0.5">Spreadsheet Acuan Kertas Kerja:</span>
-                <span className="font-mono text-[10px] text-slate-500 break-all">ID: 1SQO6MMyCX9WRlT8Nk-cpu1in7UbkY90uPPVX2P5F_IA &amp; 1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA</span>
-                <span className="block text-slate-500 mt-0.5">Modul Acuan: <strong>Bukti Selisih Persediaan (BSPP)</strong> — Penimbangan Ulang Shift</span>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSelectedBsppAudit(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Dialog: Audit Detail Rekonsiliasi Pengeluaran Pengiriman Blend */}
-      {selectedPengirimanAudit && selectedPengirimanAudit.mutasi.pengirimanMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-amber-900 via-slate-900 to-yellow-950 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                  selectedPengirimanAudit.mutasi.pengirimanMatch.selisih === 0
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
-                    : 'bg-rose-500/20 text-rose-300 border border-rose-400/30'
-                }`}>
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm sm:text-base leading-tight">
-                    Audit Validasi Pengeluaran Pengiriman
-                  </h4>
-                  <p className="text-xs text-amber-200/80 mt-0.5">
-                    {selectedPengirimanAudit.mutasi.kode} &bull; {selectedPengirimanAudit.komoditas}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedPengirimanAudit(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 sm:p-5 space-y-4 text-xs">
-              {/* Top Info Banner */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                <div className="flex items-center justify-between text-slate-600">
-                  <span className="font-semibold">Tanggal Transaksi:</span>
-                  <span className="font-mono font-medium text-slate-900">
-                    {formatTanggalIndo(selectedPengirimanAudit.mutasi.tanggal || '')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-slate-600">
-                  <span className="font-semibold">Tujuan Distribusi:</span>
-                  <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    {selectedPengirimanAudit.mutasi.pengirimanMatch.tujuan || 'Wagir'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Comparison Cards */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* 1. Fisik Keluar Gudang */}
-                <div className="p-3.5 bg-rose-50/60 rounded-xl border border-rose-200 space-y-2">
-                  <div className="flex items-center gap-1.5 text-rose-900 font-bold">
-                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                    <span>Fisik Keluar Gudang</span>
-                  </div>
-                  <p className="text-slate-500 text-[11px] leading-tight">
-                    Buku Persediaan Gudang Tembakau Blend
-                  </p>
-                  <div className="pt-1 border-t border-rose-200">
-                    <span className="text-[10px] text-slate-500 block uppercase font-medium">Bobot Keluar:</span>
-                    <span className="font-mono text-base sm:text-lg font-extrabold text-rose-700">
-                      {formatNumber(selectedPengirimanAudit.mutasi.keluar || 0)} <span className="text-xs font-normal text-slate-500">Kg</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* 2. Kertas Kerja Pengiriman */}
-                <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2">
-                  <div className="flex items-center gap-1.5 text-amber-900 font-bold">
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    <span>Kertas Kerja Kirim</span>
-                  </div>
-                  <p className="text-slate-500 text-[11px] leading-tight truncate" title={selectedPengirimanAudit.mutasi.pengirimanMatch.sumber}>
-                    {selectedPengirimanAudit.mutasi.pengirimanMatch.sumber}
-                  </p>
-                  <div className="pt-1 border-t border-amber-200">
-                    <span className="text-[10px] text-slate-500 block uppercase font-medium">Bobot Lembar Kerja:</span>
-                    <span className="font-mono text-base sm:text-lg font-extrabold text-amber-700">
-                      {formatNumber(selectedPengirimanAudit.mutasi.pengirimanMatch.bobotKirim)} <span className="text-xs font-normal text-slate-500">Kg</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status & Selisih Result */}
-              <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
-                selectedPengirimanAudit.mutasi.pengirimanMatch.selisih === 0
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
-                  : 'bg-rose-50 border-rose-200 text-rose-950'
-              }`}>
-                <div>
-                  <span className="font-bold text-xs flex items-center gap-1.5">
-                    {selectedPengirimanAudit.mutasi.pengirimanMatch.selisih === 0
-                      ? '✓ Status: IDENTIK 100% (TERVERIFIKASI)'
-                      : '⚠ Status: DITEMUKAN SELISIH BOBOT'}
-                  </span>
-                  <p className="text-[11px] mt-0.5 opacity-90">
-                    {selectedPengirimanAudit.mutasi.pengirimanMatch.selisih === 0
-                      ? 'Data mutasi pengeluaran fisik cocok sempurna dengan Kertas Kerja PENGIRIMAN TBK BLD.'
-                      : 'Terdapat perbedaan bobot antara mutasi fisik gudang dan lembar kerja pengiriman.'}
-                  </p>
-                </div>
-                <div className="text-right shrink-0 pl-3">
-                  <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih</span>
-                  <span className="font-mono font-extrabold text-base">
-                    {selectedPengirimanAudit.mutasi.pengirimanMatch.selisih > 0 ? '+' : ''}
-                    {formatNumber(selectedPengirimanAudit.mutasi.pengirimanMatch.selisih)} Kg
-                  </span>
-                </div>
-              </div>
-
-              {/* Reference Info */}
-              <div className="text-[10.5px] text-slate-400 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
-                <span className="font-medium text-slate-600 block mb-0.5">Spreadsheet Acuan Kertas Kerja:</span>
-                <span className="font-mono text-[10px] text-slate-500 break-all">ID: 1PNyouu2SVkvnN4BCegguKg0EvOFHt-Vd3l01LWxG76E</span>
-                <span className="block text-slate-500 mt-0.5">Tab Acuan: <strong>PENGIRIMAN TBK BLD</strong> (Kolom F &amp; Kolom L)</span>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSelectedPengirimanAudit(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Tutup
-              </button>
-            </div>
+              );
+            })()}
           </div>
         </div>
       )}
