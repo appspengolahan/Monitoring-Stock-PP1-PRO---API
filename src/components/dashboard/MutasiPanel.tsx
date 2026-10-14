@@ -1939,30 +1939,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
 
 
 
-      {/* Quick Reconciliation Status Bar for All Commodities */}
-      {filterKomoditas === 'all' && (
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-4 py-2 sm:px-5 flex flex-wrap items-center justify-between gap-2 text-xs border-b border-slate-700/80">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Rekonsiliasi Otomatis (5 Sumber)</span>
-            </span>
-            <span className="text-[11px] text-slate-300">
-              DHP Rajang II ({dhpReconciliationEntries.length}) · DHP Blend ({dhpBlendReconciliationEntries.length}) · Pengiriman ({pengirimanBlendReconciliationEntries.length}) · Setoran ({setoranReconciliationEntries.length}) · Dryer Cengkeh ({cengkehDryerReconciliationEntries.length})
-            </span>
-          </div>
 
-          <button
-            type="button"
-            onClick={() => setShowAllReconSection(!showAllReconSection)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer border border-white/15"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-blue-300" />
-            <span>{showAllReconSection ? 'Sembunyikan Rincian Komparasi' : 'Lihat Rincian Komparasi 5 Sumber'}</span>
-            {showAllReconSection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-        </div>
-      )}
 
       {/* Table Data - Dynamic proportional columns, fits viewport completely */}
       <div id="mutasi-table-section" className="overflow-x-auto w-full">
