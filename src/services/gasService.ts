@@ -1269,6 +1269,50 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 14 OKTOBER 2026 (Live Worksheet DHP Krosok - Kolom I Hasil Proses) ===
+    {
+      tanggal: '2026-10-14T00:00:00.000Z',
+      nama: 'Kasturi 2024 (BE) - 1',
+      nettoKg: 493.9,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-14T00:00:00.000Z',
+      nama: 'Brazil Grade B (2022)',
+      nettoKg: 144.2,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-14T00:00:00.000Z',
+      nama: 'Zimbabwe 2025 (L2OF/P)',
+      nettoKg: 300.5,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-14T00:00:00.000Z',
+      nama: 'Zambia M1L (2023)',
+      nettoKg: 255.6,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-14T00:00:00.000Z',
+      nama: 'Janturan Boyolali 2024 (VJI)',
+      nettoKg: 162.2,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-14T00:00:00.000Z',
+      nama: 'Krs. Garut 2024 (MYN)',
+      nettoKg: 163.8,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+
     // === DATA 13 OKTOBER 2026 (Live Worksheet DHP Tembakau & DHP Krosok) ===
     {
       tanggal: '2026-10-13T00:00:00.000Z',
@@ -1521,12 +1565,19 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Pastikan cache memiliki entri 13 Oktober (Maesan 2024 / Amerika 2025); jika belum ada, otomatis gabungkan
+          // Pastikan cache memiliki entri baseline sah 13 & 14 Oktober (Maesan / Amerika / Kasturi / Zimbabwe / dll)
           const hasOct13 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-13'));
-          if (hasOct13) {
+          const hasOct14 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-14'));
+          if (hasOct13 && hasOct14) {
             return this.cleanDHPEntries(parsed);
           } else {
-            const merged = [...parsed, ...this.DEFAULT_DHP_ENTRIES.filter(d => d.tanggal && String(d.tanggal).startsWith('2026-10-13'))];
+            const missingEntries = this.DEFAULT_DHP_ENTRIES.filter(d => {
+              const dStr = String(d.tanggal || '');
+              if (!hasOct13 && dStr.startsWith('2026-10-13')) return true;
+              if (!hasOct14 && dStr.startsWith('2026-10-14')) return true;
+              return false;
+            });
+            const merged = [...parsed, ...missingEntries];
             this.saveCachedDHP(merged, true);
             return this.cleanDHPEntries(merged);
           }
@@ -1557,6 +1608,23 @@ export class GasService {
         console.warn('Gagal memicu pembaruan rekonsiliasi DHP', e);
       }
     }
+  }
+
+  /**
+   * Pembaruan cepat rekonsiliasi DHP langsung dari Google Sheets (~300ms)
+   * Menyimpan ke cache lokal dan otomatis memicu penataan ulang badge auto-check di Mutasi
+   */
+  public static async refreshDHPReconciliation(): Promise<DHPEntry[]> {
+    try {
+      const items = await this.fetchDHPSKTDirectFromSheet();
+      if (items && items.length > 0) {
+        this.saveCachedDHP(items, false);
+        return items;
+      }
+    } catch (e) {
+      console.warn('Gagal refresh DHP reconciliation langsung:', e);
+    }
+    return this.getCachedDHP();
   }
 
   // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---

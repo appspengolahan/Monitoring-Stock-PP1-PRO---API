@@ -172,7 +172,12 @@ export default function App() {
 
   // 5. Background sync on initial load
   useEffect(() => {
-    // Attempt silent background synchronization with GAS
+    // 5a. Immediate instant direct DHP & reconciliation refresh (~300ms)
+    GasService.refreshDHPReconciliation().then(() => {
+      setKomoditasList(GasService.getCachedKomoditas());
+    });
+
+    // 5b. Attempt silent background synchronization with GAS
     const initialSync = async () => {
       try {
         const res = await GasService.syncFromGas();
