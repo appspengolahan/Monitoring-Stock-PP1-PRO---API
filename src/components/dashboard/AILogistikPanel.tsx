@@ -21,7 +21,9 @@ import {
   Boxes, 
   Factory, 
   Mic, 
-  Bot
+  Bot,
+  ShieldCheck,
+  Lightbulb
 } from 'lucide-react';
 import { KomoditasData, BSPPData, UserSession } from '../../types';
 import { 
@@ -31,7 +33,8 @@ import {
   BsppAnomalyItem, 
   SktSkmAllocationAnalysis 
 } from '../../services/aiService';
-import { exportExecutiveReportPdf } from '../../services/pdfExport';
+import { exportExecutiveReportPdf, exportDailyAuditPdf } from '../../services/pdfExport';
+import { DailyAuditorService } from '../../services/dailyAuditorService';
 
 interface AILogistikPanelProps {
   komoditasList: KomoditasData[];
@@ -48,15 +51,22 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
   onOpenAIBot,
   onSelectCommodity
 }) => {
-  const [activeTab, setActiveTab] = useState<'runout' | 'anomali' | 'slow_moving' | 'skt_skm' | 'report'>('runout');
+  const [activeTab, setActiveTab] = useState<'auditor' | 'runout' | 'anomali' | 'slow_moving' | 'skt_skm' | 'report'>('auditor');
   const [filterBahan, setFilterBahan] = useState<string>('all');
   const [searchKode, setSearchKode] = useState<string>('');
+  const [selectedAuditDate, setSelectedAuditDate] = useState<string>('');
+  const [showWorkflowInfo, setShowWorkflowInfo] = useState<boolean>(false);
   
   // Executive Report States
   const [reportPeriod, setReportPeriod] = useState<string>('Mingguan');
   const [reportText, setReportText] = useState<string>('');
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
   const [copiedReport, setCopiedReport] = useState<boolean>(false);
+
+  // Daily Auditor Detective Analytics
+  const dailyAudit = useMemo(() => {
+    return DailyAuditorService.runDailyAudit(komoditasList, bsppList, selectedAuditDate || undefined);
+  }, [komoditasList, bsppList, selectedAuditDate]);
 
   // Compute analytics
   const analytics = useMemo(() => {
@@ -230,6 +240,23 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
       {/* Navigation Subtabs */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-1.5 flex flex-wrap gap-1">
         <button
+          onClick={() => setActiveTab('auditor')}
+          className={`flex-1 min-w-[150px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            activeTab === 'auditor'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-200" />
+          <span>Auditor Harian Otomatis</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+            activeTab === 'auditor' ? 'bg-emerald-800 text-emerald-100' : 'bg-emerald-100 text-emerald-800'
+          }`}>
+            {dailyAudit.overallStatus === 'CLEAN' ? '100% Klop' : 'Perhatian'}
+          </span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('runout')}
           className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeTab === 'runout'
@@ -304,6 +331,429 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
           <span>Laporan Eksekutif 1-Klik</span>
         </button>
       </div>
+
+      {/* TAB 0: AUDITOR HARIAN OTOMATIS (DAILY RECONCILIATION DETECTIVE) */}
+      {activeTab === 'auditor' && (
+        <div className="space-y-4">
+          {/* Main Auditor Header Card */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50/70">
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+                  dailyAudit.overallStatus === 'CLEAN'
+                    ? 'bg-emerald-600 text-white'
+                    : dailyAudit.overallStatus === 'PERHATIAN'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-rose-600 text-white'
+                }`}>
+                  <ShieldCheck className="w-5 h-5 text-emerald-100" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                      Auditor Harian Otomatis (Daily Reconciliation Detective)
+                    </h3>
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                      dailyAudit.overallStatus === 'CLEAN'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : dailyAudit.overallStatus === 'PERHATIAN'
+                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                        : 'bg-rose-100 text-rose-800 border-rose-300'
+                    }`}>
+                      {dailyAudit.overallStatus === 'CLEAN' ? '✓ STATUS: CLEAN (100% KLOP)' : `STATUS: ${dailyAudit.overallStatus}`}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Inspeksi proaktif silang otomatis antara fisik gudang persediaan vs seluruh lembar kerja DHP, Setoran, dan BSPP
+                  </p>
+                </div>
+              </div>
+
+              {/* Controls: Date Picker & Export PDF */}
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="text-[11px] font-semibold text-slate-600">Pilih Tanggal:</span>
+                  <select
+                    value={dailyAudit.tanggalIso}
+                    onChange={e => setSelectedAuditDate(e.target.value)}
+                    className="bg-transparent font-bold text-slate-800 focus:outline-hidden cursor-pointer"
+                  >
+                    {dailyAudit.availableDates.map(dIso => (
+                      <option key={dIso} value={dIso}>
+                        {dIso === '2026-10-14' ? `Rabu, 14 Okt 2026 (Hari Ini)` : dIso === '2026-10-13' ? `Selasa, 13 Okt 2026` : dIso === '2026-10-12' ? `Senin, 12 Okt 2026` : dIso}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={() => setShowWorkflowInfo(prev => !prev)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-2xs cursor-pointer ${
+                    showWorkflowInfo
+                      ? 'bg-blue-600 text-white border border-blue-700'
+                      : 'text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200'
+                  }`}
+                  title="Pelajari mekanisme & cara kerja mesin Auditor Harian Otomatis"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  <span>{showWorkflowInfo ? 'Tutup Panduan' : 'Cara Kerja Auditor'}</span>
+                </button>
+
+                <button
+                  onClick={() => exportDailyAuditPdf(dailyAudit)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all shadow-2xs cursor-pointer"
+                  title="Unduh Laporan Resmi Hasil Pemeriksaan Auditor Detektif Harian (PDF)"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Unduh PDF Audit</span>
+                </button>
+
+                <button
+                  onClick={onOpenAIBot}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all shadow-2xs cursor-pointer"
+                  title="Tanya rincian investigasi ke AI Bot"
+                >
+                  <Bot className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Tanya AI Bot</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Expandable Cara Kerja Auditor Harian Workflow Guide */}
+            {showWorkflowInfo && (
+              <div className="p-4 sm:p-5 bg-gradient-to-br from-blue-50/90 via-indigo-50/60 to-white border-b border-blue-200 transition-all animate-in fade-in duration-200">
+                <div className="flex items-start justify-between gap-3 mb-3.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                      <Sparkles className="w-4 h-4 text-blue-100 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight">
+                        Bagaimana Cara Kerja "Auditor Harian Otomatis" (Daily Reconciliation Detective)?
+                      </h4>
+                      <p className="text-[11px] text-slate-600">
+                        Arsitektur investigasi proaktif yang menghubungkan transaksi fisik gudang dengan seluruh lembar kerja tanpa intervensi manual
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowWorkflowInfo(false)}
+                    className="text-slate-400 hover:text-slate-700 text-xs font-bold px-2 py-1 rounded-md hover:bg-slate-200/50 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs space-y-1">
+                    <div className="flex items-center gap-1.5 text-blue-700 font-bold text-xs">
+                      <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px]">1</span>
+                      <span>Sinkronisasi Paralel</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Menarik data mutasi fisik gudang dan lembar kerja DHP/BSPP via headless CSV langsung (~300ms) tanpa jeda otorisasi.
+                    </p>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-xl border border-indigo-100 shadow-2xs space-y-1">
+                    <div className="flex items-center gap-1.5 text-indigo-700 font-bold text-xs">
+                      <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px]">2</span>
+                      <span>Normalisasi Multi-Kunci</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Menyamakan format tanggal (ISO YYYY-MM-DD), standardisasi nama grade bahan, dan klasifikasi jenis mutasi masuk/keluar.
+                    </p>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-2xs space-y-1">
+                    <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs">
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px]">3</span>
+                      <span>Verifikasi Toleransi Nol</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Membandingkan timbangan fisik vs netto DHP (Kolom I). Jika deviasi 0,0 Kg, otomatis tersemat badge <strong>100% Klop</strong>.
+                    </p>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-xl border border-amber-100 shadow-2xs space-y-1">
+                    <div className="flex items-center gap-1.5 text-amber-700 font-bold text-xs">
+                      <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px]">4</span>
+                      <span>Skoring Integritas Data</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Menghitung indeks akurasi dan status harian: <strong>CLEAN</strong> (100% Klop), <strong>PERHATIAN</strong>, atau <strong>KRITIS</strong>.
+                    </p>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                    <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
+                      <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-800 flex items-center justify-center text-[10px]">5</span>
+                      <span>Rekomendasi &amp; PDF</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Memberikan arahan operasional preventif untuk mandor/engineer serta ekspor dokumen PDF Audit Resmi 1-klik.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* AI Detective Verdict Banner */}
+            <div className={`p-4 border-b transition-all ${
+              dailyAudit.overallStatus === 'CLEAN'
+                ? 'bg-emerald-50/50 border-emerald-100 text-emerald-950'
+                : 'bg-amber-50/50 border-amber-100 text-amber-950'
+            }`}>
+              <div className="flex items-start gap-3">
+                <div className="p-1 rounded-md bg-white border border-emerald-200 shrink-0 shadow-2xs">
+                  <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
+                </div>
+                <div className="flex-1">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+                    Kesimpulan Detektif AI
+                  </span>
+                  <p className="text-xs sm:text-sm font-semibold leading-relaxed">
+                    "{dailyAudit.overallSummary}"
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Metric KPI Cards for Selected Date */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-4 bg-slate-50/40">
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
+                <span className="text-[11px] text-slate-500 font-medium block mb-1">Hasil Olah Tervalidasi</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-extrabold font-mono text-emerald-700 tabular-nums">
+                    +{dailyAudit.kpi.totalHasilProsesKg.toLocaleString('id-ID')}
+                  </span>
+                  <span className="text-[11px] text-slate-500">Kg</span>
+                </div>
+                <span className="text-[10px] text-emerald-600 font-bold block mt-1">
+                  ✓ {dailyAudit.categories.pemasukanHasilProses.matchedCount} dari {dailyAudit.categories.pemasukanHasilProses.totalEntri} Bahan 100% Klop
+                </span>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
+                <span className="text-[11px] text-slate-500 font-medium block mb-1">Setoran Tervalidasi</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-extrabold font-mono text-blue-700 tabular-nums">
+                    {dailyAudit.categories.pengeluaranSetoran.totalKg.toLocaleString('id-ID')}
+                  </span>
+                  <span className="text-[11px] text-slate-500">Kg</span>
+                </div>
+                <span className="text-[10px] text-blue-600 font-bold block mt-1">
+                  ✓ {dailyAudit.categories.pengeluaranSetoran.matchedCount} dari {dailyAudit.categories.pengeluaranSetoran.totalEntri} Transaksi Cocok
+                </span>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
+                <span className="text-[11px] text-slate-500 font-medium block mb-1">Total Deviasi / Selisih</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-xl font-extrabold font-mono tabular-nums ${
+                    dailyAudit.kpi.totalSelisihKg === 0 ? 'text-emerald-700' : 'text-amber-700'
+                  }`}>
+                    {dailyAudit.kpi.totalSelisihKg}
+                  </span>
+                  <span className="text-[11px] text-slate-500">Kg</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-medium block mt-1">
+                  {dailyAudit.kpi.totalSelisihKg === 0 ? 'Nol deviasi bobot riil' : 'Memerlukan verifikasi timbang'}
+                </span>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
+                <span className="text-[11px] text-slate-500 font-medium block mb-1">Indeks Integritas Audit</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-extrabold font-mono text-indigo-700 tabular-nums">
+                    {dailyAudit.kpi.persentaseKesesuaian}%
+                  </span>
+                  <span className="text-[11px] text-slate-500">akurasi</span>
+                </div>
+                <span className="text-[10px] text-indigo-600 font-bold block mt-1">
+                  Predikat: {dailyAudit.overallStatus === 'CLEAN' ? 'A+ (Paripurna)' : 'Memerlukan Tindak Lanjut'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 1: Pemasukan Hasil Proses (Rajang II) */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/60">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                  1. Rincian Pemasukan Hasil Proses vs Kertas Kerja DHP (Rajang II)
+                </h4>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">
+                Total: +{dailyAudit.categories.pemasukanHasilProses.totalKg.toLocaleString('id-ID')} Kg ({dailyAudit.categories.pemasukanHasilProses.totalEntri} entri)
+              </span>
+            </div>
+
+            {dailyAudit.categories.pemasukanHasilProses.items.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                Tidak ada transaksi Pemasukan Hasil Proses pada tanggal ini.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100/80 text-[10.5px] font-bold text-slate-600 uppercase border-b border-slate-200">
+                      <th className="py-2.5 px-3">No</th>
+                      <th className="py-2.5 px-3">Kode Bahan</th>
+                      <th className="py-2.5 px-3">Jalur</th>
+                      <th className="py-2.5 px-3 text-right">Timbangan Fisik</th>
+                      <th className="py-2.5 px-3 text-right">Kertas Kerja DHP</th>
+                      <th className="py-2.5 px-3 text-right">Selisih</th>
+                      <th className="py-2.5 px-3">Rujukan Dokumen</th>
+                      <th className="py-2.5 px-3 text-center">Status Audit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-sans">
+                    {dailyAudit.categories.pemasukanHasilProses.items.map((it, idx) => (
+                      <tr key={it.id || idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                        <td className="py-2 px-3 font-bold text-slate-900">{it.kode}</td>
+                        <td className="py-2 px-3">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                            {it.jalur || 'SKT'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-emerald-700 font-mono">
+                          +{it.fisikKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} Kg
+                        </td>
+                        <td className="py-2 px-3 text-right font-medium text-slate-700 font-mono">
+                          {it.kertasKerjaKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} Kg
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold font-mono">
+                          {it.selisihKg === 0 ? (
+                            <span className="text-emerald-700">0,0 Kg</span>
+                          ) : (
+                            <span className="text-rose-600">{it.selisihKg > 0 ? '+' : ''}{it.selisihKg} Kg</span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 text-[11px]">
+                          {it.sumberKertasKerja}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            it.status === 'MATCH'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-rose-100 text-rose-800 border border-rose-300'
+                          }`}>
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>{it.status === 'MATCH' ? 'VALID 100%' : 'ADA SELISIH'}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Pengeluaran Setoran (Rajang II) */}
+          {dailyAudit.categories.pengeluaranSetoran.items.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/60">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                    2. Rincian Pengeluaran Setoran vs Kertas Kerja BSPP SETORAN (Kolom H)
+                  </h4>
+                </div>
+                <span className="text-[11px] font-semibold text-slate-500">
+                  Total Keluar: -{dailyAudit.categories.pengeluaranSetoran.totalKg.toLocaleString('id-ID')} Kg ({dailyAudit.categories.pengeluaranSetoran.totalEntri} entri)
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100/80 text-[10.5px] font-bold text-slate-600 uppercase border-b border-slate-200">
+                      <th className="py-2.5 px-3">No</th>
+                      <th className="py-2.5 px-3">Kode Bahan</th>
+                      <th className="py-2.5 px-3 text-right">Fisik Keluar</th>
+                      <th className="py-2.5 px-3 text-right">Label Netto Setoran</th>
+                      <th className="py-2.5 px-3 text-right">Selisih</th>
+                      <th className="py-2.5 px-3">Rujukan Dokumen</th>
+                      <th className="py-2.5 px-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-sans">
+                    {dailyAudit.categories.pengeluaranSetoran.items.map((it, idx) => (
+                      <tr key={it.id || idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                        <td className="py-2 px-3 font-bold text-slate-900">{it.kode}</td>
+                        <td className="py-2 px-3 text-right font-bold text-rose-600 font-mono">
+                          -{it.fisikKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} Kg
+                        </td>
+                        <td className="py-2 px-3 text-right font-medium text-slate-700 font-mono">
+                          {it.kertasKerjaKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} Kg
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold font-mono">
+                          {it.selisihKg === 0 ? (
+                            <span className="text-emerald-700">0,0 Kg</span>
+                          ) : (
+                            <span className="text-amber-600">{it.selisihKg} Kg</span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 text-[11px] truncate max-w-[220px]" title={it.sumberKertasKerja}>
+                          {it.sumberKertasKerja}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            it.status === 'MATCH'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
+                          }`}>
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>{it.status === 'MATCH' ? 'COCOK' : 'BELUM COCOK'}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Section 3: Temuan Detektif AI & Rekomendasi Tindakan */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs space-y-3">
+              <div className="flex items-center gap-2 text-slate-900 font-bold text-xs sm:text-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Temuan Investigasi Lapangan</span>
+              </div>
+              <ul className="space-y-2 text-xs text-slate-700">
+                {dailyAudit.detectiveFindings.map((f, fIdx) => (
+                  <li key={fIdx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 leading-relaxed">
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs space-y-3">
+              <div className="flex items-center gap-2 text-slate-900 font-bold text-xs sm:text-sm">
+                <Lightbulb className="w-4 h-4 text-amber-600" />
+                <span>Rekomendasi Operasional &amp; Kunci Baseline</span>
+              </div>
+              <ul className="space-y-2 text-xs text-slate-700">
+                {dailyAudit.actionRecommendations.map((r, rIdx) => (
+                  <li key={rIdx} className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/80 leading-relaxed text-amber-950">
+                    <strong>Tindakan #{rIdx + 1}:</strong> {r}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TAB 1: PREDIKSI SISA HARI (RUNOUT & ROP) */}
       {activeTab === 'runout' && (

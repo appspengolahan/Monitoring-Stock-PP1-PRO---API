@@ -19,6 +19,7 @@ import {
   VolumeX
 } from 'lucide-react';
 import { AIChatMessage, AIService } from '../../services/aiService';
+import { DailyAuditorService } from '../../services/dailyAuditorService';
 import { UserSession } from '../../types';
 
 interface AIBotModalProps {
@@ -171,7 +172,8 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
       nama: b.nama,
       totalEntries: b.entries?.length || 0,
       ringkasanTerbaru: b.entries?.slice(-5) || []
-    }))
+    })),
+    dailyAudit: DailyAuditorService.runDailyAudit(komoditasList, bsppList)
   };
 
   const handleSend = async (textToSend?: string) => {
@@ -230,11 +232,11 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
   };
 
   const quickPrompts = [
+    { label: '🛡️ Briefing Auditor Harian', prompt: 'Berikan briefing eksekutif hasil pemeriksaan Auditor Harian Otomatis: bagaimana status kesesuaian fisik vs DHP Krosok, DHP Tembakau, dan Setoran hari ini?' },
     { label: '🎯 Prediksi Sisa Hari', prompt: 'Berapa hari sisa persediaan (Days of Inventory) untuk grade yang mendekati level kritis?' },
     { label: '⚖️ Cek Susut BSPP', prompt: 'Apakah ada selisih timbangan (BSPP) yang mencolok atau melebihi batas 0,5% pada data terbaru?' },
     { label: '📦 Stok Mengendap', prompt: 'Tampilkan grade atau komoditas yang tidak ada mutasi keluar lebih dari 25 hari (stok mengendap).' },
-    { label: '📊 Ringkasan Saldo', prompt: 'Berikan ringkasan eksekutif saldo stok bahan baku saat ini secara singkat dan jelas.' },
-    { label: '🚚 Mutasi Terbesar', prompt: 'Tampilkan 3 transaksi pengeluaran stok terbesar dan komoditas apa yang paling banyak dipakai?' }
+    { label: '📊 Ringkasan Saldo', prompt: 'Berikan ringkasan eksekutif saldo stok bahan baku saat ini secara singkat dan jelas.' }
   ];
 
   return (

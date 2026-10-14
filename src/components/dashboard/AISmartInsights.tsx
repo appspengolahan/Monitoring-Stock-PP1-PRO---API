@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Sparkles, 
   RefreshCw, 
@@ -7,9 +7,11 @@ import {
   Lightbulb, 
   ArrowRight,
   TrendingUp,
-  Boxes
+  Boxes,
+  ShieldCheck
 } from 'lucide-react';
 import { AIInsightItem, AIService } from '../../services/aiService';
+import { DailyAuditorService } from '../../services/dailyAuditorService';
 
 interface AISmartInsightsProps {
   komoditasList: any[];
@@ -29,6 +31,10 @@ export const AISmartInsights: React.FC<AISmartInsightsProps> = ({
   const [insights, setInsights] = useState<AIInsightItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+
+  const dailyAudit = useMemo(() => {
+    return DailyAuditorService.runDailyAudit(komoditasList, bsppList);
+  }, [komoditasList, bsppList]);
 
   const loadInsights = async () => {
     setIsLoading(true);
@@ -114,6 +120,58 @@ export const AISmartInsights: React.FC<AISmartInsightsProps> = ({
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-blue-600' : ''}`} />
           </button>
         </div>
+      </div>
+
+      {/* Proactive Daily Detective Audit Banner */}
+      <div className={`mb-3.5 p-3.5 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all ${
+        dailyAudit.overallStatus === 'CLEAN'
+          ? 'bg-emerald-50/70 border-emerald-200/90 shadow-2xs'
+          : dailyAudit.overallStatus === 'PERHATIAN'
+          ? 'bg-amber-50/70 border-amber-200/90 shadow-2xs'
+          : 'bg-rose-50/70 border-rose-200/90 shadow-2xs'
+      }`}>
+        <div className="flex items-start gap-3">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 shadow-xs ${
+            dailyAudit.overallStatus === 'CLEAN'
+              ? 'bg-emerald-600 text-white'
+              : dailyAudit.overallStatus === 'PERHATIAN'
+              ? 'bg-amber-600 text-white'
+              : 'bg-rose-600 text-white'
+          }`}>
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-extrabold text-slate-900 tracking-tight flex items-center gap-1.5">
+                <span>Auditor Harian Otomatis</span>
+                <span className="text-[11px] font-normal text-slate-500">({dailyAudit.tanggalStr})</span>
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                dailyAudit.overallStatus === 'CLEAN'
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : 'bg-amber-100 text-amber-800 border-amber-300'
+              }`}>
+                {dailyAudit.overallStatus === 'CLEAN' ? '✓ STATUS: 100% KLOP (CLEAN)' : '⚠️ STATUS: PERHATIAN'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-700 mt-1 leading-relaxed">
+              {dailyAudit.overallSummary}
+            </p>
+            <div className="flex items-center gap-3.5 mt-2 text-[11px] text-slate-600 font-medium flex-wrap">
+              <span>• Hasil Olah Tervalidasi: <strong className="text-emerald-700 font-bold">{dailyAudit.kpi.totalHasilProsesKg.toLocaleString('id-ID')} Kg</strong> ({dailyAudit.categories.pemasukanHasilProses.matchedCount}/{dailyAudit.categories.pemasukanHasilProses.totalEntri} Bahan)</span>
+              <span>• Selisih Timbangan: <strong className={dailyAudit.kpi.totalSelisihKg === 0 ? "text-emerald-700 font-bold" : "text-amber-700 font-bold"}>{dailyAudit.kpi.totalSelisihKg} Kg</strong></span>
+              <span>• Indeks Integritas: <strong className="text-indigo-700 font-bold">{dailyAudit.overallScore}%</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => onNavigateTab('ai_logistik')}
+          className="self-start md:self-center shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-xs cursor-pointer"
+        >
+          <span>Detail Hasil Audit</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Grid of 3 Insight Cards */}

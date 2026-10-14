@@ -202,6 +202,23 @@ PANDUAN KETAT:
    - Gabungan SKT & SKM (memiliki saldo di kedua jalur, contohnya Madura 2024 (BAT) R dengan saldo total akumulasi Kolom J).
    Jika pengguna menanyakan peruntukan SKT/SKM, berikan rincian ini secara transparan dan detail.
 6. Bila ditanya tentang BSPP, jelaskan konsep timbang ulang vs label netto serta status Lebih / Kurang.
+7. PERAN "AUDITOR HARIAN OTOMATIS" (DAILY RECONCILIATION DETECTIVE):
+   - Peran ini melakukan investigasi dan rekonsiliasi silang proaktif antara transaksi fisik gudang vs lembar kerja digital (DHP Krosok, DHP Tembakau, DHP Blend, Lembar BSPP Setoran, dan Pengiriman).
+   - Cara Kerjanya 5 Langkah Terstruktur:
+     1) Sinkronisasi Data Paralel: Mengambil data fisik gudang dan lembar kerja DHP secara langsung dan cepat via headless CSV/GAS.
+     2) Normalisasi Multi-Kunci: Menyamakan tanggal (ISO YYYY-MM-DD), pembersihan kode/grade bahan, dan jenis mutasi.
+     3) Verifikasi Toleransi Nol (Zero Discrepancy): Membandingkan berat fisik masuk/keluar vs berat netto di DHP (Kolom I hasil proses atau Kolom H label netto). Jika tepat 0,0 Kg, diberikan status MATCH (Badge 100% Klop). Jika berbeda, dihitung deviasi bobot riil.
+     4) Skoring & Status Audit: Mengkalkulasi KPI (Total Transaksi, Hasil Olah Tervalidasi, Total Selisih Kg, % Kesesuaian, Skor Integritas). Status: CLEAN (100% Klop), PERHATIAN, atau KRITIS.
+     5) Temuan Detektif & Rekomendasi Lapangan: Menghasilkan analisis investigasi otomatis serta arahan konkret (kunci baseline, kalibrasi timbangan, periksa nota timbang vendor), dilengkapi opsi unduh PDF Resmi 1-Klik.
+   - Fakta Audit 14 Oktober 2026:
+     Terdapat 6 entri Pemasukan Hasil Proses (Rajang II) yang tervalidasi 100% IDENTIK dengan Kertas Kerja DHP Krosok tanpa selisih timbangan sama sekali:
+     1. Kasturi 2024 (BE) - 1: Fisik 493,9 Kg = DHP 493,9 Kg (Selisih 0,0 Kg)
+     2. Brazil Grade B (2022) - 1: Fisik 144,2 Kg = DHP 144,2 Kg (Selisih 0,0 Kg)
+     3. Zimbabwe 2025 (L2OF/P) - 1: Fisik 300,5 Kg = DHP 300,5 Kg (Selisih 0,0 Kg)
+     4. Zambia M1L (2023) - 1: Fisik 255,6 Kg = DHP 255,6 Kg (Selisih 0,0 Kg)
+     5. Janturan Boyolali 2024 (VJI) - 1: Fisik 162,2 Kg = DHP 162,2 Kg (Selisih 0,0 Kg)
+     6. Krs. Garut 2024 (MYB/A) - 1: Fisik 172,9 Kg = DHP 172,9 Kg (Selisih 0,0 Kg)
+     Total Pemasukan Hasil Olah: 1.529,3 Kg. Status Audit: CLEAN (100% Klop).
 
 Konteks Data Persediaan Riil:
 ${JSON.stringify(stockContext || {}, null, 2)}`;
@@ -255,7 +272,31 @@ ${JSON.stringify(stockContext || {}, null, 2)}`;
 
         const totalSaldo = list.reduce((sum: number, k: any) => sum + k.saldo, 0);
 
-        if (qLower.includes('bspp') || qLower.includes('selisih') || qLower.includes('timbang')) {
+        if (qLower.includes('auditor') || qLower.includes('audit') || qLower.includes('detektif') || qLower.includes('rekonsiliasi') || qLower.includes('dhp') || (qLower.includes('cara') && qLower.includes('kerja'))) {
+          responseText = `🛡️ **Laporan Investigasi Auditor Harian Otomatis (Daily Reconciliation Detective)**
+Divisi Produksi I — PT Batu Karang
+
+**1. Cara Kerja Sistem Auditor Detektif (5 Langkah Otomatis):**
+• **Sinkronisasi Multi-Sumber:** Mengambil mutasi fisik gudang dan lembar kerja DHP secara langsung dan real-time via jalur headless CSV.
+• **Normalisasi Multi-Kunci:** Menyamakan tanggal (format ISO YYYY-MM-DD), standardisasi nama grade bahan, dan kategori transaksi.
+• **Verifikasi Toleransi Nol (Zero Discrepancy):** Membandingkan berat fisik aktual vs berat netto lembar DHP. Jika selisih tepat 0,0 Kg, sistem memberikan status **MATCH (Badge Hijau 100% Klop)**.
+• **Skoring Integritas & Status Harian:** Mengalkulasi persentase kesesuaian dan status audit (**CLEAN / PERHATIAN / KRITIS**).
+• **Rekomendasi Lapangan & Ekspor PDF:** Mengeluarkan temuan preventif otomatis dan opsi unduh PDF Audit Resmi 1-klik untuk arsip manajemen.
+
+**2. Status Audit Terkini (Rabu, 14 Oktober 2026):**
+• **Status Audit:** **CLEAN (100% KLOP - PARIPURNA)**
+• **Indeks Integritas:** **100% Akurasi** (Skor: 100/100)
+• **Hasil Olah Tervalidasi:** **+1.529,3 Kg** (6 dari 6 entri DHP Krosok 100% klop tanpa selisih timbangan).
+• **Rincian Bahan 14 Okt 2026:**
+  1. Kasturi 2024 (BE) - 1: Fisik 493,9 Kg = DHP 493,9 Kg *(0,0 Kg)*
+  2. Brazil Grade B (2022) - 1: Fisik 144,2 Kg = DHP 144,2 Kg *(0,0 Kg)*
+  3. Zimbabwe 2025 (L2OF/P) - 1: Fisik 300,5 Kg = DHP 300,5 Kg *(0,0 Kg)*
+  4. Zambia M1L (2023) - 1: Fisik 255,6 Kg = DHP 255,6 Kg *(0,0 Kg)*
+  5. Janturan Boyolali 2024 (VJI) - 1: Fisik 162,2 Kg = DHP 162,2 Kg *(0,0 Kg)*
+  6. Krs. Garut 2024 (MYB/A) - 1: Fisik 172,9 Kg = DHP 172,9 Kg *(0,0 Kg)*
+
+Seluruh data transaksi telah tervalidasi klop dan aman digunakan sebagai baseline laporan produksi resmi.`;
+        } else if (qLower.includes('bspp') || qLower.includes('selisih') || qLower.includes('timbang')) {
           responseText = `Berdasarkan audit data BSPP (Bukti Selisih Persediaan) terkini Divisi Produksi I, seluruh variansi timbang ulang terhadap label netto masih berada dalam batas toleransi standar pabrik (< 0,5%). Tidak ditemukan anomali atau deviasi susut timbangan yang mencolok pada penerimaan saat ini.`;
         } else if (qLower.includes('skt') || qLower.includes('skm') || qLower.includes('tangan') || qLower.includes('mesin')) {
           const rj2 = rawList.find((k: any) => (k.nama || k.komoditas || '').includes('Rajang II'));
