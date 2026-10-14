@@ -2124,6 +2124,151 @@ export class GasService {
     }
   }
 
+  /**
+   * Mengambil data rekonsiliasi Kertas Kerja DHP Krosok langsung dari Google Spreadsheet
+   * ID Sheet: 1tyE6QWZOPhjLCsjvesU82QePF5RqEBToJsp1m0qQY_w | Tab: INTEGRASI DATA | Range: I14:I24 (Hasil Proses)
+   * Aturan: Sumber utama bobot adalah HASIL PROSES (Kolom I). Jika FALSE/kosong -> lewati (tidak ada proses).
+   */
+  public static async fetchDHPKrosokDirectFromSheet(): Promise<DHPEntry[]> {
+    try {
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/1tyE6QWZOPhjLCsjvesU82QePF5RqEBToJsp1m0qQY_w/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA';
+      const text = await this.fetchWithTimeout(csvUrl, 12000);
+      let rawText = '';
+      if (typeof text === 'string') {
+        rawText = text;
+      } else if (text && typeof text === 'object') {
+        rawText = JSON.stringify(text);
+      }
+      if (!rawText || rawText.length < 30) return [];
+
+      const lines = rawText.split(/\r?\n/);
+      const entries: DHPEntry[] = [];
+
+      for (let idx = 0; idx < lines.length; idx++) {
+        const line = lines[idx];
+        const cols = this.parseCSVLine(line);
+        if (cols.length < 9) continue;
+
+        const rawTanggal = cols[2]?.trim() || '';
+        const rawNama = cols[3]?.trim() || '';
+        const rawHasil = cols[8]?.trim() || ''; // Kolom I: HASIL PROSES (I14:I24)
+
+        if (!rawNama || rawNama.toUpperCase() === 'JENIS TEMBAKAU' || rawNama === '-') continue;
+
+        // Aturan bisnis ketat: HASIL PROSES adalah referensi utama.
+        // Jika FALSE / kosong / "-" menandakan tidak ada proses pada tanggal tersebut.
+        // JANGAN menggantinya dengan nilai Bahan Baku (Kolom E)!
+        if (!rawHasil || rawHasil.toUpperCase() === 'FALSE' || rawHasil === '-') {
+          continue;
+        }
+
+        const cleanNum = rawHasil.replace(/Kg|kg/gi, '').replace(/\s/g, '').replace(/\./g, '').replace(/,/g, '.');
+        const nettoVal = parseFloat(cleanNum);
+        if (isNaN(nettoVal) || nettoVal <= 0) continue;
+
+        entries.push({
+          tanggal: rawTanggal ? normalizeDateToIso(rawTanggal, '2026-10-14T00:00:00.000Z') : '2026-10-14T00:00:00.000Z',
+          nama: rawNama,
+          nettoKg: Math.round(nettoVal * 10) / 10,
+          jalur: 'SKT',
+          sumber: 'DHP Krosok'
+        });
+      }
+
+      return entries;
+    } catch (e) {
+      console.warn('Direct DHP Krosok fetch error:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Mengambil data rekonsiliasi Kertas Kerja DHP Tembakau langsung dari Google Spreadsheet
+   * ID Sheet: 1NDS55VchAgNAeJJbY12ANA8HyJDeNNhAZ33zbojpH5I | Tab: INTEGRASI DATA | Range: I14:I24 (Hasil Proses)
+   * Aturan: Sumber utama bobot adalah HASIL PROSES (Kolom I). Jika FALSE/kosong -> lewati (tidak ada proses).
+   */
+  public static async fetchDHPTembakauDirectFromSheet(): Promise<DHPEntry[]> {
+    try {
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/1NDS55VchAgNAeJJbY12ANA8HyJDeNNhAZ33zbojpH5I/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA';
+      const text = await this.fetchWithTimeout(csvUrl, 12000);
+      let rawText = '';
+      if (typeof text === 'string') {
+        rawText = text;
+      } else if (text && typeof text === 'object') {
+        rawText = JSON.stringify(text);
+      }
+      if (!rawText || rawText.length < 30) return [];
+
+      const lines = rawText.split(/\r?\n/);
+      const entries: DHPEntry[] = [];
+
+      for (let idx = 0; idx < lines.length; idx++) {
+        const line = lines[idx];
+        const cols = this.parseCSVLine(line);
+        if (cols.length < 9) continue;
+
+        const rawTanggal = cols[2]?.trim() || '';
+        const rawNama = cols[3]?.trim() || '';
+        const rawHasil = cols[8]?.trim() || ''; // Kolom I: HASIL PROSES (I14:I24)
+
+        if (!rawNama || rawNama.toUpperCase() === 'JENIS TEMBAKAU' || rawNama === '-') continue;
+
+        // Aturan bisnis ketat: HASIL PROSES adalah referensi utama.
+        // Jika FALSE / kosong / "-" menandakan tidak ada proses pada tanggal tersebut.
+        // JANGAN menggantinya dengan nilai Bahan Baku (Kolom E)!
+        if (!rawHasil || rawHasil.toUpperCase() === 'FALSE' || rawHasil === '-') {
+          continue;
+        }
+
+        const cleanNum = rawHasil.replace(/Kg|kg/gi, '').replace(/\s/g, '').replace(/\./g, '').replace(/,/g, '.');
+        const nettoVal = parseFloat(cleanNum);
+        if (isNaN(nettoVal) || nettoVal <= 0) continue;
+
+        entries.push({
+          tanggal: rawTanggal ? normalizeDateToIso(rawTanggal, '2026-10-14T00:00:00.000Z') : '2026-10-14T00:00:00.000Z',
+          nama: rawNama,
+          nettoKg: Math.round(nettoVal * 10) / 10,
+          jalur: 'SKT',
+          sumber: 'DHP Tembakau'
+        });
+      }
+
+      return entries;
+    } catch (e) {
+      console.warn('Direct DHP Tembakau fetch error:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Menggabungkan data DHP Krosok dan DHP Tembakau live dari Spreadsheet dengan cache historis
+   */
+  public static async fetchDHPSKTDirectFromSheet(): Promise<DHPEntry[]> {
+    const [krosokItems, tembakauItems] = await Promise.all([
+      this.fetchDHPKrosokDirectFromSheet(),
+      this.fetchDHPTembakauDirectFromSheet()
+    ]);
+    const liveItems = [...krosokItems, ...tembakauItems];
+
+    // Gabungkan dengan entri cached/historis agar tanggal terdahulu tetap memiliki data audit
+    const existing = this.getCachedDHP();
+    const map = new Map<string, DHPEntry>();
+
+    // Masukkan entri yang sudah ada
+    existing.forEach(it => {
+      const k = `${getTanggalKey(it.tanggal)}_${it.nama.trim().toUpperCase()}`;
+      map.set(k, it);
+    });
+
+    // Timpa atau tambahkan entri live dari Google Sheet (kebenaran real-time prioritas tertinggi)
+    liveItems.forEach(it => {
+      const k = `${getTanggalKey(it.tanggal)}_${it.nama.trim().toUpperCase()}`;
+      map.set(k, it);
+    });
+
+    return Array.from(map.values());
+  }
+
   public static async fetchDHPBlendDirectFromSheet(): Promise<DHPEntry[]> {
     try {
       const csvUrl = 'https://docs.google.com/spreadsheets/d/1Fg3aNLsdkwXthNGxIsFJ9gbHy6Va6DokNV8IVpTnXDA/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA%20DHP%20BLEND';
@@ -2502,20 +2647,29 @@ export class GasService {
         }
       });
 
-      // Launch DHP reconciliation in parallel stream
+      // Launch DHP reconciliation in parallel stream (Direct Sheet fetch with GAS fallback)
       const dhpPromise = (async () => {
+        try {
+          const directItems = await this.fetchDHPSKTDirectFromSheet();
+          if (directItems && directItems.length > 0) {
+            this.saveCachedDHP(directItems, true);
+            return directItems;
+          }
+        } catch (eDirect) {
+          console.warn('Direct DHP SKT fetch warning:', eDirect);
+        }
         try {
           const dhpUrl = `${this.gasUrl}?action=getDHPReconciliation&t=${Date.now()}`;
           const dhpRes = await this.fetchWithTimeout(dhpUrl, 16000);
           const dhpData = (dhpRes && dhpRes.data) || dhpRes;
-          if (dhpData && Array.isArray(dhpData.items)) {
+          if (dhpData && Array.isArray(dhpData.items) && dhpData.items.length > 0) {
             this.saveCachedDHP(dhpData.items, true);
             return dhpData.items;
           }
         } catch (eDhp) {
           console.warn('DHP sync warning:', eDhp);
         }
-        return [];
+        return this.getCachedDHP();
       })();
 
       // Launch Setoran reconciliation in parallel stream
@@ -2730,20 +2884,29 @@ export class GasService {
         }
       });
 
-      // 3. Tarik DHP Reconciliation secara paralel
+      // 3. Tarik DHP Reconciliation secara paralel (Direct Sheet fetch with GAS fallback)
       const dhpPromise = (async () => {
+        try {
+          const directItems = await this.fetchDHPSKTDirectFromSheet();
+          if (directItems && directItems.length > 0) {
+            this.saveCachedDHP(directItems, true);
+            return directItems;
+          }
+        } catch (eDirect) {
+          console.warn('Direct DHP SKT force fetch warning:', eDirect);
+        }
         try {
           const dhpUrl = `${this.gasUrl}?action=getDHPReconciliation&force=true&_t=${bustTimestamp}`;
           const dhpRes = await this.fetchWithTimeout(dhpUrl, 16000);
           const dhpData = (dhpRes && dhpRes.data) || dhpRes;
-          if (dhpData && Array.isArray(dhpData.items)) {
+          if (dhpData && Array.isArray(dhpData.items) && dhpData.items.length > 0) {
             this.saveCachedDHP(dhpData.items, true);
             return dhpData.items;
           }
         } catch (eDhp) {
           console.warn('DHP force fetch warning:', eDhp);
         }
-        return [];
+        return this.getCachedDHP();
       })();
 
       // 4. Tarik BSPP SETORAN langsung dari sheet via Google Visualization CSV
@@ -3270,7 +3433,92 @@ function handleRestApiGet_(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+var DHP_KROSOK_SOURCE = {
+  spreadsheetId: '1tyE6QWZOPhjLCsjvesU82QePF5RqEBToJsp1m0qQY_w',
+  sheetName: 'INTEGRASI DATA',
+  colTanggal: 2, // Kolom C
+  colNama: 3,    // Kolom D
+  colHasil: 8    // Kolom I (I14:I24)
+};
+
+var DHP_TEMBAKAU_SOURCE = {
+  spreadsheetId: '1NDS55VchAgNAeJJbY12ANA8HyJDeNNhAZ33zbojpH5I',
+  sheetName: 'INTEGRASI DATA',
+  colTanggal: 2, // Kolom C
+  colNama: 3,    // Kolom D
+  colHasil: 8    // Kolom I (I14:I24)
+};
+
 function getDHPReconciliation_() {
+  var items = [];
+  try {
+    // 1. Baca DHP Krosok langsung dari sheet
+    var ssKrosok = SpreadsheetApp.openById(DHP_KROSOK_SOURCE.spreadsheetId);
+    var shKrosok = ssKrosok.getSheetByName(DHP_KROSOK_SOURCE.sheetName);
+    if (shKrosok) {
+      var dataK = shKrosok.getDataRange().getValues();
+      for (var r = 1; r < dataK.length; r++) {
+        var row = dataK[r];
+        var nama = String(row[DHP_KROSOK_SOURCE.colNama] || '').trim();
+        var rawHasil = row[DHP_KROSOK_SOURCE.colHasil];
+        var tglRaw = row[DHP_KROSOK_SOURCE.colTanggal];
+        if (!nama || nama === 'JENIS TEMBAKAU' || nama === '-') continue;
+        if (rawHasil === false || rawHasil === 'FALSE' || rawHasil === '' || rawHasil === '-') continue;
+        var netto = 0;
+        if (typeof rawHasil === 'number') {
+          netto = rawHasil;
+        } else if (rawHasil) {
+          netto = parseFloat(String(rawHasil).replace(/Kg|kg/gi, '').replace(/\s/g, '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+        }
+        if (netto > 0) {
+          items.push({
+            tanggal: tglRaw ? String(tglRaw) : '2026-10-14T00:00:00.000Z',
+            nama: nama,
+            nettoKg: Math.round(netto * 10) / 10,
+            jalur: 'SKT',
+            sumber: 'DHP Krosok'
+          });
+        }
+      }
+    }
+
+    // 2. Baca DHP Tembakau langsung dari sheet
+    var ssTbk = SpreadsheetApp.openById(DHP_TEMBAKAU_SOURCE.spreadsheetId);
+    var shTbk = ssTbk.getSheetByName(DHP_TEMBAKAU_SOURCE.sheetName);
+    if (shTbk) {
+      var dataT = shTbk.getDataRange().getValues();
+      for (var r = 1; r < dataT.length; r++) {
+        var row = dataT[r];
+        var nama = String(row[DHP_TEMBAKAU_SOURCE.colNama] || '').trim();
+        var rawHasil = row[DHP_TEMBAKAU_SOURCE.colHasil];
+        var tglRaw = row[DHP_TEMBAKAU_SOURCE.colTanggal];
+        if (!nama || nama === 'JENIS TEMBAKAU' || nama === '-') continue;
+        if (rawHasil === false || rawHasil === 'FALSE' || rawHasil === '' || rawHasil === '-') continue;
+        var netto = 0;
+        if (typeof rawHasil === 'number') {
+          netto = rawHasil;
+        } else if (rawHasil) {
+          netto = parseFloat(String(rawHasil).replace(/Kg|kg/gi, '').replace(/\s/g, '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+        }
+        if (netto > 0) {
+          items.push({
+            tanggal: tglRaw ? String(tglRaw) : '2026-10-14T00:00:00.000Z',
+            nama: nama,
+            nettoKg: Math.round(netto * 10) / 10,
+            jalur: 'SKT',
+            sumber: 'DHP Tembakau'
+          });
+        }
+      }
+    }
+  } catch (err) {
+    Logger.log('getDHPReconciliation_ error: ' + err.message);
+  }
+
+  if (items.length > 0) {
+    return items;
+  }
+
   return [
     { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Maesan 2024 (HS)', nettoKg: 169.5, jalur: 'SKT', sumber: 'DHP Krosok' },
     { tanggal: '2026-10-13T00:00:00.000Z', nama: 'Amerika 2025 (BO1)', nettoKg: 721.6, jalur: 'SKT', sumber: 'DHP Krosok' },
