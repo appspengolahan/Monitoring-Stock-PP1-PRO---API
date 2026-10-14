@@ -2363,41 +2363,26 @@ export class GasService {
     return result;
   }
 
-  // --- Network Fetch with Fast Direct Fetch & Proxy Fallback ---
-  public static async fetchWithTimeout(url: string, timeoutMs: number = 18000, forceProxy: boolean = false): Promise<any> {
-    const isGoogleSheets = url.includes('docs.google.com') || url.includes('spreadsheets');
-
-    // 1. Direct browser fetch with redirect: follow (only for GAS endpoint, sheets must use proxy due to CORS)
-    if (!forceProxy && !isGoogleSheets && typeof window !== 'undefined') {
-      try {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 400);
-        const response = await fetch(url, {
-          signal: controller.signal,
-          redirect: 'follow',
-          headers: {
-            'Accept': 'application/json, text/plain, */*'
-          }
-        });
-        clearTimeout(id);
-        const contentType = response.headers.get('content-type') || '';
-        if (response.ok && !contentType.includes('text/html')) {
-          const data = await response.json();
-          if (data && typeof data === 'object') {
-            return data;
-          }
-        }
-      } catch {
-        // Direct fetch failed (e.g. CORS, network restriction, or HTML response), continue to proxy fallback
-      }
-    }
-
-    // 2. Fallback via backend proxy (/api/gas-proxy) with server-side micro-caching
+  // --- Network Fetch with Fast Server Proxy & Graceful Timeout ---
+  public static async fetchWithTimeout(url: string, timeoutMs: number = 20000): Promise<any> {
     const proxyUrl = `/api/gas-proxy?url=${encodeURIComponent(url)}`;
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeoutMs);
+    const timeoutMsg = `Waktu tunggu permintaan habis (${timeoutMs}ms) untuk: ${url}`;
+    const id = setTimeout(() => {
+      try {
+        controller.abort(new Error(timeoutMsg));
+      } catch {
+        controller.abort();
+      }
+    }, timeoutMs);
+
     try {
-      const res = await fetch(proxyUrl, { signal: controller.signal });
+      const res = await fetch(proxyUrl, { 
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json, text/plain, */*'
+        }
+      });
       clearTimeout(id);
       const data = await res.json();
       if (!res.ok || (data && data.isHtml)) {
@@ -2406,6 +2391,9 @@ export class GasService {
       return data;
     } catch (err: any) {
       clearTimeout(id);
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        throw new Error(timeoutMsg);
+      }
       throw err;
     }
   }
@@ -2490,18 +2478,28 @@ export class GasService {
       // Launch 4 Komoditas in parallel stream (Promise.allSettled)
       // This reduces latency from ~9.6s to only ~1.1s!
       const komoditasPromises = [0, 1, 2, 3].map(async (i) => {
-        const kUrl = `${this.gasUrl}?action=getKomoditasData&index=${i}&t=${Date.now()}`;
-        const kRes = await this.fetchWithTimeout(kUrl, 12000);
-        const kData = (kRes && kRes.data) || kRes;
-        return { index: i, data: kData };
+        try {
+          const kUrl = `${this.gasUrl}?action=getKomoditasData&index=${i}&t=${Date.now()}`;
+          const kRes = await this.fetchWithTimeout(kUrl, 18000);
+          const kData = (kRes && kRes.data) || kRes;
+          return { index: i, data: kData };
+        } catch (err) {
+          console.warn(`Sinkronisasi komoditas index ${i} dilewati:`, err);
+          return { index: i, data: null };
+        }
       });
 
       // Launch 2 BSPP in parallel stream
       const bsppPromises = [0, 1].map(async (b) => {
-        const bUrl = `${this.gasUrl}?action=getBSPPData&index=${b}&t=${Date.now()}`;
-        const bRes = await this.fetchWithTimeout(bUrl, 15000);
-        const bData = (bRes && bRes.data) || bRes;
-        return { index: b, data: bData };
+        try {
+          const bUrl = `${this.gasUrl}?action=getBSPPData&index=${b}&t=${Date.now()}`;
+          const bRes = await this.fetchWithTimeout(bUrl, 18000);
+          const bData = (bRes && bRes.data) || bRes;
+          return { index: b, data: bData };
+        } catch (err) {
+          console.warn(`Sinkronisasi BSPP index ${b} dilewati:`, err);
+          return { index: b, data: null };
+        }
       });
 
       // Launch DHP reconciliation in parallel stream
@@ -2707,19 +2705,29 @@ export class GasService {
       // 1. Tarik 4 Sheet Komoditas secara paralel dengan query bypass cache
       if (onProgress) onProgress('Menarik 4 Datasheet Komoditas langsung dari Google Spreadsheet...', 30);
       const komoditasPromises = [0, 1, 2, 3].map(async (i) => {
-        const kUrl = `${this.gasUrl}?action=getKomoditasData&index=${i}&force=true&nocache=1&_t=${bustTimestamp}`;
-        const kRes = await this.fetchWithTimeout(kUrl, 16000);
-        const kData = (kRes && kRes.data) || kRes;
-        return { index: i, data: kData };
+        try {
+          const kUrl = `${this.gasUrl}?action=getKomoditasData&index=${i}&force=true&nocache=1&_t=${bustTimestamp}`;
+          const kRes = await this.fetchWithTimeout(kUrl, 20000);
+          const kData = (kRes && kRes.data) || kRes;
+          return { index: i, data: kData };
+        } catch (err) {
+          console.warn(`Force sync komoditas index ${i} dilewati:`, err);
+          return { index: i, data: null };
+        }
       });
 
       // 2. Tarik 2 Datasheet BSPP secara paralel
       if (onProgress) onProgress('Menarik 2 Datasheet Rekap BSPP...', 55);
       const bsppPromises = [0, 1].map(async (b) => {
-        const bUrl = `${this.gasUrl}?action=getBSPPData&index=${b}&force=true&nocache=1&_t=${bustTimestamp}`;
-        const bRes = await this.fetchWithTimeout(bUrl, 16000);
-        const bData = (bRes && bRes.data) || bRes;
-        return { index: b, data: bData };
+        try {
+          const bUrl = `${this.gasUrl}?action=getBSPPData&index=${b}&force=true&nocache=1&_t=${bustTimestamp}`;
+          const bRes = await this.fetchWithTimeout(bUrl, 20000);
+          const bData = (bRes && bRes.data) || bRes;
+          return { index: b, data: bData };
+        } catch (err) {
+          console.warn(`Force sync BSPP index ${b} dilewati:`, err);
+          return { index: b, data: null };
+        }
       });
 
       // 3. Tarik DHP Reconciliation secara paralel
