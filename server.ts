@@ -559,6 +559,82 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     }
   });
 
+  // Server-Side Gemini Studio Ultra-Natural TTS (gemini-3.8-flash-lite-tts)
+  app.post('/api/ai/tts', async (req, res) => {
+    try {
+      const { text, voiceName = 'Kore' } = req.body;
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({ ok: false, error: 'Teks tidak boleh kosong.' });
+      }
+
+      const cleanText = text
+        .replace(/[*_#`~>]/g, '')
+        .replace(/🛡️|🎙️|📥|🚚|📦|🏭|📤|🚛|🔄|📊|✅|⚠️|ℹ️/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 1500);
+
+      if (!ai) {
+        return res.status(503).json({
+          ok: false,
+          fallbackBrowser: true,
+          error: 'Gemini AI API key belum terkonfigurasi. Menggunakan suara browser lokal.'
+        });
+      }
+
+      const validVoices = ['Kore', 'Zephyr', 'Puck', 'Fenrir', 'Charon'];
+      const chosenVoice = validVoices.includes(voiceName) ? voiceName : 'Kore';
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash-lite-tts',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: cleanText,
+                speechMetadata: {
+                  style: 'Warm, clear, natural and authoritative Indonesian broadcast narrator'
+                }
+              }
+            ]
+          }
+        ],
+        config: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: chosenVoice }
+            }
+          }
+        }
+      });
+
+      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (base64Audio) {
+        return res.json({
+          ok: true,
+          audioBase64: base64Audio,
+          mimeType: 'audio/wav',
+          voiceUsed: chosenVoice
+        });
+      } else {
+        return res.status(500).json({
+          ok: false,
+          fallbackBrowser: true,
+          error: 'Model tidak mengembalikan data audio'
+        });
+      }
+    } catch (err: any) {
+      console.warn('Gemini TTS warning, fallback to browser voice:', err.message);
+      return res.status(500).json({
+        ok: false,
+        fallbackBrowser: true,
+        error: err.message
+      });
+    }
+  });
+
   // Direct download / raw text endpoint for complete 100% Google Apps Script (Code.gs)
   app.get(['/download-gas-code', '/Code.gs', '/api/gas-code'], (req, res) => {
     try {

@@ -38,6 +38,8 @@ import {
 } from '../../services/aiService';
 import { exportExecutiveReportPdf, exportDailyAuditPdf } from '../../services/pdfExport';
 import { DailyAuditorService } from '../../services/dailyAuditorService';
+import { VoiceSettingsService } from '../../services/voiceSettingsService';
+import { VoiceSettingsModal } from '../modals/VoiceSettingsModal';
 
 interface AILogistikPanelProps {
   komoditasList: KomoditasData[];
@@ -81,12 +83,10 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
     return DailyAuditorService.getCategorizedDailyAuditReport(komoditasList, bsppList, selectedAuditDate || undefined);
   }, [komoditasList, bsppList, selectedAuditDate]);
 
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
+
   const stopSpeakingCategorized = () => {
-    isSpeechCancelledRef.current = true;
-    speechQueueRef.current = [];
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
+    VoiceSettingsService.stopSpeaking();
     setIsSpeakingCategorized(false);
   };
 
@@ -97,69 +97,17 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
   }, []);
 
   const handleToggleSpeakCategorized = () => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('Fitur pembacaan suara tidak didukung browser ini.');
-      return;
-    }
-
     if (isSpeakingCategorized) {
       stopSpeakingCategorized();
       return;
     }
 
-    stopSpeakingCategorized();
-    isSpeechCancelledRef.current = false;
-
-    // Segment text into distinct full sentences so Web Speech API never stops or truncates!
-    const cleanText = categorizedAudit.spokenScript
-      .replace(/[*_#`~>]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    const sentences = cleanText
-      .split(/(?<=[.?!])\s+/)
-      .filter(s => s.trim().length > 0);
-
-    speechQueueRef.current = sentences;
     setIsSpeakingCategorized(true);
-
-    const playNext = () => {
-      if (isSpeechCancelledRef.current || speechQueueRef.current.length === 0) {
-        setIsSpeakingCategorized(false);
-        return;
-      }
-
-      const nextChunk = speechQueueRef.current.shift();
-      if (!nextChunk) {
-        setIsSpeakingCategorized(false);
-        return;
-      }
-
-      const utterance = new SpeechSynthesisUtterance(nextChunk);
-      utterance.lang = 'id-ID';
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-
-      const voices = window.speechSynthesis.getVoices();
-      const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID'));
-      if (idVoice) utterance.voice = idVoice;
-
-      utterance.onend = () => {
-        if (!isSpeechCancelledRef.current) {
-          playNext();
-        }
-      };
-
-      utterance.onerror = () => {
-        if (!isSpeechCancelledRef.current) {
-          playNext();
-        }
-      };
-
-      window.speechSynthesis.speak(utterance);
-    };
-
-    playNext();
+    VoiceSettingsService.speakText(categorizedAudit.spokenScript, {
+      onStart: () => setIsSpeakingCategorized(true),
+      onEnd: () => setIsSpeakingCategorized(false),
+      onError: () => setIsSpeakingCategorized(false)
+    });
   };
 
   // Compute analytics
@@ -267,6 +215,14 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-slate-800/90 hover:bg-slate-700/90 text-amber-300 border border-slate-600 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer hover:scale-105 active:scale-95"
+              title="Atur Pilihan Suara AI Natural (Gemini Studio AI / Suara Natural Browser)"
+            >
+              <Volume2 className="w-4 h-4 text-amber-400" />
+              <span>Suara Natural</span>
+            </button>
             <button
               onClick={onOpenAIBot}
               className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:scale-105 active:scale-95 cursor-pointer"
@@ -651,6 +607,15 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
                           <span>Dengarkan Pembacaan Runtut 🔊</span>
                         </>
                       )}
+                    </button>
+
+                    <button
+                      onClick={() => setIsVoiceModalOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition-all shadow-2xs cursor-pointer"
+                      title="Atur Pilihan Suara AI Natural (Gemini Studio AI / Suara Natural Browser)"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Pilihan Suara</span>
                     </button>
 
                     <button
@@ -1519,6 +1484,12 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* Voice Settings Modal */}
+      <VoiceSettingsModal 
+        isOpen={isVoiceModalOpen} 
+        onClose={() => setIsVoiceModalOpen(false)} 
+      />
     </div>
   );
 };

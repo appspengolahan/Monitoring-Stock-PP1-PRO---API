@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { AIChatMessage, AIService } from '../../services/aiService';
 import { DailyAuditorService } from '../../services/dailyAuditorService';
+import { VoiceSettingsService } from '../../services/voiceSettingsService';
+import { VoiceSettingsModal } from './VoiceSettingsModal';
 import { UserSession } from '../../types';
 
 interface AIBotModalProps {
@@ -55,19 +57,12 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [isListening, setIsListening] = useState<boolean>(false);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
-  const speechQueueRef = useRef<string[]>([]);
-  const isSpeechCancelledRef = useRef<boolean>(false);
-  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const stopSpeaking = () => {
-    isSpeechCancelledRef.current = true;
-    speechQueueRef.current = [];
-    activeUtteranceRef.current = null;
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
+    VoiceSettingsService.stopSpeaking();
     setSpeakingId(null);
   };
 
@@ -132,63 +127,14 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
     }
   };
 
-  // Play next chunk in speech queue
-  const playNextSpeechChunk = (msgId: string) => {
-    if (isSpeechCancelledRef.current) return;
-    if (speechQueueRef.current.length === 0) {
-      setSpeakingId(null);
-      activeUtteranceRef.current = null;
-      return;
-    }
-
-    const chunk = speechQueueRef.current.shift();
-    if (!chunk || !chunk.trim()) {
-      playNextSpeechChunk(msgId);
-      return;
-    }
-
-    const utt = new SpeechSynthesisUtterance(chunk.trim());
-    utt.lang = 'id-ID';
-    utt.rate = 1.05;
-    utt.pitch = 1.0;
-
-    // Pick Indonesian voice if available in system
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      const voices = window.speechSynthesis.getVoices();
-      const idVoice = voices.find(v => v.lang.startsWith('id') || v.lang.includes('ID'));
-      if (idVoice) {
-        utt.voice = idVoice;
-      }
-    }
-
-    utt.onend = () => {
-      if (!isSpeechCancelledRef.current) {
-        playNextSpeechChunk(msgId);
-      }
-    };
-
-    utt.onerror = (e: any) => {
-      if (e.error === 'canceled' || e.error === 'interrupted') return;
-      if (!isSpeechCancelledRef.current) {
-        playNextSpeechChunk(msgId);
-      }
-    };
-
-    activeUtteranceRef.current = utt;
-    window.speechSynthesis.speak(utt);
-  };
-
-  // Text to Speech: complete full text without length truncation
+  // Text to Speech: Ultra-Natural via VoiceSettingsService (Gemini Studio AI / Browser Natural)
   const handleToggleSpeak = (id: string, text: string) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
     if (speakingId === id) {
       stopSpeaking();
       return;
     }
 
     stopSpeaking();
-    isSpeechCancelledRef.current = false;
 
     // 1. Bersihkan formatting markdown dan perjelas fonetik istilah pabrik
     const clean = text
@@ -204,17 +150,12 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
       .replace(/\bROP\b/g, ' R O P ')
       .replace(/\bDOI\b/g, ' D O I ');
 
-    // 2. Pecah teks menjadi potongan kalimat natural agar dibaca lancar tanpa batas waktu Chromium
-    const rawChunks = clean.split(/\n+|(?<=[.!?:])\s+/);
-    const validChunks = rawChunks
-      .map(c => c.trim())
-      .filter(c => c.length > 0);
-
-    if (validChunks.length === 0) return;
-
-    speechQueueRef.current = validChunks;
     setSpeakingId(id);
-    playNextSpeechChunk(id);
+    VoiceSettingsService.speakText(clean, {
+      onStart: () => setSpeakingId(id),
+      onEnd: () => setSpeakingId(null),
+      onError: () => setSpeakingId(null)
+    });
   };
 
   // Build stock context matching user permissions
@@ -344,6 +285,14 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
           </div>
 
           <div className="flex items-center gap-1.5 text-slate-300">
+            <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-amber-300 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/30 rounded-lg transition-colors cursor-pointer"
+              title="Atur Pilihan Suara AI Natural (Gemini Studio AI / Suara Natural Browser)"
+            >
+              <Volume2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Pilihan Suara</span>
+            </button>
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="hidden sm:inline-flex p-1.5 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
@@ -492,6 +441,12 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
           </button>
         </form>
       </div>
+
+      {/* Voice Settings Modal */}
+      <VoiceSettingsModal 
+        isOpen={isVoiceModalOpen} 
+        onClose={() => setIsVoiceModalOpen(false)} 
+      />
     </div>
   );
 };
