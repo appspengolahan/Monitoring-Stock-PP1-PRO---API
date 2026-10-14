@@ -57,6 +57,19 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const speechQueueRef = useRef<string[]>([]);
+  const isSpeechCancelledRef = useRef<boolean>(false);
+  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const stopSpeaking = () => {
+    isSpeechCancelledRef.current = true;
+    speechQueueRef.current = [];
+    activeUtteranceRef.current = null;
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingId(null);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -70,14 +83,11 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
 
   useEffect(() => {
     if (!isOpen) {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      stopSpeaking();
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
       setIsListening(false);
-      setSpeakingId(null);
     }
   }, [isOpen]);
 
@@ -122,26 +132,89 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
     }
   };
 
-  // Text to Speech
+  // Play next chunk in speech queue
+  const playNextSpeechChunk = (msgId: string) => {
+    if (isSpeechCancelledRef.current) return;
+    if (speechQueueRef.current.length === 0) {
+      setSpeakingId(null);
+      activeUtteranceRef.current = null;
+      return;
+    }
+
+    const chunk = speechQueueRef.current.shift();
+    if (!chunk || !chunk.trim()) {
+      playNextSpeechChunk(msgId);
+      return;
+    }
+
+    const utt = new SpeechSynthesisUtterance(chunk.trim());
+    utt.lang = 'id-ID';
+    utt.rate = 1.05;
+    utt.pitch = 1.0;
+
+    // Pick Indonesian voice if available in system
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const voices = window.speechSynthesis.getVoices();
+      const idVoice = voices.find(v => v.lang.startsWith('id') || v.lang.includes('ID'));
+      if (idVoice) {
+        utt.voice = idVoice;
+      }
+    }
+
+    utt.onend = () => {
+      if (!isSpeechCancelledRef.current) {
+        playNextSpeechChunk(msgId);
+      }
+    };
+
+    utt.onerror = (e: any) => {
+      if (e.error === 'canceled' || e.error === 'interrupted') return;
+      if (!isSpeechCancelledRef.current) {
+        playNextSpeechChunk(msgId);
+      }
+    };
+
+    activeUtteranceRef.current = utt;
+    window.speechSynthesis.speak(utt);
+  };
+
+  // Text to Speech: complete full text without length truncation
   const handleToggleSpeak = (id: string, text: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     if (speakingId === id) {
-      window.speechSynthesis.cancel();
-      setSpeakingId(null);
+      stopSpeaking();
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const clean = text.replace(/[*#•_`]/g, '').slice(0, 300);
-    const utt = new SpeechSynthesisUtterance(clean);
-    utt.lang = 'id-ID';
-    utt.rate = 1.05;
-    utt.onend = () => setSpeakingId(null);
-    utt.onerror = () => setSpeakingId(null);
+    stopSpeaking();
+    isSpeechCancelledRef.current = false;
 
+    // 1. Bersihkan formatting markdown dan perjelas fonetik istilah pabrik
+    const clean = text
+      .replace(/[*#_`]/g, '')
+      .replace(/🛡️|⚖️|🎯|📦|⚠️|ℹ️|•/g, ' ')
+      .replace(/✓/g, ' terverifikasi ')
+      .replace(/(\d+),(\d+)/g, '$1 koma $2') // 493,9 -> 493 koma 9
+      .replace(/\bKg\b|\bkg\b/g, ' kilogram')
+      .replace(/\bDHP\b/g, ' D H P ')
+      .replace(/\bBSPP\b/g, ' B S P P ')
+      .replace(/\bSKT\b/g, ' S K T ')
+      .replace(/\bSKM\b/g, ' S K M ')
+      .replace(/\bROP\b/g, ' R O P ')
+      .replace(/\bDOI\b/g, ' D O I ');
+
+    // 2. Pecah teks menjadi potongan kalimat natural agar dibaca lancar tanpa batas waktu Chromium
+    const rawChunks = clean.split(/\n+|(?<=[.!?:])\s+/);
+    const validChunks = rawChunks
+      .map(c => c.trim())
+      .filter(c => c.length > 0);
+
+    if (validChunks.length === 0) return;
+
+    speechQueueRef.current = validChunks;
     setSpeakingId(id);
-    window.speechSynthesis.speak(utt);
+    playNextSpeechChunk(id);
   };
 
   // Build stock context matching user permissions
@@ -326,15 +399,15 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
                       title={speakingId === msg.id ? "Hentikan Suara" : "Dengarkan Jawaban (Audio TTS)"}
                     >
                       {speakingId === msg.id ? (
-                        <>
-                          <VolumeX className="w-3 h-3 text-rose-500" />
-                          <span className="text-[9.5px] text-rose-500 font-medium">Hentikan</span>
-                        </>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-600">
+                          <VolumeX className="w-3 h-3 text-rose-500 animate-pulse" />
+                          <span className="text-[9.5px] font-semibold">Sedang Membaca · Hentikan</span>
+                        </span>
                       ) : (
-                        <>
+                        <span className="inline-flex items-center gap-1 hover:text-blue-600">
                           <Volume2 className="w-3 h-3 text-blue-600" />
-                          <span className="text-[9.5px]">Dengarkan</span>
-                        </>
+                          <span className="text-[9.5px]">Dengarkan Suara</span>
+                        </span>
                       )}
                     </button>
                   ) : <span />}
