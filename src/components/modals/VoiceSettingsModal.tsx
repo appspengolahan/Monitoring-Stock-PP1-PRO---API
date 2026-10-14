@@ -10,6 +10,7 @@ import {
   User, 
   Globe, 
   Info,
+  AlertTriangle,
   X
 } from 'lucide-react';
 import { 
@@ -170,6 +171,15 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({ isOpen, 
           {/* Persona List when Gemini Engine is Active */}
           {settings.engine === 'gemini' && (
             <div className="space-y-2">
+              {VoiceSettingsService.isGeminiQuotaCooldownActive() && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Info Kuota Harian Gemini Studio:</span> Kuota harian free-tier (10 permintaan/hari) untuk Gemini TTS sedang terpakai penuh. Sistem secara otomatis mengalihkan pembacaan ke <strong>Suara Browser Natural</strong> tanpa gangguan atau hambatan.
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                   Pilihan Karakter Suara AI Studio (Gemini)

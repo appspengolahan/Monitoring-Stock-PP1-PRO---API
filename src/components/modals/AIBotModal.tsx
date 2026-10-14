@@ -57,6 +57,7 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [isListening, setIsListening] = useState<boolean>(false);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [activeVoiceName, setActiveVoiceName] = useState<string>('');
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -64,6 +65,7 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
   const stopSpeaking = () => {
     VoiceSettingsService.stopSpeaking();
     setSpeakingId(null);
+    setActiveVoiceName('');
   };
 
   const scrollToBottom = () => {
@@ -153,8 +155,17 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
     setSpeakingId(id);
     VoiceSettingsService.speakText(clean, {
       onStart: () => setSpeakingId(id),
-      onEnd: () => setSpeakingId(null),
-      onError: () => setSpeakingId(null)
+      onEnd: () => {
+        setSpeakingId(null);
+        setActiveVoiceName('');
+      },
+      onError: () => {
+        setSpeakingId(null);
+        setActiveVoiceName('');
+      },
+      onVoiceTypeUsed: (type, voiceName) => {
+        setActiveVoiceName(type === 'gemini' ? `Gemini HD` : `Browser Natural`);
+      }
     });
   };
 
@@ -351,7 +362,9 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
                       {speakingId === msg.id ? (
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-600">
                           <VolumeX className="w-3 h-3 text-rose-500 animate-pulse" />
-                          <span className="text-[9.5px] font-semibold">Sedang Membaca · Hentikan</span>
+                          <span className="text-[9.5px] font-semibold">
+                            {activeVoiceName ? `${activeVoiceName} · Hentikan` : 'Sedang Membaca · Hentikan'}
+                          </span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 hover:text-blue-600">

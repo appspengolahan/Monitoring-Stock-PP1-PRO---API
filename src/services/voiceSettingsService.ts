@@ -67,6 +67,43 @@ export class VoiceSettingsService {
   private static activeAudio: HTMLAudioElement | null = null;
   private static speechQueue: string[] = [];
   private static isCancelled: boolean = false;
+  private static readonly QUOTA_COOLDOWN_KEY = 'stockpp1_gemini_tts_quota_cooldown';
+  private static memoryQuotaCooldownUntil: number = 0;
+
+  public static isGeminiQuotaCooldownActive(): boolean {
+    if (typeof window === 'undefined') return false;
+    if (Date.now() < this.memoryQuotaCooldownUntil) return true;
+    try {
+      const stored = localStorage.getItem(this.QUOTA_COOLDOWN_KEY);
+      if (stored) {
+        const val = parseInt(stored, 10);
+        if (Date.now() < val) {
+          this.memoryQuotaCooldownUntil = val;
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  }
+
+  public static setGeminiQuotaCooldown(durationMs: number = 60 * 60 * 1000): void {
+    const until = Date.now() + durationMs;
+    this.memoryQuotaCooldownUntil = until;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(this.QUOTA_COOLDOWN_KEY, until.toString());
+      } catch {}
+    }
+  }
+
+  public static clearGeminiQuotaCooldown(): void {
+    this.memoryQuotaCooldownUntil = 0;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(this.QUOTA_COOLDOWN_KEY);
+      } catch {}
+    }
+  }
 
   public static getSettings(): VoiceSettings {
     if (typeof window === 'undefined') return DEFAULT_SETTINGS;
@@ -180,53 +217,58 @@ export class VoiceSettingsService {
 
     // 1. Coba gunakan Gemini Studio Natural Voice bila mesin aktif adalah 'gemini'
     if (settings.engine === 'gemini') {
-      try {
-        callbacks?.onStart?.();
+      // Jika cooldown kuota harian aktif, langsung gunakan Browser Speech tanpa delay & tanpa request error
+      if (!this.isGeminiQuotaCooldownActive()) {
+        try {
+          callbacks?.onStart?.();
 
-        const cleanText = text
-          .replace(/[*_#`~>]/g, '')
-          .replace(/\s+/g, ' ')
-          .trim();
+          const cleanText = text
+            .replace(/[*_#`~>]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
 
-        // Gemini TTS request
-        const res = await fetch('/api/ai/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: cleanText,
-            voiceName: settings.geminiVoice || 'Kore'
-          })
-        });
+          // Gemini TTS request
+          const res = await fetch('/api/ai/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: cleanText,
+              voiceName: settings.geminiVoice || 'Kore'
+            })
+          });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok && data.audioBase64) {
-            if (this.isCancelled) return;
+          if (res.ok) {
+            const data = await res.json();
+            if (data.ok && data.audioBase64) {
+              if (this.isCancelled) return;
 
-            const audioUrl = `data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`;
-            const audio = new Audio(audioUrl);
-            audio.playbackRate = settings.speed || 1.0;
-            this.activeAudio = audio;
+              const audioUrl = `data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`;
+              const audio = new Audio(audioUrl);
+              audio.playbackRate = settings.speed || 1.0;
+              this.activeAudio = audio;
 
-            callbacks?.onVoiceTypeUsed?.('gemini', data.voiceUsed || settings.geminiVoice);
+              callbacks?.onVoiceTypeUsed?.('gemini', data.voiceUsed || settings.geminiVoice);
 
-            audio.onended = () => {
-              this.activeAudio = null;
-              callbacks?.onEnd?.();
-            };
+              audio.onended = () => {
+                this.activeAudio = null;
+                callbacks?.onEnd?.();
+              };
 
-            audio.onerror = () => {
-              this.activeAudio = null;
-              // Fallback ke browser speech bila pemutaran audio gagal
-              this.speakViaBrowser(cleanText, settings, callbacks);
-            };
+              audio.onerror = () => {
+                this.activeAudio = null;
+                // Fallback ke browser speech bila pemutaran audio gagal
+                this.speakViaBrowser(cleanText, settings, callbacks);
+              };
 
-            await audio.play();
-            return;
+              await audio.play();
+              return;
+            } else if (data.quotaExceeded) {
+              this.setGeminiQuotaCooldown();
+            }
           }
+        } catch {
+          // Silent fallback ke browser speech
         }
-      } catch (err) {
-        console.warn('Gemini TTS error, falling back to browser speech:', err);
       }
     }
 

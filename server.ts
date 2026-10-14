@@ -560,6 +560,8 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
   });
 
   // Server-Side Gemini Studio Ultra-Natural TTS (gemini-3.8-flash-lite-tts)
+  let geminiTtsCooldownUntil = 0;
+
   app.post('/api/ai/tts', async (req, res) => {
     try {
       const { text, voiceName = 'Kore' } = req.body;
@@ -574,8 +576,18 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
         .trim()
         .slice(0, 1500);
 
+      // Check server cooldown if free-tier quota was recently exhausted
+      if (Date.now() < geminiTtsCooldownUntil) {
+        return res.json({
+          ok: false,
+          quotaExceeded: true,
+          fallbackBrowser: true,
+          message: 'Kuota harian Gemini TTS sedang cooling down. Dialihkan ke Suara Browser Natural.'
+        });
+      }
+
       if (!ai) {
-        return res.status(503).json({
+        return res.json({
           ok: false,
           fallbackBrowser: true,
           error: 'Gemini AI API key belum terkonfigurasi. Menggunakan suara browser lokal.'
@@ -619,18 +631,37 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
           voiceUsed: chosenVoice
         });
       } else {
-        return res.status(500).json({
+        return res.json({
           ok: false,
           fallbackBrowser: true,
           error: 'Model tidak mengembalikan data audio'
         });
       }
     } catch (err: any) {
-      console.warn('Gemini TTS warning, fallback to browser voice:', err.message);
-      return res.status(500).json({
+      const errMsg = String(err?.message || '');
+      const isQuotaOrRateLimit =
+        err?.status === 429 ||
+        errMsg.includes('429') ||
+        errMsg.includes('RESOURCE_EXHAUSTED') ||
+        errMsg.includes('Quota exceeded') ||
+        errMsg.includes('rate-limit');
+
+      if (isQuotaOrRateLimit) {
+        geminiTtsCooldownUntil = Date.now() + 60 * 60 * 1000; // 1 jam cooldown
+        console.info('Gemini TTS: Free-tier daily quota limit reached (10/day). Falling back smoothly to high-fidelity browser voice.');
+        return res.json({
+          ok: false,
+          quotaExceeded: true,
+          fallbackBrowser: true,
+          message: 'Kuota harian Gemini TTS tercapai. Otomatis beralih ke Suara Browser Natural.'
+        });
+      }
+
+      console.info('Gemini TTS unavailable, routing to browser voice.');
+      return res.json({
         ok: false,
         fallbackBrowser: true,
-        error: err.message
+        error: errMsg || 'TTS error'
       });
     }
   });
