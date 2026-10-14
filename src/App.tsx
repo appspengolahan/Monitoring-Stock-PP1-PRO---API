@@ -643,8 +643,14 @@ export default function App() {
                 onClick={() => { setIsSwitchAppOpen(true); setIsMobileMenuOpen(false); }}
                 className="w-full text-left p-3 rounded-xl hover:bg-slate-50 flex items-center justify-between"
               >
-                <span>Switch Board Susut Lainnya</span>
-                <ExternalLink className="w-4 h-4" />
+                <div className="flex items-center gap-2.5">
+                  <Layers className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div className="text-xs font-semibold text-slate-800">Switch Board Susut</div>
+                    <div className="text-[10.5px] text-slate-500">Blend, Krosok, Tembakau, Cengkeh</div>
+                  </div>
+                </div>
+                <ExternalLink className="w-4 h-4 text-slate-400" />
               </button>
               <button
                 onClick={() => { setIsHelpOpen(true); setIsMobileMenuOpen(false); }}

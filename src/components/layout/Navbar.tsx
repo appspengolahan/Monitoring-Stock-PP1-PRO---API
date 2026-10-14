@@ -274,14 +274,16 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
                         setIsToolsOpen(false);
                         onOpenSwitchApp();
                       }}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer text-left group"
                     >
-                      <div className="p-1.5 rounded-md bg-slate-100 text-slate-700 shrink-0">
-                        <Layers className="w-3.5 h-3.5" />
+                      <div className="p-1.5 rounded-md bg-emerald-50 text-emerald-700 shrink-0 group-hover:bg-emerald-100 transition-colors">
+                        <Layers className="w-3.5 h-3.5 text-emerald-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-slate-900">Switch Board Susut</div>
-                        <div className="text-[11px] text-slate-500 truncate">Beralih ke monitoring susut bahan</div>
+                        <div className="font-semibold text-slate-900 flex items-center justify-between">
+                          <span>Switch Board Susut</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">Blend, Krosok, Tembakau, Cengkeh</div>
                       </div>
                     </button>
 
