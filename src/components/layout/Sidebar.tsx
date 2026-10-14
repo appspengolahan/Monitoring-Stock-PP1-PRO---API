@@ -18,7 +18,8 @@ import {
   Users,
   Bot,
   Sparkles,
-  Sliders
+  Sliders,
+  FileCheck2
 } from 'lucide-react';
 import { UserSession } from '../../types';
 
@@ -28,6 +29,7 @@ interface SidebarProps {
   session: UserSession;
   onOpenMigration: () => void;
   onOpenSwitchApp: () => void;
+  onOpenSystemAuditReport?: () => void;
   onOpenUserManagement?: () => void;
   onOpenAIBot?: () => void;
   onOpenSktSkmSettings?: () => void;
@@ -45,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   session,
   onOpenMigration,
   onOpenSwitchApp,
+  onOpenSystemAuditReport,
   onOpenUserManagement,
   onOpenAIBot,
   onOpenSktSkmSettings,
@@ -308,6 +311,38 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
               <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
                 <div className="font-semibold text-indigo-200">Headless GAS Center</div>
                 <div className="text-[10px] text-slate-400">REST JSON API &amp; Test URL</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Laporan Pemeriksaan Web Apps (Only for Dev / Site Engineer) */}
+        {session.hasDevAccess && onOpenSystemAuditReport && (
+          <div className="relative group">
+            <button
+              onClick={onOpenSystemAuditReport}
+              className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
+                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+              } text-slate-300 hover:text-white hover:bg-slate-800/80 group-hover:border-slate-700`}
+              title={isCollapsed ? "Laporan Pemeriksaan & Baseline v2.0" : undefined}
+            >
+              <FileCheck2 className="w-5 h-5 text-teal-400 shrink-0 group-hover:scale-105 transition-transform" />
+              {!isCollapsed && (
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold truncate leading-tight text-teal-300 flex items-center gap-1.5">
+                    <span>Laporan Pemeriksaan</span>
+                    <span className="text-[9.5px] bg-teal-500/20 text-teal-300 px-1.5 py-0.2 rounded border border-teal-500/30 font-mono font-bold">v2.0</span>
+                  </div>
+                  <div className="text-[10.5px] text-slate-400 truncate mt-0.5">
+                    Baseline &amp; Audit Keandalan
+                  </div>
+                </div>
+              )}
+            </button>
+            {isCollapsed && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                <div className="font-semibold text-teal-300">Laporan Pemeriksaan Web Apps</div>
+                <div className="text-[10px] text-slate-400">Baseline v2.0 &amp; Audit Keandalan</div>
               </div>
             )}
           </div>

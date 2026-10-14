@@ -16,7 +16,8 @@ import {
   Grid,
   Bot,
   CloudDownload,
-  RefreshCw
+  RefreshCw,
+  FileCheck2
 } from 'lucide-react';
 import { UserSession, UserRole } from '../../types';
 
@@ -33,6 +34,7 @@ interface NavbarProps {
   onOpenHelp: () => void;
   onOpenMigration: () => void;
   onOpenSwitchApp: () => void;
+  onOpenSystemAuditReport?: () => void;
   onOpenUserManagement?: () => void;
   onOpenChangePassword?: () => void;
   onOpenAIBot?: () => void;
@@ -61,6 +63,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
   onOpenHelp,
   onOpenMigration,
   onOpenSwitchApp,
+  onOpenSystemAuditReport,
   onOpenUserManagement,
   onOpenChangePassword,
   onOpenAIBot,
@@ -326,6 +329,29 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
                             <span className="text-[9px] px-1 bg-blue-100 text-blue-700 rounded font-mono">Dev</span>
                           </div>
                           <div className="text-[11px] text-slate-500 truncate">REST API Google Apps Script</div>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* Laporan Pemeriksaan Web Apps (Dev/Engineer Only) */}
+                    {session.hasDevAccess && onOpenSystemAuditReport && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsOpen(false);
+                          onOpenSystemAuditReport();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-teal-900 hover:bg-teal-50/70 transition-colors cursor-pointer text-left"
+                      >
+                        <div className="p-1.5 rounded-md bg-teal-100 text-teal-700 shrink-0">
+                          <FileCheck2 className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                            <span>Laporan Pemeriksaan</span>
+                            <span className="text-[9px] px-1 bg-teal-100 text-teal-800 rounded font-mono font-bold">Baseline v2.0</span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate">Verifikasi menyeluruh &amp; keandalan</div>
                         </div>
                       </button>
                     )}

@@ -25,6 +25,7 @@ import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { AISmartInsights } from './components/dashboard/AISmartInsights';
 import { AIBotModal } from './components/modals/AIBotModal';
 import { SktSkmSettingsModal } from './components/modals/SktSkmSettingsModal';
+import { SystemAuditReportModal } from './components/modals/SystemAuditReportModal';
 import { useFullscreen } from './hooks/useFullscreen';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { 
@@ -46,7 +47,8 @@ import {
   Lock,
   KeyRound,
   Bot,
-  Sparkles
+  Sparkles,
+  FileCheck2
 } from 'lucide-react';
 
 export default function App() {
@@ -92,6 +94,7 @@ export default function App() {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
   const [isAIBotOpen, setIsAIBotOpen] = useState<boolean>(false);
   const [isSktSkmOpen, setIsSktSkmOpen] = useState<boolean>(false);
+  const [isSystemAuditReportOpen, setIsSystemAuditReportOpen] = useState<boolean>(false);
 
   // Auto-detect ?page=admin query param to open login modal
   useEffect(() => {
@@ -304,6 +307,7 @@ export default function App() {
         onOpenHelp={() => setIsHelpOpen(true)}
         onOpenMigration={() => setIsMigrationOpen(true)}
         onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
+        onOpenSystemAuditReport={() => setIsSystemAuditReportOpen(true)}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
@@ -329,6 +333,7 @@ export default function App() {
             session={session}
             onOpenMigration={() => setIsMigrationOpen(true)}
             onOpenSwitchApp={() => setIsSwitchAppOpen(true)}
+            onOpenSystemAuditReport={() => setIsSystemAuditReportOpen(true)}
             onOpenUserManagement={() => setIsUserManagementOpen(true)}
             onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
             onOpenSktSkmSettings={() => setIsSktSkmOpen(true)}
@@ -626,6 +631,19 @@ export default function App() {
                 </button>
               )}
 
+              {session.hasDevAccess && (
+                <button
+                  onClick={() => { setIsSystemAuditReportOpen(true); setIsMobileMenuOpen(false); }}
+                  className="w-full text-left p-3 rounded-xl hover:bg-teal-50 flex items-center justify-between text-teal-800 font-semibold"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileCheck2 className="w-4 h-4 text-teal-600" />
+                    <span>Laporan Pemeriksaan &amp; Baseline v2.0</span>
+                  </div>
+                  <span className="text-[9.5px] bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded font-mono font-bold">LOCKED</span>
+                </button>
+              )}
+
               {session.canManageUsers && (
                 <button
                   onClick={() => { setIsUserManagementOpen(true); setIsMobileMenuOpen(false); }}
@@ -725,6 +743,13 @@ export default function App() {
       <SktSkmSettingsModal
         isOpen={isSktSkmOpen}
         onClose={() => setIsSktSkmOpen(false)}
+      />
+
+      {/* Laporan Pemeriksaan & Baseline v2.0 Modal (Dev & Engineer) */}
+      <SystemAuditReportModal
+        isOpen={isSystemAuditReportOpen}
+        onClose={() => setIsSystemAuditReportOpen(false)}
+        komoditasList={komoditasList}
       />
 
       {/* AI Logistik & Stock Bot Modal (Hanya jika berhak akses) */}
