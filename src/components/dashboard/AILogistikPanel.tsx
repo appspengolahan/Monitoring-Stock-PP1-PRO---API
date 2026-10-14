@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Sparkles, 
   AlertTriangle, 
@@ -23,7 +23,10 @@ import {
   Mic, 
   Bot,
   ShieldCheck,
-  Lightbulb
+  Lightbulb,
+  Volume2,
+  Square,
+  ListOrdered
 } from 'lucide-react';
 import { KomoditasData, BSPPData, UserSession } from '../../types';
 import { 
@@ -56,6 +59,11 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
   const [searchKode, setSearchKode] = useState<string>('');
   const [selectedAuditDate, setSelectedAuditDate] = useState<string>('');
   const [showWorkflowInfo, setShowWorkflowInfo] = useState<boolean>(false);
+  const [showCategorizedReport, setShowCategorizedReport] = useState<boolean>(false);
+  const [isSpeakingCategorized, setIsSpeakingCategorized] = useState<boolean>(false);
+  const [copiedCategorized, setCopiedCategorized] = useState<boolean>(false);
+  const speechQueueRef = useRef<string[]>([]);
+  const isSpeechCancelledRef = useRef<boolean>(false);
   
   // Executive Report States
   const [reportPeriod, setReportPeriod] = useState<string>('Mingguan');
@@ -67,6 +75,92 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
   const dailyAudit = useMemo(() => {
     return DailyAuditorService.runDailyAudit(komoditasList, bsppList, selectedAuditDate || undefined);
   }, [komoditasList, bsppList, selectedAuditDate]);
+
+  // Categorized Mutation Report per Category & Material (Siap Dibacakan)
+  const categorizedAudit = useMemo(() => {
+    return DailyAuditorService.getCategorizedDailyAuditReport(komoditasList, bsppList, selectedAuditDate || undefined);
+  }, [komoditasList, bsppList, selectedAuditDate]);
+
+  const stopSpeakingCategorized = () => {
+    isSpeechCancelledRef.current = true;
+    speechQueueRef.current = [];
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeakingCategorized(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopSpeakingCategorized();
+    };
+  }, []);
+
+  const handleToggleSpeakCategorized = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      alert('Fitur pembacaan suara tidak didukung browser ini.');
+      return;
+    }
+
+    if (isSpeakingCategorized) {
+      stopSpeakingCategorized();
+      return;
+    }
+
+    stopSpeakingCategorized();
+    isSpeechCancelledRef.current = false;
+
+    // Segment text into distinct full sentences so Web Speech API never stops or truncates!
+    const cleanText = categorizedAudit.spokenScript
+      .replace(/[*_#`~>]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const sentences = cleanText
+      .split(/(?<=[.?!])\s+/)
+      .filter(s => s.trim().length > 0);
+
+    speechQueueRef.current = sentences;
+    setIsSpeakingCategorized(true);
+
+    const playNext = () => {
+      if (isSpeechCancelledRef.current || speechQueueRef.current.length === 0) {
+        setIsSpeakingCategorized(false);
+        return;
+      }
+
+      const nextChunk = speechQueueRef.current.shift();
+      if (!nextChunk) {
+        setIsSpeakingCategorized(false);
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(nextChunk);
+      utterance.lang = 'id-ID';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+
+      const voices = window.speechSynthesis.getVoices();
+      const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID'));
+      if (idVoice) utterance.voice = idVoice;
+
+      utterance.onend = () => {
+        if (!isSpeechCancelledRef.current) {
+          playNext();
+        }
+      };
+
+      utterance.onerror = () => {
+        if (!isSpeechCancelledRef.current) {
+          playNext();
+        }
+      };
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    playNext();
+  };
 
   // Compute analytics
   const analytics = useMemo(() => {
@@ -401,6 +495,19 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
                 </button>
 
                 <button
+                  onClick={() => setShowCategorizedReport(prev => !prev)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-2xs cursor-pointer ${
+                    showCategorizedReport
+                      ? 'bg-amber-600 text-white border border-amber-700'
+                      : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300'
+                  }`}
+                  title="Laporan harian per jenis bahan dan semua jenis mutasi per kategori (siap dibacakan)"
+                >
+                  <ListOrdered className="w-3.5 h-3.5 text-amber-700" />
+                  <span>{showCategorizedReport ? 'Tutup Mutasi Terkategori' : 'Mutasi Per Kategori (Siap Baca)'}</span>
+                </button>
+
+                <button
                   onClick={() => exportDailyAuditPdf(dailyAudit)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all shadow-2xs cursor-pointer"
                   title="Unduh Laporan Resmi Hasil Pemeriksaan Auditor Detektif Harian (PDF)"
@@ -493,6 +600,193 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
                     </div>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
                       Memberikan arahan operasional preventif untuk mandor/engineer serta ekspor dokumen PDF Audit Resmi 1-klik.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Expandable Categorized Daily Mutation Audit Report (Per Kategori & Per Bahan, Siap Dibacakan) */}
+            {showCategorizedReport && (
+              <div className="p-4 sm:p-5 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white border-b border-amber-200 transition-all animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-amber-200/70">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <ListOrdered className="w-4 h-4 text-amber-100" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight">
+                          Laporan Audit Mutasi Per Kategori &amp; Per Bahan
+                        </h4>
+                        <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
+                          {categorizedAudit.tanggalIndo}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600">
+                        Disajikan berurutan per kategori jenis transaksi agar terstruktur dan tidak lompat-lompat, lengkap dengan narasi audio resmi.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Audio & Action Buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={handleToggleSpeakCategorized}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all shadow-xs cursor-pointer ${
+                        isSpeakingCategorized
+                          ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      }`}
+                      title={isSpeakingCategorized ? 'Hentikan pembacaan audio' : 'Dengarkan pembacaan naskah mutasi secara urut'}
+                    >
+                      {isSpeakingCategorized ? (
+                        <>
+                          <Square className="w-3.5 h-3.5 fill-current" />
+                          <span>Hentikan Suara</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="w-3.5 h-3.5" />
+                          <span>Dengarkan Pembacaan Runtut 🔊</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(categorizedAudit.spokenScript);
+                        setCopiedCategorized(true);
+                        setTimeout(() => setCopiedCategorized(false), 2000);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-2xs"
+                      title="Salin Naskah Narasi Suara"
+                    >
+                      {copiedCategorized ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                      <span>{copiedCategorized ? 'Tersalin' : 'Salin Naskah'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setShowCategorizedReport(false)}
+                      className="text-slate-400 hover:text-slate-700 text-xs font-bold px-2 py-1.5 rounded-md hover:bg-slate-200/50 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                {/* Categories Flow Grid */}
+                <div className="space-y-3.5">
+                  {categorizedAudit.groups.map(grp => (
+                    <div 
+                      key={grp.kategoriKey} 
+                      className={`p-3.5 rounded-xl border transition-all ${
+                        grp.totalTransaksi > 0
+                          ? 'bg-white border-amber-200/90 shadow-2xs'
+                          : 'bg-slate-50/70 border-slate-200 opacity-75'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{grp.icon}</span>
+                          <div>
+                            <span className="text-xs font-bold text-slate-900 block leading-tight">
+                              {grp.kategoriJudul}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block">
+                              {grp.deskripsi}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[11px] font-bold font-mono px-2 py-0.5 rounded-md ${
+                            grp.totalTransaksi > 0
+                              ? (grp.tipeArus === 'masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800')
+                              : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {grp.tipeArus === 'masuk' ? '+' : grp.tipeArus === 'keluar' ? '-' : ''}{grp.totalKg.toLocaleString('id-ID')} Kg
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            ({grp.totalTransaksi} transaksi)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Items under this category */}
+                      {grp.totalTransaksi === 0 ? (
+                        <p className="text-[11px] text-slate-400 italic pt-2 pl-6">
+                          Nihil / Tidak ada mutasi yang tercatat pada kategori ini.
+                        </p>
+                      ) : (
+                        <div className="pt-2 space-y-2">
+                          {grp.perBahan.map((pb, pIdx) => (
+                            <div key={pIdx} className="bg-slate-50/80 p-2.5 rounded-lg border border-slate-200/70">
+                              <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1.5">
+                                <span className="flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                  <span>{pb.komoditas}</span>
+                                  <span className="text-slate-400 font-normal">·</span>
+                                  <span className="font-mono text-slate-700 bg-white px-1.5 py-0.2 rounded border border-slate-200 text-[11px]">
+                                    {pb.kode}
+                                  </span>
+                                </span>
+                                <span className="font-mono text-slate-900 font-extrabold text-[11px]">
+                                  Subtotal: {pb.subtotalKg.toLocaleString('id-ID')} Kg
+                                </span>
+                              </div>
+
+                              <div className="space-y-1">
+                                {pb.items.map((it, itIdx) => (
+                                  <div key={itIdx} className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] bg-white p-1.5 px-2 rounded border border-slate-100">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-slate-400 font-mono text-[10px]">{itIdx + 1}.</span>
+                                      {it.sakKoli && (
+                                        <span className="bg-slate-100 text-slate-600 px-1 rounded text-[10px] font-mono">
+                                          {it.sakKoli} Sak/Koli
+                                        </span>
+                                      )}
+                                      <span className="font-semibold text-slate-800">{it.jenisMutasi}</span>
+                                      {it.jalur && (
+                                        <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1 rounded font-bold">
+                                          {it.jalur}
+                                        </span>
+                                      )}
+                                      <span className="text-slate-400 text-[10px]">({it.keterangan})</span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 mt-1 sm:mt-0">
+                                      <span className="font-mono font-bold text-slate-900">
+                                        {it.bobotKg.toLocaleString('id-ID')} Kg
+                                      </span>
+                                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                        it.statusAudit === 'MATCH'
+                                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                          : it.statusAudit === 'SELISIH'
+                                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                          : 'bg-slate-100 text-slate-600'
+                                      }`}>
+                                        {it.statusAudit === 'MATCH' ? '100% Klop' : it.statusAudit === 'SELISIH' ? 'Selisih' : 'Tercatat'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Spoken Text Preview Quote */}
+                <div className="mt-3.5 p-3 rounded-xl bg-amber-100/60 border border-amber-300/80 text-[11px] text-amber-950 flex items-start gap-2">
+                  <Volume2 className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <span className="font-bold block mb-0.5">Naskah Siaran Audio yang Dibacakan:</span>
+                    <p className="italic leading-relaxed text-slate-700">
+                      "{categorizedAudit.spokenScript}"
                     </p>
                   </div>
                 </div>

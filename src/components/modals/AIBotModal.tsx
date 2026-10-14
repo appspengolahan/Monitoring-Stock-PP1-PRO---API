@@ -305,7 +305,8 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
   };
 
   const quickPrompts = [
-    { label: '🛡️ Briefing Auditor Harian', prompt: 'Berikan briefing eksekutif hasil pemeriksaan Auditor Harian Otomatis: bagaimana status kesesuaian fisik vs DHP Krosok, DHP Tembakau, dan Setoran hari ini?' },
+    { label: '🛡️ Briefing Auditor Harian', prompt: 'Berikan briefing eksekutif hasil pemeriksaan Auditor Harian Otomatis terkini: langsung sajikan status audit, tonase tervalidasi, dan rincian bahan hari ini secara to the point tanpa mengulang teori cara kerja sistem.' },
+    { label: '🎙️ Mutasi Per Kategori', prompt: 'Sajikan laporan audit harian per jenis bahan untuk semua jenis mutasi hari ini, dibacakan teratur per kategori jenis mutasi agar tidak lompat-lompat.' },
     { label: '🎯 Prediksi Sisa Hari', prompt: 'Berapa hari sisa persediaan (Days of Inventory) untuk grade yang mendekati level kritis?' },
     { label: '⚖️ Cek Susut BSPP', prompt: 'Apakah ada selisih timbangan (BSPP) yang mencolok atau melebihi batas 0,5% pada data terbaru?' },
     { label: '📦 Stok Mengendap', prompt: 'Tampilkan grade atau komoditas yang tidak ada mutasi keluar lebih dari 25 hari (stok mengendap).' },
