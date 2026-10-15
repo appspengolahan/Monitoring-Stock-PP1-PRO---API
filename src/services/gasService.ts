@@ -515,8 +515,8 @@ export class GasService {
       // Bersihkan entri dari sheet rekap/validasi, baris angka, atau nama bahan yang tercampur di jenisMutasi
       const rawMutasi = (k.mutasiTerbaru || []).filter(m => {
         if (!m) return false;
-        // Bersihkan entri sintetis DHP Blend lama agar dievaluasi ulang secara bersih
-        if (m.id && m.id.startsWith('tembakau-blend-dhp-')) return false;
+        // Bersihkan entri sintetis DHP Blend & Rajang II lama agar dievaluasi ulang secara bersih
+        if (m.id && (m.id.startsWith('tembakau-blend-dhp-') || m.id.startsWith('tembakau---krosok--rajang-ii--dhp-'))) return false;
 
         // Tolak baris yang berasal dari tab summary/rekap/validasi
         if (this.isNonMaterialSheetName(m.kode)) return false;
@@ -617,6 +617,15 @@ export class GasService {
             const rawD = (d.nama || '').trim().toUpperCase();
             if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
             const dDateKey = getTanggalKey(d.tanggal);
+            const exactDateMatch = Boolean(mDateKey && dDateKey && dDateKey === mDateKey);
+            const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
+            const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
+            const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
+            return exactDateMatch && kodeMatch;
+          }) || dhpList.find(d => {
+            const rawD = (d.nama || '').trim().toUpperCase();
+            if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
+            const dDateKey = getTanggalKey(d.tanggal);
             const dateMatch = !mDateKey || !dDateKey || dDateKey === mDateKey ||
               Math.abs(getEpochTime(m.tanggal) - getEpochTime(d.tanggal)) <= 86400000;
             const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
@@ -677,8 +686,8 @@ export class GasService {
             matchedDhpSet.add(rawD);
             const val = Number(dhpItem.nettoKg) || 0;
             enrichedMutasi.unshift({
-              id: `tembakau---krosok--rajang-ii--dhp-${cleanD}`,
-              tanggal: dhpItem.tanggal || '2026-10-07T00:00:00.000Z',
+              id: `tembakau---krosok--rajang-ii--dhp-${cleanD}-${getTanggalKey(dhpItem.tanggal) || '2026-10-15'}`,
+              tanggal: dhpItem.tanggal || '2026-10-15T00:00:00.000Z',
               kode: kodeName,
               jenisMutasi: 'Pemasukan Hasil Proses',
               masuk: val,
@@ -847,6 +856,15 @@ export class GasService {
             const rawD = (d.nama || '').trim().toUpperCase();
             if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
             const dDateKey = getTanggalKey(d.tanggal);
+            const exactDateMatch = Boolean(mDateKey && dDateKey && dDateKey === mDateKey);
+            const cleanD = this.normalizeBlendKodeAlias(rawD);
+            const cleanM = this.normalizeBlendKodeAlias(mKode);
+            const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
+            return exactDateMatch && kodeMatch;
+          }) || dhpBlendList.find(d => {
+            const rawD = (d.nama || '').trim().toUpperCase();
+            if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
+            const dDateKey = getTanggalKey(d.tanggal);
             const dateMatch = !mDateKey || !dDateKey || dDateKey === mDateKey ||
               Math.abs(getEpochTime(m.tanggal) - getEpochTime(d.tanggal)) <= 86400000;
             const cleanD = this.normalizeBlendKodeAlias(rawD);
@@ -909,8 +927,8 @@ export class GasService {
             matchedDhpBlendSet.add(cleanD);
             const val = Number(dhpItem.nettoKg) || 0;
             enrichedMutasi.unshift({
-              id: `tembakau-blend-dhp-${cleanD}-${getTanggalKey(dhpItem.tanggal) || '2026-10-12'}`,
-              tanggal: dhpItem.tanggal || '2026-10-12T00:00:00.000Z',
+              id: `tembakau-blend-dhp-${cleanD}-${getTanggalKey(dhpItem.tanggal) || '2026-10-15'}`,
+              tanggal: dhpItem.tanggal || '2026-10-15T00:00:00.000Z',
               kode: kodeName,
               jenisMutasi: 'Pemasukan Hasil Blend',
               masuk: val,
@@ -1194,6 +1212,7 @@ export class GasService {
   }
 
   public static getCachedKomoditas(): KomoditasData[] {
+    if (typeof localStorage === 'undefined') return this.enrichKomoditasData(INITIAL_KOMODITAS_DATA);
     const cached = localStorage.getItem(STORAGE_KEYS.KOMODITAS);
     if (cached) {
       try {
@@ -1617,9 +1636,22 @@ export class GasService {
   }
 
   public static saveCachedDHP(data: DHPEntry[], skipNotify: boolean = false): void {
-    const cleaned = this.cleanDHPEntries(data);
+    const cleanedIncoming = this.cleanDHPEntries(data);
+    const existing = this.getCachedDHP();
+    const map = new Map<string, DHPEntry>();
+    // Pertahankan data tersimpan terlebih dahulu
+    existing.forEach(item => {
+      const k = `${getTanggalKey(item.tanggal)}_${(item.nama || '').trim().toUpperCase()}`;
+      map.set(k, item);
+    });
+    // Timpa/tambahkan data baru (incoming)
+    cleanedIncoming.forEach(item => {
+      const k = `${getTanggalKey(item.tanggal)}_${(item.nama || '').trim().toUpperCase()}`;
+      map.set(k, item);
+    });
+    const merged = Array.from(map.values());
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(cleaned));
+      localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(merged));
     }
     if (!skipNotify) {
       // Otomatis perbarui pencocokan rekonsiliasi dan badge pada data mutasi persediaan
@@ -1785,9 +1817,22 @@ export class GasService {
   }
 
   public static saveCachedDHPBlend(data: DHPEntry[], skipNotify: boolean = false): void {
-    const cleaned = this.cleanDHPBlendEntries(data);
+    const cleanedIncoming = this.cleanDHPBlendEntries(data);
+    const existing = this.getCachedDHPBlend();
+    const map = new Map<string, DHPEntry>();
+    // Pertahankan data tersimpan terlebih dahulu
+    existing.forEach(item => {
+      const k = `${getTanggalKey(item.tanggal)}_${this.normalizeBlendKodeAlias(item.nama || '')}`;
+      map.set(k, item);
+    });
+    // Timpa/tambahkan data baru (incoming)
+    cleanedIncoming.forEach(item => {
+      const k = `${getTanggalKey(item.tanggal)}_${this.normalizeBlendKodeAlias(item.nama || '')}`;
+      map.set(k, item);
+    });
+    const merged = Array.from(map.values());
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEYS.DHP_BLEND_RECONCILIATION, JSON.stringify(cleaned));
+      localStorage.setItem(STORAGE_KEYS.DHP_BLEND_RECONCILIATION, JSON.stringify(merged));
     }
     if (!skipNotify) {
       try {
@@ -2286,6 +2331,7 @@ export class GasService {
 
       const lines = rawText.split(/\r?\n/);
       const entries: DHPEntry[] = [];
+      let lastKnownTanggal = '2026-10-15T00:00:00.000Z';
 
       for (let idx = 0; idx < lines.length; idx++) {
         const line = lines[idx];
@@ -2293,6 +2339,9 @@ export class GasService {
         if (cols.length < 9) continue;
 
         const rawTanggal = cols[2]?.trim() || '';
+        if (rawTanggal && rawTanggal.length >= 4) {
+          lastKnownTanggal = normalizeDateToIso(rawTanggal, lastKnownTanggal);
+        }
         const rawNama = cols[3]?.trim() || '';
         const rawHasil = cols[8]?.trim() || ''; // Kolom I: HASIL PROSES (I14:I24)
 
@@ -2310,7 +2359,7 @@ export class GasService {
         if (isNaN(nettoVal) || nettoVal <= 0) continue;
 
         entries.push({
-          tanggal: rawTanggal ? normalizeDateToIso(rawTanggal, '2026-10-14T00:00:00.000Z') : '2026-10-14T00:00:00.000Z',
+          tanggal: rawTanggal ? normalizeDateToIso(rawTanggal, lastKnownTanggal) : lastKnownTanggal,
           nama: rawNama,
           nettoKg: Math.round(nettoVal * 10) / 10,
           jalur: 'SKT',
@@ -2344,6 +2393,7 @@ export class GasService {
 
       const lines = rawText.split(/\r?\n/);
       const entries: DHPEntry[] = [];
+      let lastKnownTanggal = '2026-10-15T00:00:00.000Z';
 
       for (let idx = 0; idx < lines.length; idx++) {
         const line = lines[idx];
@@ -2351,6 +2401,9 @@ export class GasService {
         if (cols.length < 9) continue;
 
         const rawTanggal = cols[2]?.trim() || '';
+        if (rawTanggal && rawTanggal.length >= 4) {
+          lastKnownTanggal = normalizeDateToIso(rawTanggal, lastKnownTanggal);
+        }
         const rawNama = cols[3]?.trim() || '';
         const rawHasil = cols[8]?.trim() || ''; // Kolom I: HASIL PROSES (I14:I24)
 
@@ -2368,7 +2421,7 @@ export class GasService {
         if (isNaN(nettoVal) || nettoVal <= 0) continue;
 
         entries.push({
-          tanggal: rawTanggal ? normalizeDateToIso(rawTanggal, '2026-10-14T00:00:00.000Z') : '2026-10-14T00:00:00.000Z',
+          tanggal: rawTanggal ? normalizeDateToIso(rawTanggal, lastKnownTanggal) : lastKnownTanggal,
           nama: rawNama,
           nettoKg: Math.round(nettoVal * 10) / 10,
           jalur: 'SKT',
@@ -2427,6 +2480,7 @@ export class GasService {
       const lines = rawText.split(/\r?\n/);
       const molenMap: Record<string, { tanggal: string; nama: string; nettoKg: number; jalur: string; sumber: string; molenList: { no: number; namaMolen: string; nettoKg: number }[] }> = {};
       let startProcessingMolen = false;
+      let lastKnownTanggal = '2026-10-15T00:00:00.000Z';
 
       for (let idx = 0; idx < lines.length; idx++) {
         const line = lines[idx];
@@ -2434,6 +2488,9 @@ export class GasService {
         if (cols.length < 9) continue;
 
         const rawTanggal = cols[2]?.trim() || '';
+        if (rawTanggal && rawTanggal.length >= 4) {
+          lastKnownTanggal = normalizeDateToIso(rawTanggal, lastKnownTanggal);
+        }
         const rawMolen = cols[3]?.trim() || '';
         const rawMerk = cols[4]?.trim() || '';
         const rawHasilJadi = cols[8]?.trim() || ''; // Kolom I: Index 8 (DATA KERTAS KERJA PROSES BLEND)
@@ -2452,9 +2509,11 @@ export class GasService {
         const nettoVal = parseFloat(cleanNum);
 
         if (rawMerk && rawMerk !== 'MERK' && rawMerk !== '-' && !isNaN(nettoVal) && nettoVal > 0) {
-          if (!molenMap[rawMerk]) {
-            molenMap[rawMerk] = {
-              tanggal: rawTanggal ? normalizeDateToIso(rawTanggal, '2026-10-12T00:00:00.000Z') : '2026-10-12T00:00:00.000Z',
+          const itemTanggal = rawTanggal ? normalizeDateToIso(rawTanggal, lastKnownTanggal) : lastKnownTanggal;
+          const mapKey = `${getTanggalKey(itemTanggal)}_${rawMerk}`;
+          if (!molenMap[mapKey]) {
+            molenMap[mapKey] = {
+              tanggal: itemTanggal,
               nama: rawMerk,
               nettoKg: 0,
               jalur: 'Wagir',
@@ -2462,10 +2521,10 @@ export class GasService {
               molenList: []
             };
           }
-          molenMap[rawMerk].nettoKg = Math.round((molenMap[rawMerk].nettoKg + nettoVal) * 10) / 10;
+          molenMap[mapKey].nettoKg = Math.round((molenMap[mapKey].nettoKg + nettoVal) * 10) / 10;
           if (rawMolen && rawMolen !== '-' && rawMolen.toUpperCase() !== 'MOLEN') {
-            molenMap[rawMerk].molenList.push({
-              no: molenMap[rawMerk].molenList.length + 1,
+            molenMap[mapKey].molenList.push({
+              no: molenMap[mapKey].molenList.length + 1,
               namaMolen: rawMolen,
               nettoKg: Math.round(nettoVal * 10) / 10
             });
@@ -2473,7 +2532,18 @@ export class GasService {
         }
       }
 
-      const parsedEntries = Object.values(molenMap);
+      const liveEntries = Object.values(molenMap);
+      const existing = this.getCachedDHPBlend();
+      const combinedMap = new Map<string, DHPEntry>();
+      existing.forEach(it => {
+        const k = `${getTanggalKey(it.tanggal)}_${this.normalizeBlendKodeAlias(it.nama)}`;
+        combinedMap.set(k, it);
+      });
+      liveEntries.forEach(it => {
+        const k = `${getTanggalKey(it.tanggal)}_${this.normalizeBlendKodeAlias(it.nama)}`;
+        combinedMap.set(k, it);
+      });
+      const parsedEntries = Array.from(combinedMap.values());
       return parsedEntries.length > 0 ? parsedEntries : this.DEFAULT_DHP_BLEND_ENTRIES;
     } catch (e) {
       console.warn('Direct DHP blend fetch error:', e);

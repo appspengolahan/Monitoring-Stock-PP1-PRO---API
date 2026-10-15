@@ -781,8 +781,8 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
         });
       }
 
-      // Cache successful response in memory
-      if (typeof resultData === 'object' && resultData !== null) {
+      // Cache successful response in memory (including CSV string data from Google Sheets)
+      if ((typeof resultData === 'object' && resultData !== null) || (typeof resultData === 'string' && resultData.trim().length > 0)) {
         proxyMemoryCache.set(targetUrl, { data: resultData, expiry: now + PROXY_CACHE_TTL_MS });
         // Periodically purge expired cache entries
         if (proxyMemoryCache.size > 60) {
