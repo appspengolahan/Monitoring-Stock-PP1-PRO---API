@@ -562,6 +562,37 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
   // Server-Side Gemini Studio Ultra-Natural TTS (gemini-3.8-flash-lite-tts)
   let geminiTtsCooldownUntil = 0;
 
+  // Load precomputed studio samples so auditioning voices never exhausts quota
+  let precomputedSamples: Record<string, { audioBase64: string; text: string; mimeType: string }> = {};
+  try {
+    const samplesPath = path.join(__dirname, 'src/services/precomputedVoiceSamples.json');
+    if (fs.existsSync(samplesPath)) {
+      precomputedSamples = JSON.parse(fs.readFileSync(samplesPath, 'utf8'));
+      console.log(`Loaded ${Object.keys(precomputedSamples).length} precomputed Gemini TTS studio voice samples.`);
+    }
+  } catch (err) {
+    console.warn('Could not load precomputed voice samples:', err);
+  }
+
+  // Precomputed voice sample stream endpoint (zero quota impact, instant playback)
+  app.get('/api/ai/tts-sample/:voiceName', (req, res) => {
+    const { voiceName } = req.params;
+    const sample = precomputedSamples[voiceName];
+    if (sample && sample.audioBase64) {
+      const buffer = Buffer.from(sample.audioBase64, 'base64');
+      res.setHeader('Content-Type', sample.mimeType || 'audio/wav');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(buffer);
+    }
+    return res.status(404).json({ ok: false, error: 'Voice sample not found' });
+  });
+
+  // Reset TTS quota cooldown
+  app.post('/api/ai/tts-reset-cooldown', (_req, res) => {
+    geminiTtsCooldownUntil = 0;
+    return res.json({ ok: true, message: 'Gemini TTS cooldown reset.' });
+  });
+
   app.post('/api/ai/tts', async (req, res) => {
     try {
       const { text, voiceName = 'Kore' } = req.body;
