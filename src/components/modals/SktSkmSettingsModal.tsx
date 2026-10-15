@@ -23,7 +23,7 @@ const COMMODITY_METADATA: { name: string; desc: string; defaultActive: boolean; 
   {
     name: 'Tembakau & Krosok (Rajang II)',
     desc: 'Memiliki 2 jalur mutasi di Google Sheets (Kolom D: T Masuk/Keluar/Saldo & Kolom G: M Masuk/Keluar/Saldo).',
-    defaultActive: true,
+    defaultActive: false,
     statusLabel: 'Mendukung Dual-Lane (SKT & SKM)'
   },
   {
@@ -75,7 +75,7 @@ export const SktSkmSettingsModal: React.FC<SktSkmSettingsModalProps> = ({
 
   const handleResetDefault = () => {
     const defaultVal: Record<string, boolean> = {
-      'Tembakau & Krosok (Rajang II)': true,
+      'Tembakau & Krosok (Rajang II)': false,
       'Tembakau Blend': false,
       'Cengkeh': false,
       'Tembakau & Krosok (Rajang I)': false
@@ -124,8 +124,8 @@ export const SktSkmSettingsModal: React.FC<SktSkmSettingsModalProps> = ({
             <div className="space-y-1">
               <p className="font-semibold text-blue-950">Catatan Operasional:</p>
               <p className="text-blue-800/90 leading-relaxed">
-                Pemisahan SKT dan SKM saat ini secara default <strong>hanya aktif pada Tembakau &amp; Krosok (Rajang II)</strong>. 
-                Untuk <strong>Tembakau Blend</strong> dan <strong>Tembakau &amp; Krosok (Rajang I)</strong>, fitur ini disembunyikan agar tampilan saldo tetap presisi sesuai kolom spreadsheet alur tunggal.
+                Pemisahan jalur SKT dan SKM saat ini secara default <strong>dinonaktifkan (tidak ada yang dicentang / alur tunggal)</strong>. 
+                Anda dapat mencentang bahan baku di bawah jika ingin menampilkan pemisahan rincian kolom jalur SKT dan SKM secara khusus.
               </p>
             </div>
           </div>
@@ -195,7 +195,7 @@ export const SktSkmSettingsModal: React.FC<SktSkmSettingsModalProps> = ({
           <button
             onClick={handleResetDefault}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors cursor-pointer"
-            title="Kembalikan konfigurasi awal (Hanya Rajang II yang aktif)"
+            title="Kembalikan konfigurasi awal (Seluruh bahan default alur tunggal / tidak dicentang)"
           >
             <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
             <span>Reset ke Default</span>

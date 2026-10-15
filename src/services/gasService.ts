@@ -96,13 +96,18 @@ export class GasService {
   // --- SKT & SKM Features Configuration per Komoditas ---
   public static getSktSkmConfig(): Record<string, boolean> {
     const defaultVal: Record<string, boolean> = {
-      'Tembakau & Krosok (Rajang II)': true,
+      'Tembakau & Krosok (Rajang II)': false,
       'Tembakau Blend': false,
       'Cengkeh': false,
       'Tembakau & Krosok (Rajang I)': false
     };
-    const stored = localStorage.getItem('stockpp1_skt_skm_config_v1');
-    if (!stored) return defaultVal;
+    if (typeof localStorage === 'undefined') return defaultVal;
+    const stored = localStorage.getItem('stockpp1_skt_skm_config_v2');
+    if (!stored) {
+      // Bersihkan konfigurasi lama v1 yang secara otomatis mencentang Rajang II
+      localStorage.removeItem('stockpp1_skt_skm_config_v1');
+      return defaultVal;
+    }
     try {
       return { ...defaultVal, ...JSON.parse(stored) };
     } catch {
@@ -118,17 +123,19 @@ export class GasService {
     for (const [key, active] of Object.entries(config)) {
       const cleanKey = key.toLowerCase().trim();
       if (cleanName.includes(cleanKey) || cleanKey.includes(cleanName)) {
-        return active;
+        return Boolean(active);
       }
     }
-    // Only Rajang II defaults to true if not explicitly set
-    return cleanName.includes('rajang ii');
+    // Default adalah false (tidak ada yang dicentang / alur tunggal)
+    return false;
   }
 
   public static setSktSkmActiveForKomoditas(komoditasName: string, active: boolean): void {
     const config = this.getSktSkmConfig();
     config[komoditasName] = active;
-    localStorage.setItem('stockpp1_skt_skm_config_v1', JSON.stringify(config));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('stockpp1_skt_skm_config_v2', JSON.stringify(config));
+    }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('stockpp1_skt_skm_config_changed', { detail: config }));
     }
