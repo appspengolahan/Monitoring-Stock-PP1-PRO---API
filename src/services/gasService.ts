@@ -1269,6 +1269,29 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 15 OKTOBER 2026 (Live Worksheet DHP Krosok - Kolom I Hasil Proses) ===
+    {
+      tanggal: '2026-10-15T00:00:00.000Z',
+      nama: 'Diet Trial - 3 (2026)',
+      nettoKg: 119.0,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-15T00:00:00.000Z',
+      nama: 'Diet Trial - 1 (2025)',
+      nettoKg: 59.9,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-15T00:00:00.000Z',
+      nama: 'Hang Madura 2024 (BAT)',
+      nettoKg: 60.3,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+
     // === DATA 14 OKTOBER 2026 (Live Worksheet DHP Krosok - Kolom I Hasil Proses) ===
     {
       tanggal: '2026-10-14T00:00:00.000Z',
@@ -1565,16 +1588,18 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Pastikan cache memiliki entri baseline sah 13 & 14 Oktober (Maesan / Amerika / Kasturi / Zimbabwe / dll)
+          // Pastikan cache memiliki entri baseline sah 13, 14, & 15 Oktober (Diet Trial / Hang Madura / Maesan / Amerika / dll)
           const hasOct13 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-13'));
           const hasOct14 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-14'));
-          if (hasOct13 && hasOct14) {
+          const hasOct15 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-15'));
+          if (hasOct13 && hasOct14 && hasOct15) {
             return this.cleanDHPEntries(parsed);
           } else {
             const missingEntries = this.DEFAULT_DHP_ENTRIES.filter(d => {
               const dStr = String(d.tanggal || '');
               if (!hasOct13 && dStr.startsWith('2026-10-13')) return true;
               if (!hasOct14 && dStr.startsWith('2026-10-14')) return true;
+              if (!hasOct15 && dStr.startsWith('2026-10-15')) return true;
               return false;
             });
             const merged = [...parsed, ...missingEntries];
@@ -1611,15 +1636,27 @@ export class GasService {
   }
 
   /**
-   * Pembaruan cepat rekonsiliasi DHP langsung dari Google Sheets (~300ms)
+   * Pembaruan cepat rekonsiliasi DHP (SKT & Blend) langsung dari Google Sheets (~300ms)
    * Menyimpan ke cache lokal dan otomatis memicu penataan ulang badge auto-check di Mutasi
    */
   public static async refreshDHPReconciliation(): Promise<DHPEntry[]> {
     try {
-      const items = await this.fetchDHPSKTDirectFromSheet();
-      if (items && items.length > 0) {
-        this.saveCachedDHP(items, false);
-        return items;
+      const [sktItems, blendItems] = await Promise.all([
+        this.fetchDHPSKTDirectFromSheet().catch(e => { console.warn('Refresh DHP SKT error:', e); return []; }),
+        this.fetchDHPBlendDirectFromSheet().catch(e => { console.warn('Refresh DHP Blend error:', e); return []; })
+      ]);
+      if (blendItems && blendItems.length > 0) {
+        this.saveCachedDHPBlend(blendItems, true);
+      }
+      if (sktItems && sktItems.length > 0) {
+        this.saveCachedDHP(sktItems, false);
+        return sktItems;
+      } else if (blendItems && blendItems.length > 0) {
+        const current = this.getCachedKomoditas();
+        this.saveCachedKomoditas(current);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+        }
       }
     } catch (e) {
       console.warn('Gagal refresh DHP reconciliation langsung:', e);
@@ -1629,6 +1666,32 @@ export class GasService {
 
   // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---
   public static readonly DEFAULT_DHP_BLEND_ENTRIES: DHPEntry[] = [
+    // === DATA 15 OKTOBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi) ===
+    {
+      tanggal: '2026-10-15T00:00:00.000Z',
+      nama: '153 - BK',
+      nettoKg: 2622.8,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: '153 - BK 01', nettoKg: 874.1 },
+        { no: 2, namaMolen: '153 - BK 02', nettoKg: 874.5 },
+        { no: 3, namaMolen: '153 - BK 03', nettoKg: 874.2 }
+      ]
+    },
+    {
+      tanggal: '2026-10-15T00:00:00.000Z',
+      nama: 'KARANG - BK',
+      nettoKg: 1747.7,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: 'KARANG - BK 01', nettoKg: 874.1 },
+        { no: 2, namaMolen: 'KARANG - BK 02', nettoKg: 873.6 }
+      ]
+    },
+
+    // === DATA HISTORIS 12 OKTOBER 2026 ===
     {
       tanggal: '2026-10-12T00:00:00.000Z',
       nama: '153 - BK',
@@ -1678,7 +1741,7 @@ export class GasService {
         return true;
       })
       .map(item => ({
-        tanggal: normalizeDateToIso(item.tanggal, '2026-10-12T00:00:00.000Z'),
+        tanggal: normalizeDateToIso(item.tanggal, '2026-10-15T00:00:00.000Z'),
         nama: String(item.nama).trim(),
         nettoKg: Math.round((Number(item.nettoKg) || 0) * 10) / 10,
         jalur: item.jalur || 'Wagir',
@@ -1696,13 +1759,25 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Jika cache lokal masih menyimpan nilai dummy lama 4.350,0 Kg, auto-reset ke data riil 3.493,2 Kg
+          // Jika cache lokal masih menyimpan nilai dummy lama 4.350,0 Kg, auto-reset ke data riil
           const hasStaleMock = parsed.some(p => p.nama === '153 - BK' && Math.abs((Number(p.nettoKg) || 0) - 4350.0) < 0.1);
           if (hasStaleMock) {
             this.saveCachedDHPBlend(this.DEFAULT_DHP_BLEND_ENTRIES);
             return this.DEFAULT_DHP_BLEND_ENTRIES;
           }
-          return this.cleanDHPBlendEntries(parsed);
+          // Pastikan data 15 Oktober ada di cache
+          const hasOct15 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-15'));
+          if (hasOct15) {
+            return this.cleanDHPBlendEntries(parsed);
+          } else {
+            const missingEntries = this.DEFAULT_DHP_BLEND_ENTRIES.filter(d => {
+              const dStr = String(d.tanggal || '');
+              return dStr.startsWith('2026-10-15');
+            });
+            const merged = [...parsed, ...missingEntries];
+            this.saveCachedDHPBlend(merged, true);
+            return this.cleanDHPBlendEntries(merged);
+          }
         }
       } catch (e) {}
     }
@@ -2765,8 +2840,17 @@ export class GasService {
         return this.getCachedSetoran();
       })();
 
-      // Launch DHP Blend reconciliation in parallel stream
+      // Launch DHP Blend reconciliation in parallel stream (Direct Sheet fetch with GAS fallback)
       const dhpBlendPromise = (async () => {
+        try {
+          const directBlendItems = await this.fetchDHPBlendDirectFromSheet();
+          if (directBlendItems && directBlendItems.length > 0) {
+            this.saveCachedDHPBlend(directBlendItems, true);
+            return directBlendItems;
+          }
+        } catch (eDirect) {
+          console.warn('Direct DHP Blend fetch warning:', eDirect);
+        }
         try {
           const bUrl = `${this.gasUrl}?action=getDHPBlendReconciliation&t=${Date.now()}`;
           const bRes = await this.fetchWithTimeout(bUrl, 16000);
@@ -2774,15 +2858,6 @@ export class GasService {
           if (bData && Array.isArray(bData.items) && bData.items.length > 0) {
             this.saveCachedDHPBlend(bData.items, true);
             return bData.items;
-          }
-        } catch {
-          // Fallback to direct sheet fetch
-        }
-        try {
-          const directBlendItems = await this.fetchDHPBlendDirectFromSheet();
-          if (directBlendItems && directBlendItems.length > 0) {
-            this.saveCachedDHPBlend(directBlendItems, true);
-            return directBlendItems;
           }
         } catch (eBlend) {
           console.warn('DHP Blend sync warning:', eBlend);
