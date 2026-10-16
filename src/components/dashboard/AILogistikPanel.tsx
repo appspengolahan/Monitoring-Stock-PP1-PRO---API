@@ -193,7 +193,7 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-200">
       {/* Executive Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white rounded-2xl p-5 sm:p-7 shadow-md border border-slate-700/80">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-700/60">
@@ -701,30 +701,25 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
                                 </span>
                               </div>
 
-                              <div className="space-y-1">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
                                 {pb.items.map((it, itIdx) => (
-                                  <div key={itIdx} className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] bg-white p-1.5 px-2 rounded border border-slate-100">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-slate-400 font-mono text-[10px]">{itIdx + 1}.</span>
-                                      {it.sakKoli && (
-                                        <span className="bg-slate-100 text-slate-600 px-1 rounded text-[10px] font-mono">
-                                          {it.sakKoli} Sak/Koli
-                                        </span>
-                                      )}
-                                      <span className="font-semibold text-slate-800">{it.jenisMutasi}</span>
-                                      {it.jalur && (
-                                        <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1 rounded font-bold">
-                                          {it.jalur}
-                                        </span>
-                                      )}
-                                      <span className="text-slate-400 text-[10px]">({it.keterangan})</span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 mt-1 sm:mt-0">
-                                      <span className="font-mono font-bold text-slate-900">
-                                        {it.bobotKg.toLocaleString('id-ID')} Kg
-                                      </span>
-                                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                  <div key={itIdx} className="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between gap-1.5">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-slate-400 font-mono text-[10px] w-3.5">{itIdx + 1}.</span>
+                                        {it.sakKoli && (
+                                          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold border border-slate-200/60">
+                                            {it.sakKoli} Sak/Koli
+                                          </span>
+                                        )}
+                                        <span className="font-bold text-slate-900 text-xs">{it.jenisMutasi}</span>
+                                        {it.jalur && (
+                                          <span className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.2 rounded font-bold">
+                                            {it.jalur}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
                                         it.statusAudit === 'MATCH'
                                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                           : it.statusAudit === 'SELISIH'
@@ -732,6 +727,15 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
                                           : 'bg-slate-100 text-slate-600'
                                       }`}>
                                         {it.statusAudit === 'MATCH' ? '100% Klop' : it.statusAudit === 'SELISIH' ? 'Selisih' : 'Tercatat'}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-end justify-between pt-1 border-t border-slate-100 text-[11px]">
+                                      <span className="text-slate-500 truncate max-w-[200px]" title={it.keterangan}>
+                                        {it.keterangan || '-'}
+                                      </span>
+                                      <span className="font-mono font-bold text-slate-900 text-xs">
+                                        {it.bobotKg.toLocaleString('id-ID')} <span className="text-[10px] text-slate-500 font-normal">Kg</span>
                                       </span>
                                     </div>
                                   </div>
@@ -859,50 +863,61 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-100/80 text-[10.5px] font-bold text-slate-600 uppercase border-b border-slate-200">
-                      <th className="py-2.5 px-3">No</th>
-                      <th className="py-2.5 px-3">Kode Bahan</th>
-                      <th className="py-2.5 px-3">Jalur</th>
-                      <th className="py-2.5 px-3 text-right">Timbangan Fisik</th>
-                      <th className="py-2.5 px-3 text-right">Kertas Kerja DHP</th>
-                      <th className="py-2.5 px-3 text-right">Selisih</th>
-                      <th className="py-2.5 px-3">Rujukan Dokumen</th>
-                      <th className="py-2.5 px-3 text-center">Status Audit</th>
+                    <tr className="bg-slate-100/90 text-[11px] font-bold text-slate-700 uppercase border-b border-slate-200">
+                      <th className="py-3 px-3.5 w-12 text-center">No</th>
+                      <th className="py-3 px-3.5 w-32">Kode Bahan</th>
+                      <th className="py-3 px-3.5 w-24 text-center">Jalur</th>
+                      <th className="py-3 px-3.5 w-36 text-right">Timbangan Fisik</th>
+                      <th className="py-3 px-3.5 w-36 text-right">Kertas Kerja DHP</th>
+                      <th className="py-3 px-3.5 w-28 text-right">Selisih</th>
+                      <th className="py-3 px-3.5 min-w-[220px]">Rujukan Dokumen / Keterangan</th>
+                      <th className="py-3 px-3.5 w-36 text-center">Status Audit</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-sans">
                     {dailyAudit.categories.pemasukanHasilProses.items.map((it, idx) => (
-                      <tr key={it.id || idx} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                        <td className="py-2 px-3 font-bold text-slate-900">{it.kode}</td>
-                        <td className="py-2 px-3">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                      <tr key={it.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-2.5 px-3.5 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                        <td className="py-2.5 px-3.5">
+                          <span className="font-bold text-slate-900 block font-mono">{it.kode}</span>
+                          <span className="text-[10px] text-slate-500 font-medium">Rajang II</span>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
                             {it.jalur || 'SKT'}
                           </span>
                         </td>
-                        <td className="py-2 px-3 text-right font-bold text-emerald-700 font-mono">
-                          +{it.fisikKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} Kg
+                        <td className="py-2.5 px-3.5 text-right font-bold text-emerald-700 font-mono text-xs">
+                          +{it.fisikKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} <span className="text-[10px] text-slate-400 font-normal">Kg</span>
                         </td>
-                        <td className="py-2 px-3 text-right font-medium text-slate-700 font-mono">
-                          {it.kertasKerjaKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} Kg
+                        <td className="py-2.5 px-3.5 text-right font-medium text-slate-700 font-mono text-xs">
+                          {it.kertasKerjaKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} <span className="text-[10px] text-slate-400 font-normal">Kg</span>
                         </td>
-                        <td className="py-2 px-3 text-right font-bold font-mono">
+                        <td className="py-2.5 px-3.5 text-right font-bold font-mono text-xs">
                           {it.selisihKg === 0 ? (
-                            <span className="text-emerald-700">0,0 Kg</span>
+                            <span className="text-emerald-700 font-semibold">0,0 Kg</span>
                           ) : (
-                            <span className="text-rose-600">{it.selisihKg > 0 ? '+' : ''}{it.selisihKg} Kg</span>
+                            <span className="text-rose-600 font-bold">{it.selisihKg > 0 ? '+' : ''}{it.selisihKg} Kg</span>
                           )}
                         </td>
-                        <td className="py-2 px-3 text-slate-600 text-[11px]">
-                          {it.sumberKertasKerja}
+                        <td className="py-2.5 px-3.5 text-slate-700 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200/90 font-mono text-[11px]">
+                              <FileText className="w-3.5 h-3.5 text-slate-500" />
+                              <span className="font-semibold">{it.sumberKertasKerja}</span>
+                            </span>
+                            <span className="text-[11px] text-slate-500 hidden xl:inline">
+                              Verifikasi DHP Kolom I
+                            </span>
+                          </div>
                         </td>
-                        <td className="py-2 px-3 text-center">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        <td className="py-2.5 px-3.5 text-center">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-2xs ${
                             it.status === 'MATCH'
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                               : 'bg-rose-100 text-rose-800 border border-rose-300'
                           }`}>
-                            <ShieldCheck className="w-3 h-3" />
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                             <span>{it.status === 'MATCH' ? 'VALID 100%' : 'ADA SELISIH'}</span>
                           </span>
                         </td>
@@ -932,44 +947,52 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-100/80 text-[10.5px] font-bold text-slate-600 uppercase border-b border-slate-200">
-                      <th className="py-2.5 px-3">No</th>
-                      <th className="py-2.5 px-3">Kode Bahan</th>
-                      <th className="py-2.5 px-3 text-right">Fisik Keluar</th>
-                      <th className="py-2.5 px-3 text-right">Label Netto Setoran</th>
-                      <th className="py-2.5 px-3 text-right">Selisih</th>
-                      <th className="py-2.5 px-3">Rujukan Dokumen</th>
-                      <th className="py-2.5 px-3 text-center">Status</th>
+                    <tr className="bg-slate-100/90 text-[11px] font-bold text-slate-700 uppercase border-b border-slate-200">
+                      <th className="py-3 px-3.5 w-12 text-center">No</th>
+                      <th className="py-3 px-3.5 w-36">Kode Bahan</th>
+                      <th className="py-3 px-3.5 w-36 text-right">Fisik Keluar</th>
+                      <th className="py-3 px-3.5 w-36 text-right">Label Netto Setoran</th>
+                      <th className="py-3 px-3.5 w-28 text-right">Selisih</th>
+                      <th className="py-3 px-3.5 min-w-[220px]">Rujukan Dokumen / Keterangan</th>
+                      <th className="py-3 px-3.5 w-36 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-sans">
                     {dailyAudit.categories.pengeluaranSetoran.items.map((it, idx) => (
-                      <tr key={it.id || idx} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                        <td className="py-2 px-3 font-bold text-slate-900">{it.kode}</td>
-                        <td className="py-2 px-3 text-right font-bold text-rose-600 font-mono">
-                          -{it.fisikKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} Kg
+                      <tr key={it.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-2.5 px-3.5 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                        <td className="py-2.5 px-3.5 font-bold text-slate-900 font-mono">{it.kode}</td>
+                        <td className="py-2.5 px-3.5 text-right font-bold text-rose-600 font-mono text-xs">
+                          -{it.fisikKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} <span className="text-[10px] text-slate-400 font-normal">Kg</span>
                         </td>
-                        <td className="py-2 px-3 text-right font-medium text-slate-700 font-mono">
-                          {it.kertasKerjaKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} Kg
+                        <td className="py-2.5 px-3.5 text-right font-medium text-slate-700 font-mono text-xs">
+                          {it.kertasKerjaKg.toLocaleString('id-ID', { minimumFractionDigits: 1 })} <span className="text-[10px] text-slate-400 font-normal">Kg</span>
                         </td>
-                        <td className="py-2 px-3 text-right font-bold font-mono">
+                        <td className="py-2.5 px-3.5 text-right font-bold font-mono text-xs">
                           {it.selisihKg === 0 ? (
-                            <span className="text-emerald-700">0,0 Kg</span>
+                            <span className="text-emerald-700 font-semibold">0,0 Kg</span>
                           ) : (
-                            <span className="text-amber-600">{it.selisihKg} Kg</span>
+                            <span className="text-amber-600 font-bold">{it.selisihKg} Kg</span>
                           )}
                         </td>
-                        <td className="py-2 px-3 text-slate-600 text-[11px] truncate max-w-[220px]" title={it.sumberKertasKerja}>
-                          {it.sumberKertasKerja}
+                        <td className="py-2.5 px-3.5 text-slate-700 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200/90 font-mono text-[11px]">
+                              <FileText className="w-3.5 h-3.5 text-slate-500" />
+                              <span className="font-semibold">{it.sumberKertasKerja}</span>
+                            </span>
+                            <span className="text-[11px] text-slate-500 hidden xl:inline">
+                              BSPP Setoran Kolom H
+                            </span>
+                          </div>
                         </td>
-                        <td className="py-2 px-3 text-center">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        <td className="py-2.5 px-3.5 text-center">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-2xs ${
                             it.status === 'MATCH'
                               ? 'bg-blue-100 text-blue-800 border border-blue-300'
                               : 'bg-amber-100 text-amber-800 border border-amber-300'
                           }`}>
-                            <ShieldCheck className="w-3 h-3" />
+                            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
                             <span>{it.status === 'MATCH' ? 'COCOK' : 'BELUM COCOK'}</span>
                           </span>
                         </td>
@@ -1055,14 +1078,14 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-100/90 border-b border-slate-200 text-[10.5px] font-semibold text-slate-600 uppercase tracking-wider">
-                  <th className="py-2.5 px-4">Bahan &amp; Kode Grade</th>
-                  <th className="py-2.5 px-4 text-right">Saldo Saat Ini</th>
-                  <th className="py-2.5 px-4 text-right">Laju Pakai / Hari</th>
-                  <th className="py-2.5 px-4">Sisa Hari Stok (DOI)</th>
-                  <th className="py-2.5 px-4">Proyeksi Habis</th>
-                  <th className="py-2.5 px-4 text-right">Titik Re-order (ROP)</th>
-                  <th className="py-2.5 px-4 text-center">Status</th>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th className="py-3 px-4 w-44">Bahan &amp; Kode Grade</th>
+                  <th className="py-3 px-4 w-36 text-right">Saldo Saat Ini</th>
+                  <th className="py-3 px-4 w-36 text-right">Laju Pakai / Hari</th>
+                  <th className="py-3 px-4 w-52">Sisa Hari Stok (DOI)</th>
+                  <th className="py-3 px-4 w-36">Proyeksi Habis</th>
+                  <th className="py-3 px-4 w-40 text-right">Titik Re-order (ROP)</th>
+                  <th className="py-3 px-4 w-28 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1090,7 +1113,7 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
 
                       <td className="py-2.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <div className="w-16 bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div className="w-24 sm:w-32 bg-slate-100 h-2.5 rounded-full overflow-hidden">
                             <div
                               style={{ width: `${Math.min(100, (item.daysOfInventory / 30) * 100)}%` }}
                               className={`h-full rounded-full ${
@@ -1409,78 +1432,146 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
 
       {/* TAB 5: GENERATOR LAPORAN EKSEKUTIF 1-KLIK */}
       {activeTab === 'report' && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">
-                Generator Laporan Eksekutif Logistik (1-Klik AI)
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Menghasilkan narasi resmi komprehensif untuk Kepala Pabrik, Direksi, dan Pengendalian Mutu
-              </p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Main Document Viewer (8 cols) */}
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    DOKUMEN RESMI MANAJERIAL
+                  </span>
+                  <span className="text-slate-400 text-xs hidden sm:inline">·</span>
+                  <span className="text-xs text-slate-500 hidden sm:inline">PT Batu Karang Divisi Produksi I</span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Laporan Eksekutif Logistik ({reportPeriod})
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <select
+                  value={reportPeriod}
+                  onChange={e => setReportPeriod(e.target.value)}
+                  className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 font-semibold"
+                >
+                  <option value="Harian">Laporan Harian</option>
+                  <option value="Mingguan">Laporan Mingguan</option>
+                  <option value="Bulanan">Laporan Bulanan</option>
+                </select>
+                <button
+                  onClick={handleGenerateReport}
+                  disabled={isGeneratingReport}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs disabled:opacity-60 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingReport ? 'animate-spin' : ''}`} />
+                  <span>{isGeneratingReport ? 'Menyusun...' : 'Regenerate'}</span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <select
-                value={reportPeriod}
-                onChange={e => setReportPeriod(e.target.value)}
-                className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 font-semibold"
-              >
-                <option value="Harian">Laporan Harian</option>
-                <option value="Mingguan">Laporan Mingguan</option>
-                <option value="Bulanan">Laporan Bulanan</option>
-              </select>
+            {/* Document Paper Container */}
+            <div className="bg-slate-950 text-slate-100 p-5 sm:p-6 rounded-xl font-mono text-xs sm:text-[13px] leading-relaxed overflow-x-auto border border-slate-800 max-h-[560px] overflow-y-auto whitespace-pre-wrap select-text shadow-inner">
+              {isGeneratingReport ? (
+                <div className="py-20 text-center space-y-3">
+                  <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
+                  <p className="text-slate-300 font-sans text-sm font-medium">
+                    Gemini 3.8 Flash sedang menganalisis tonase masuk, keluar, susut BSPP, dan menyusun narasi resmi...
+                  </p>
+                </div>
+              ) : (
+                reportText
+              )}
+            </div>
 
-              <button
-                onClick={handleGenerateReport}
-                disabled={isGeneratingReport}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs disabled:opacity-60 cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingReport ? 'animate-spin' : ''}`} />
-                <span>{isGeneratingReport ? 'Menyusun Laporan...' : 'Regenerate Laporan'}</span>
-              </button>
+            {/* Quick Export Footer */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <span className="text-[11px] text-slate-500 font-medium">
+                Terverifikasi secara otomatis oleh Sistem AI Logistik &amp; Audit Persediaan
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyReport}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors cursor-pointer"
+                >
+                  {copiedReport ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedReport ? 'Tersalin!' : 'Salin Teks (WA / Email)'}</span>
+                </button>
+                <button
+                  onClick={handleDownloadReportPdf}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors shadow-2xs cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Download PDF Resmi</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Action buttons (Copy WA / Download PDF) */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <span className="text-xs text-slate-500 font-medium">
-              Format Laporan Resmi PT Batu Karang Divisi Produksi I
-            </span>
+          {/* Right Executive KPI & Actions Sidebar (4 cols) */}
+          <div className="lg:col-span-4 space-y-4">
+            {/* Quick Metrics Card */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 text-xs font-bold text-slate-900 uppercase tracking-wider font-mono">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span>Indikator Logistik Kunci</span>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleCopyReport}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors cursor-pointer"
-                title="Salin untuk WhatsApp / Catatan Memo"
-              >
-                {copiedReport ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedReport ? 'Tersalin!' : 'Salin Teks (WA / Email)'}</span>
-              </button>
+              <div className="space-y-2.5 text-xs">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                  <span className="text-slate-600 font-medium">Status Integritas Data:</span>
+                  <span className="font-bold text-emerald-700 font-mono">
+                    {dailyAudit.kpi.persentaseKesesuaian}% Klop (Paripurna)
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                  <span className="text-slate-600 font-medium">Bahan Kritis (&lt; 7 Hari):</span>
+                  <span className={`font-bold font-mono ${kpi.totalKritis > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                    {kpi.totalKritis} Kode Bahan
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                  <span className="text-slate-600 font-medium">Stok Mengendap (&gt;25 Hari):</span>
+                  <span className="font-bold text-purple-700 font-mono">
+                    {kpi.totalSlowMoving} Kode Grade
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                  <span className="text-slate-600 font-medium">Anomali Susut BSPP:</span>
+                  <span className="font-bold text-blue-700 font-mono">
+                    {kpi.totalBsppAnomalies} Kasus Terpantau
+                  </span>
+                </div>
+              </div>
 
-              <button
-                onClick={handleDownloadReportPdf}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors shadow-2xs cursor-pointer"
-                title="Download file PDF resmi Laporan Eksekutif"
-              >
-                <Download className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Download PDF Resmi</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Report Viewer */}
-          <div className="bg-slate-900 text-slate-100 p-5 rounded-2xl font-mono text-xs sm:text-[13px] leading-relaxed overflow-x-auto border border-slate-800 max-h-[500px] overflow-y-auto whitespace-pre-wrap select-text">
-            {isGeneratingReport ? (
-              <div className="py-16 text-center space-y-3">
-                <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
-                <p className="text-slate-300 font-sans text-sm">
-                  Gemini 3.8 Flash sedang menganalisis tonase masuk, keluar, susut BSPP, dan menyusun laporan eksekutif...
+              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-1.5">
+                <span className="font-bold flex items-center gap-1.5 text-amber-900">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Kaidah Pelaporan Manajerial:</span>
+                </span>
+                <p className="text-[11px] text-amber-900/90 leading-relaxed">
+                  Laporan merangkum pergerakan gudang tembakau, cengkeh, krosok, dan saus, serta mengaudit akurasi timbangan BSPP agar jajaran Direksi menerima data siap eksekusi.
                 </p>
               </div>
-            ) : (
-              reportText
-            )}
+            </div>
+
+            {/* Quick Action Card */}
+            <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-2xl p-5 shadow-xs space-y-3.5 border border-indigo-800">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-300 font-mono uppercase tracking-wider">
+                <Bot className="w-4 h-4" />
+                <span>Konsultasi Cepat AI</span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Butuh pendalaman mengenai analisa biaya susut atau simulasi pemesanan grade tertentu?
+              </p>
+              <button
+                onClick={onOpenAIBot}
+                className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Bot className="w-4 h-4 text-amber-300" />
+                <span>Buka Diskusi dengan AI Bot</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
