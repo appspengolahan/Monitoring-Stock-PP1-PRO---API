@@ -75,6 +75,7 @@ export class GasService {
       showPengirimanBlendSummary: false,
       showCengkehDryerSummary: false
     };
+    if (typeof localStorage === 'undefined') return defaultVal;
     const stored = localStorage.getItem(STORAGE_KEYS.RECONCILIATION_DISPLAY);
     if (!stored) return defaultVal;
     try {
@@ -85,6 +86,7 @@ export class GasService {
   }
 
   public static setReconciliationDisplayConfig(patch: Partial<ReconciliationDisplayConfig>): void {
+    if (typeof localStorage === 'undefined') return;
     const current = this.getReconciliationDisplayConfig();
     const updated = { ...current, ...patch };
     localStorage.setItem(STORAGE_KEYS.RECONCILIATION_DISPLAY, JSON.stringify(updated));
