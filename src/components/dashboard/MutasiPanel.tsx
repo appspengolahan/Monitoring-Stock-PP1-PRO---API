@@ -78,6 +78,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   const [showSetoranSection, setShowSetoranSection] = useState<boolean>(false);
   const [showCengkehDryerSection, setShowCengkehDryerSection] = useState<boolean>(false);
   const [showAllReconSection, setShowAllReconSection] = useState<boolean>(false);
+  const [filterOnlyReconciled, setFilterOnlyReconciled] = useState<boolean>(false);
   // Pagination state (default 50 entries per page for instant render)
   const [pageSize, setPageSize] = useState<number | 'all'>(50);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -479,13 +480,19 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
         }
       }
 
+      // Filter Hanya Rekonsiliasi (DHP, Setoran, BSPP, Pengiriman)
+      if (filterOnlyReconciled) {
+        const hasRecon = !!(m.dhpMatch || m.setoranMatch || m.bsppMatch || m.pengirimanMatch);
+        if (!hasRecon) return false;
+      }
+
       // Filter Date Range:
       const itemDate = e._dateKey;
       if (filterFrom || filterTo) {
         if (filterFrom && itemDate < filterFrom) return false;
         if (filterTo && itemDate > filterTo) return false;
-      } else if (!showAllDates) {
-        // Jika komoditas spesifik dipilih, tampilkan tanggal terbaru komoditas tersebut secara default
+      } else if (!showAllDates && !filterOnlyReconciled) {
+        // Jika komoditas spesifik dipilih dan tidak dalam mode 'Hanya Rekonsiliasi', tampilkan tanggal terbaru komoditas tersebut secara default
         if (filterKomoditas !== 'all' && latestTanggal) {
           if (itemDate !== latestTanggal) return false;
         }
@@ -506,7 +513,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
 
       return true;
     });
-  }, [allMutasi, filterKomoditas, filterKode, filterJenis, filterProduksi, filterHideZero, filterFrom, filterTo, showAllDates, latestTanggal, searchQuery, sktSkmVersion, mutasiTags]);
+  }, [allMutasi, filterKomoditas, filterKode, filterJenis, filterProduksi, filterHideZero, filterOnlyReconciled, filterFrom, filterTo, showAllDates, latestTanggal, searchQuery, sktSkmVersion, mutasiTags]);
 
   // Daftar SEMUA entri mutasi yang memiliki data audit rekonsiliasi (lintas seluruh jenis bahan & jenis mutasi)
   const allReconcilableEntries = useMemo(() => {
@@ -515,6 +522,14 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     );
     return list.length > 0 ? list : allMutasi;
   }, [allMutasi]);
+
+  const totalReconciledCount = useMemo(() => {
+    return allMutasi.filter(e => !!(e.mutasi.dhpMatch || e.mutasi.setoranMatch || e.mutasi.bsppMatch || e.mutasi.pengirimanMatch)).length;
+  }, [allMutasi]);
+
+  const currentFilteredReconciledCount = useMemo(() => {
+    return filteredEntries.filter(e => !!(e.mutasi.dhpMatch || e.mutasi.setoranMatch || e.mutasi.bsppMatch || e.mutasi.pengirimanMatch)).length;
+  }, [filteredEntries]);
 
   // Daftar pilihan komoditas/bahan yang memiliki entri rekonsiliasi
   const modalBahanOptions = useMemo(() => {
@@ -1158,7 +1173,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
               </button>
             )}
 
-            {!filterFrom && !filterTo && !showAllDates && (
+            {!filterFrom && !filterTo && !showAllDates && !filterOnlyReconciled && (
               filterKomoditas !== 'all' && latestTanggal ? (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-900 border border-blue-200 rounded text-[11px] font-semibold">
                   <span>⚡ Tanggal Terbaru: {formatTanggalIndo(latestTanggal)}</span>
@@ -1177,7 +1192,27 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                 </span>
               )
             )}
-            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero) && (
+
+            {/* Tombol Cepat: Filter Khusus Transaksi Ber-Badge Rekonsiliasi */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextVal = !filterOnlyReconciled;
+                setFilterOnlyReconciled(nextVal);
+                if (nextVal) setShowAllDates(true);
+              }}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer shadow-2xs ${
+                filterOnlyReconciled
+                  ? 'bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-300'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+              }`}
+              title="Tampilkan hanya baris transaksi yang memiliki data & badge audit rekonsiliasi (DHP, Setoran, BSPP, Pengiriman)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>{filterOnlyReconciled ? '✓ Mode Rekonsiliasi Aktif' : `Filter Badge Rekonsiliasi (${totalReconciledCount})`}</span>
+            </button>
+
+            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero || filterOnlyReconciled) && (
               <button
                 type="button"
                 onClick={() => {
@@ -1186,6 +1221,8 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   setFilterJenis('all');
                   setSearchQuery('');
                   setFilterHideZero(false);
+                  setFilterOnlyReconciled(false);
+                  setShowAllDates(false);
                 }}
                 className="text-[10.5px] text-slate-500 hover:text-slate-800 underline px-1 font-medium flex items-center gap-0.5 cursor-pointer"
                 title="Reset semua filter ke default"
@@ -1238,14 +1275,34 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
               </span>
             </>
           )}
+
+          <span className="text-slate-300">|</span>
+
+          {/* Akses Cepat Dialog Audit Rekonsiliasi Otomatis */}
+          <button
+            type="button"
+            onClick={() => {
+              if (allReconcilableEntries.length > 0) {
+                const target = filteredEntries.find(e => !!(e.mutasi.dhpMatch || e.mutasi.setoranMatch || e.mutasi.bsppMatch || e.mutasi.pengirimanMatch)) || allReconcilableEntries[0];
+                openAuditModal(target.mutasi, target.komoditas);
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-2xs transition-all cursor-pointer"
+            title="Buka popup audit dialog rekonsiliasi otomatis 2-way matching"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Audit Rekonsiliasi ({currentFilteredReconciledCount} terverifikasi)</span>
+          </button>
         </div>
 
         <span className="text-[11px] text-slate-500 font-mono">
           {filterFrom || filterTo 
             ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}` 
-            : !showAllDates && filterKomoditas !== 'all' && latestTanggal 
-              ? `Tanggal: ${formatTanggalIndo(latestTanggal)}` 
-              : 'Semua Periode / Log Terkini'}
+            : filterOnlyReconciled
+              ? `Mode Rekonsiliasi (${currentFilteredReconciledCount} entri)`
+              : !showAllDates && filterKomoditas !== 'all' && latestTanggal 
+                ? `Tanggal: ${formatTanggalIndo(latestTanggal)}` 
+                : 'Semua Periode / Log Terkini'}
         </span>
       </div>
 

@@ -186,7 +186,7 @@ export class DailyAuditorService {
     let hasilProsesSelisihKg = 0;
 
     targetMutasi
-      .filter(t => t.komoditas.includes('Rajang II') && t.mutasi.jenisMutasi === 'Pemasukan Hasil Proses')
+      .filter(t => t.komoditas.includes('Rajang II') && ((t.mutasi.jenisMutasi && (t.mutasi.jenisMutasi.toLowerCase().includes('hasil proses') || t.mutasi.jenisMutasi.toLowerCase().includes('proses'))) || !!t.mutasi.dhpMatch))
       .forEach((t, idx) => {
         const m = t.mutasi;
         const masukKg = Number(m.masuk) || 0;
@@ -227,7 +227,7 @@ export class DailyAuditorService {
     let hasilBlendSelisihKg = 0;
 
     targetMutasi
-      .filter(t => t.komoditas.toLowerCase().includes('blend') && t.mutasi.jenisMutasi === 'Pemasukan Hasil Blend')
+      .filter(t => t.komoditas.toLowerCase().includes('blend') && ((t.mutasi.jenisMutasi && (t.mutasi.jenisMutasi.toLowerCase().includes('blend') || t.mutasi.jenisMutasi.toLowerCase().includes('proses'))) || !!t.mutasi.dhpMatch))
       .forEach((t, idx) => {
         const m = t.mutasi;
         const masukKg = Number(m.masuk) || 0;
@@ -267,7 +267,7 @@ export class DailyAuditorService {
     let hasilDryerSelisihKg = 0;
 
     targetMutasi
-      .filter(t => t.komoditas.toLowerCase().includes('cengkeh') && t.mutasi.jenisMutasi === 'Pemasukan Hasil Proses')
+      .filter(t => t.komoditas.toLowerCase().includes('cengkeh') && ((t.mutasi.jenisMutasi && (t.mutasi.jenisMutasi.toLowerCase().includes('dryer') || t.mutasi.jenisMutasi.toLowerCase().includes('proses'))) || !!t.mutasi.dhpMatch))
       .forEach((t, idx) => {
         const m = t.mutasi;
         const masukKg = Number(m.masuk) || 0;

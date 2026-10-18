@@ -93,12 +93,15 @@ function parseDateIndoInternal(str: string): Date | null {
     if (!isNaN(dateObj.getTime())) return dateObj;
   }
 
-  // 5. Format Indonesia: DD/MM/YYYY atau DD-MM-YYYY (contoh: 09/10/2026, 24/04/2026, 9-10-2026)
-  const slashMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[\sT](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  // 5. Format Indonesia: DD/MM/YYYY atau DD-MM-YYYY (contoh: 09/10/2026, 24/04/2026, 15/10/26, 9-10-2026)
+  const slashMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[\sT](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
   if (slashMatch) {
     const d = parseInt(slashMatch[1], 10);
     const m = parseInt(slashMatch[2], 10) - 1;
-    const y = parseInt(slashMatch[3], 10);
+    let y = parseInt(slashMatch[3], 10);
+    if (y < 100) {
+      y = y <= 50 ? 2000 + y : 1900 + y;
+    }
     const hh = slashMatch[4] ? parseInt(slashMatch[4], 10) : 0;
     const mm = slashMatch[5] ? parseInt(slashMatch[5], 10) : 0;
     const ss = slashMatch[6] ? parseInt(slashMatch[6], 10) : 0;

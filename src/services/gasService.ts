@@ -617,8 +617,14 @@ export class GasService {
         const dhpList = this.cleanDHPEntries(this.getCachedDHP());
         const matchedDhpSet = new Set<string>();
 
+        const isHasilProses = (j?: string) => {
+          if (!j) return false;
+          const clean = j.trim().replace(/^['`\s]+/, '').toLowerCase();
+          return clean === 'pemasukan hasil proses' || clean.includes('hasil proses') || (clean.startsWith('pemasukan') && !clean.includes('awal') && !clean.includes('pindah'));
+        };
+
         const enrichedMutasi = normalizedMutasi.map(m => {
-          if (m.jenisMutasi !== 'Pemasukan Hasil Proses' || dhpList.length === 0) return m;
+          if (!isHasilProses(m.jenisMutasi) || dhpList.length === 0) return m;
           const mKode = (m.kode || '').trim().toUpperCase();
           const mDateKey = getTanggalKey(m.tanggal);
 
@@ -688,7 +694,7 @@ export class GasService {
             const mDateKey = getTanggalKey(m.tanggal);
             const dDateKey = getTanggalKey(dhpItem.tanggal);
             const sameDate = !mDateKey || !dDateKey || mDateKey === dDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(dhpItem.tanggal)) <= 86400000;
-            return sameDate && m.jenisMutasi === 'Pemasukan Hasil Proses' && (cleanM === cleanD || cleanD.includes(cleanM) || cleanM.includes(cleanD));
+            return sameDate && (isHasilProses(m.jenisMutasi) || !!m.dhpMatch) && (cleanM === cleanD || cleanD.includes(cleanM) || cleanM.includes(cleanD));
           });
 
           if (!alreadyExists) {
@@ -722,8 +728,14 @@ export class GasService {
         const setoranList = this.cleanSetoranEntries(this.getCachedSetoran());
         const matchedSetoranSet = new Set<string>();
 
+        const isSetoran = (j?: string) => {
+          if (!j) return false;
+          const clean = j.trim().replace(/^['`\s]+/, '').toLowerCase();
+          return clean === 'pengeluaran setoran' || clean.includes('setoran');
+        };
+
         const fullyEnrichedMutasi = enrichedMutasi.map(m => {
-          if (m.jenisMutasi !== 'Pengeluaran Setoran' || setoranList.length === 0) return m;
+          if (!isSetoran(m.jenisMutasi) || setoranList.length === 0) return m;
           const mKode = (m.kode || '').trim().toUpperCase();
           const mDateKey = getTanggalKey(m.tanggal);
 
@@ -856,8 +868,14 @@ export class GasService {
         const dhpBlendList = this.cleanDHPBlendEntries(this.getCachedDHPBlend());
         const matchedDhpBlendSet = new Set<string>();
 
+        const isHasilBlend = (j?: string) => {
+          if (!j) return false;
+          const clean = j.trim().replace(/^['`\s]+/, '').toLowerCase();
+          return clean === 'pemasukan hasil blend' || clean.includes('hasil blend') || (clean.includes('blend') && clean.includes('pemasukan'));
+        };
+
         const enrichedMutasi = normalizedMutasi.map(m => {
-          if (m.jenisMutasi !== 'Pemasukan Hasil Blend' || dhpBlendList.length === 0) return m;
+          if (!isHasilBlend(m.jenisMutasi) || dhpBlendList.length === 0) return m;
           const mKode = (m.kode || '').trim().toUpperCase();
           const mDateKey = getTanggalKey(m.tanggal);
 
@@ -928,7 +946,7 @@ export class GasService {
             const mDateKey = getTanggalKey(m.tanggal);
             const dDateKey = getTanggalKey(dhpItem.tanggal);
             const sameDate = !mDateKey || !dDateKey || mDateKey === dDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(dhpItem.tanggal)) <= 86400000;
-            return sameDate && m.jenisMutasi === 'Pemasukan Hasil Blend' && (cleanM === cleanD || cleanD.includes(cleanM) || cleanM.includes(cleanD));
+            return sameDate && (isHasilBlend(m.jenisMutasi) || !!m.dhpMatch) && (cleanM === cleanD || cleanD.includes(cleanM) || cleanM.includes(cleanD));
           });
 
           if (!alreadyExists) {
@@ -1092,6 +1110,12 @@ export class GasService {
         const dryerList = this.cleanCengkehDryerEntries(this.getCachedCengkehDryer());
         const matchedDryerSet = new Set<string>();
 
+        const isHasilDryer = (j?: string) => {
+          if (!j) return false;
+          const clean = j.trim().replace(/^['`\s]+/, '').toLowerCase();
+          return clean === 'pemasukan hasil proses' || clean.includes('hasil proses') || clean.includes('dryer');
+        };
+
         const enrichedMutasi = normalizedMutasi.map(m => {
           // 1. Rekonsiliasi BSPP (Penimbangan Ulang)
           const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
@@ -1111,7 +1135,7 @@ export class GasService {
           }
 
           // 2. Rekonsiliasi Pemasukan Hasil Proses vs SOURCE HASIL DRYER (Kolom F)
-          if (m.jenisMutasi === 'Pemasukan Hasil Proses' && dryerList.length > 0) {
+          if (isHasilDryer(m.jenisMutasi) && dryerList.length > 0) {
             const mKode = (m.kode || '').trim().toUpperCase();
             const mDateKey = getTanggalKey(m.tanggal);
 
@@ -1157,7 +1181,7 @@ export class GasService {
           const alreadyExists = enrichedMutasi.some(m => {
             const mDateKey = getTanggalKey(m.tanggal);
             const dDateKey = getTanggalKey(dryerItem.tanggal);
-            return mDateKey === dDateKey && m.jenisMutasi === 'Pemasukan Hasil Proses';
+            return mDateKey === dDateKey && (isHasilDryer(m.jenisMutasi) || !!m.dhpMatch);
           });
           if (!alreadyExists) {
             matchedDryerSet.add(dryerItem.partai);
@@ -1677,22 +1701,34 @@ export class GasService {
   }
 
   /**
-   * Pembaruan cepat rekonsiliasi DHP (SKT & Blend) langsung dari Google Sheets (~300ms)
+   * Pembaruan cepat rekonsiliasi menyeluruh (DHP SKT, Blend, Setoran, Pengiriman, & Dryer) langsung dari Google Sheets (~300ms)
    * Menyimpan ke cache lokal dan otomatis memicu penataan ulang badge auto-check di Mutasi
    */
   public static async refreshDHPReconciliation(): Promise<DHPEntry[]> {
     try {
-      const [sktItems, blendItems] = await Promise.all([
+      const [sktItems, blendItems, setoranItems, pengirimanItems, dryerItems] = await Promise.all([
         this.fetchDHPSKTDirectFromSheet().catch(e => { console.warn('Refresh DHP SKT error:', e); return []; }),
-        this.fetchDHPBlendDirectFromSheet().catch(e => { console.warn('Refresh DHP Blend error:', e); return []; })
+        this.fetchDHPBlendDirectFromSheet().catch(e => { console.warn('Refresh DHP Blend error:', e); return []; }),
+        this.fetchSetoranDirectFromSheet().catch(e => { console.warn('Refresh Setoran error:', e); return []; }),
+        this.fetchPengirimanBlendDirectFromSheet().catch(e => { console.warn('Refresh Pengiriman Blend error:', e); return []; }),
+        this.fetchCengkehDryerDirectFromSheet().catch(e => { console.warn('Refresh Cengkeh Dryer error:', e); return []; })
       ]);
       if (blendItems && blendItems.length > 0) {
         this.saveCachedDHPBlend(blendItems, true);
       }
+      if (setoranItems && setoranItems.length > 0) {
+        this.saveCachedSetoran(setoranItems, true);
+      }
+      if (pengirimanItems && pengirimanItems.length > 0) {
+        this.saveCachedPengirimanBlend(pengirimanItems, true);
+      }
+      if (dryerItems && dryerItems.length > 0) {
+        this.saveCachedCengkehDryer(dryerItems, true);
+      }
       if (sktItems && sktItems.length > 0) {
         this.saveCachedDHP(sktItems, false);
         return sktItems;
-      } else if (blendItems && blendItems.length > 0) {
+      } else {
         const current = this.getCachedKomoditas();
         this.saveCachedKomoditas(current);
         if (typeof window !== 'undefined') {
@@ -2197,7 +2233,7 @@ export class GasService {
         labelNettoKg: Math.round((Number(item.labelNettoKg) || 0) * 10) / 10,
         sumber: 'BSPP SETORAN'
       }));
-    return filtered.length >= 30 ? filtered : this.DEFAULT_SETORAN_ENTRIES;
+    return filtered.length > 0 ? filtered : this.DEFAULT_SETORAN_ENTRIES;
   }
 
   public static getCachedSetoran(): SetoranEntry[] {
@@ -2732,7 +2768,10 @@ export class GasService {
 
   // --- Network Fetch with Fast Server Proxy & Graceful Timeout ---
   public static async fetchWithTimeout(url: string, timeoutMs: number = 20000): Promise<any> {
-    const proxyUrl = `/api/gas-proxy?url=${encodeURIComponent(url)}`;
+    let proxyUrl = `/api/gas-proxy?url=${encodeURIComponent(url)}`;
+    if (typeof window === 'undefined') {
+      proxyUrl = `http://localhost:3000${proxyUrl}`;
+    }
     const controller = new AbortController();
     const timeoutMsg = `Waktu tunggu permintaan habis (${timeoutMs}ms) untuk: ${url}`;
     const id = setTimeout(() => {
