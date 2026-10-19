@@ -91,7 +91,24 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  // Available audit dates in descending order (latest first)
+  const availableDates = useMemo(() => {
+    return DailyAuditorService.getAvailableAuditDates(komoditasList);
+  }, [komoditasList]);
+
+  const currentBriefingDate = selectedBriefingDate || availableDates[0] || '2026-10-14';
+
+  const activeDailyAudit = useMemo(() => {
+    return DailyAuditorService.runDailyAudit(komoditasList, bsppList, currentBriefingDate);
+  }, [komoditasList, bsppList, currentBriefingDate]);
+
+  const activeCategorizedReport = useMemo(() => {
+    return DailyAuditorService.getCategorizedDailyAuditReport(komoditasList, bsppList, currentBriefingDate);
+  }, [komoditasList, bsppList, currentBriefingDate]);
+
+  const executiveBriefingText = useMemo(() => {
+    return DailyAuditorService.generateExecutiveBriefing(komoditasList, bsppList, currentBriefingDate);
+  }, [komoditasList, bsppList, currentBriefingDate]);
 
   // Voice Input Speech Recognition
   const handleToggleVoice = () => {
@@ -171,25 +188,6 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
       }
     });
   };
-
-  // Available audit dates in descending order (latest first)
-  const availableDates = useMemo(() => {
-    return DailyAuditorService.getAvailableAuditDates(komoditasList);
-  }, [komoditasList]);
-
-  const currentBriefingDate = selectedBriefingDate || availableDates[0] || '2026-10-14';
-
-  const activeDailyAudit = useMemo(() => {
-    return DailyAuditorService.runDailyAudit(komoditasList, bsppList, currentBriefingDate);
-  }, [komoditasList, bsppList, currentBriefingDate]);
-
-  const activeCategorizedReport = useMemo(() => {
-    return DailyAuditorService.getCategorizedDailyAuditReport(komoditasList, bsppList, currentBriefingDate);
-  }, [komoditasList, bsppList, currentBriefingDate]);
-
-  const executiveBriefingText = useMemo(() => {
-    return DailyAuditorService.generateExecutiveBriefing(komoditasList, bsppList, currentBriefingDate);
-  }, [komoditasList, bsppList, currentBriefingDate]);
 
   // Build stock context matching user permissions and active briefing date
   const stockContext = {
@@ -296,6 +294,8 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
     { label: '📦 Stok Mengendap', prompt: 'Tampilkan grade atau komoditas yang tidak ada mutasi keluar lebih dari 25 hari (stok mengendap).' },
     { label: '📊 Ringkasan Saldo', prompt: 'Berikan ringkasan eksekutif saldo stok bahan baku saat ini secara singkat dan jelas.' }
   ];
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
