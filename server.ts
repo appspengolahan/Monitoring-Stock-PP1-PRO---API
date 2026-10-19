@@ -210,15 +210,10 @@ PANDUAN KETAT:
      3) Verifikasi Toleransi Nol (Zero Discrepancy): Membandingkan berat fisik masuk/keluar vs berat netto di DHP (Kolom I hasil proses atau Kolom H label netto). Jika tepat 0,0 Kg, diberikan status MATCH (Badge 100% Klop). Jika berbeda, dihitung deviasi bobot riil.
      4) Skoring & Status Audit: Mengkalkulasi KPI (Total Transaksi, Hasil Olah Tervalidasi, Total Selisih Kg, % Kesesuaian, Skor Integritas). Status: CLEAN (100% Klop), PERHATIAN, atau KRITIS.
      5) Temuan Detektif & Rekomendasi Lapangan: Menghasilkan analisis investigasi otomatis serta arahan konkret (kunci baseline, kalibrasi timbangan, periksa nota timbang vendor), dilengkapi opsi unduh PDF Resmi 1-Klik.
-   - Fakta Audit 14 Oktober 2026:
-     Terdapat 6 entri Pemasukan Hasil Proses (Rajang II) yang tervalidasi 100% IDENTIK dengan Kertas Kerja DHP Krosok tanpa selisih timbangan sama sekali:
-     1. Kasturi 2024 (BE) - 1: Fisik 493,9 Kg = DHP 493,9 Kg (Selisih 0,0 Kg)
-     2. Brazil Grade B (2022) - 1: Fisik 144,2 Kg = DHP 144,2 Kg (Selisih 0,0 Kg)
-     3. Zimbabwe 2025 (L2OF/P) - 1: Fisik 300,5 Kg = DHP 300,5 Kg (Selisih 0,0 Kg)
-     4. Zambia M1L (2023) - 1: Fisik 255,6 Kg = DHP 255,6 Kg (Selisih 0,0 Kg)
-     5. Janturan Boyolali 2024 (VJI) - 1: Fisik 162,2 Kg = DHP 162,2 Kg (Selisih 0,0 Kg)
-     6. Krs. Garut 2024 (MYB/A) - 1: Fisik 172,9 Kg = DHP 172,9 Kg (Selisih 0,0 Kg)
-     Total Pemasukan Hasil Olah: 1.529,3 Kg. Status Audit: CLEAN (100% Klop).
+    - ACUAN TANGGAL & DATA AUDIT REKONSILIASI DINAMIS:
+      Selalu rujuk data audit harian yang ada di stockContext.dailyAudit dan tanggal yang dipilih di stockContext.selectedAuditDate.
+      JANGAN PERNAH mengasumsikan tanggal selalu 14 Oktober 2026. Tanggal audit terus berganti (misal 22 Oktober 2026, dsb.) sesuai data riil yang sedang aktif di stockContext.dailyAudit.tanggalStr.
+      Sajikan status audit (overallStatus), total hasil proses (kpi.totalHasilProsesKg), total deviasi (kpi.totalSelisihKg), dan rincian transaksi persis dari data stockContext.dailyAudit.
 8. KETENTUAN KHUSUS BRIEFING AUDITOR:
    Ketika pengguna meminta briefing hasil audit/rekonsiliasi harian (termasuk tombol 'Briefing Auditor Harian'):
    - DILARANG mengulang penjelasan teori 'Cara Kerja Sistem Auditor Detektif'. Tim pabrik sudah memahami mekanisme kerjanya.
@@ -291,45 +286,12 @@ ${JSON.stringify(stockContext || {}, null, 2)}`;
         const totalSaldo = list.reduce((sum: number, k: any) => sum + k.saldo, 0);
 
         if (qLower.includes('kategori') || qLower.includes('lompat') || (qLower.includes('mutasi') && (qLower.includes('jenis bahan') || qLower.includes('semua jenis') || qLower.includes('per jenis')))) {
-          responseText = `🛡️ **Laporan Audit Mutasi Harian Per Kategori & Per Bahan**
-Divisi Produksi I PT Batu Karang · Rabu, 14 Oktober 2026
-
-*Laporan disajikan secara teratur per kategori jenis transaksi agar tidak saling tercampur:*
-
-#### 📥 Kategori 1: Pemasukan Hasil Proses Olah
-> **Total Kategori:** **1.529,3 Kg** (6 transaksi) · *Hasil produksi mesin Rajang II vs Kertas Kerja DHP*
-- **Tembakau & Krosok (Rajang II)** — *Total: 1.529,3 Kg*
-  1. [10 Koli] **493,9 Kg** · \`Pemasukan Hasil Proses\` · Kasturi 2024 (BE) - 1 · ✅ KLOP *(Identik 100% vs DHP Krosok 493,9 Kg)*
-  2. [3 Koli] **144,2 Kg** · \`Pemasukan Hasil Proses\` · Brazil Grade B (2022) - 1 · ✅ KLOP *(Identik 100% vs DHP Krosok 144,2 Kg)*
-  3. [6 Koli] **300,5 Kg** · \`Pemasukan Hasil Proses\` · Zimbabwe 2025 (L2OF/P) - 1 · ✅ KLOP *(Identik 100% vs DHP Krosok 300,5 Kg)*
-  4. [5 Koli] **255,6 Kg** · \`Pemasukan Hasil Proses\` · Zambia M1L (2023) - 1 · ✅ KLOP *(Identik 100% vs DHP Krosok 255,6 Kg)*
-  5. [3 Koli] **162,2 Kg** · \`Pemasukan Hasil Proses\` · Janturan Boyolali 2024 (VJI) - 1 · ✅ KLOP *(Identik 100% vs DHP Krosok 162,2 Kg)*
-  6. [4 Koli] **172,9 Kg** · \`Pemasukan Hasil Proses\` · Krs. Garut 2024 (MYB/A) - 1 · ✅ KLOP *(Identik 100% vs DHP Krosok 172,9 Kg)*
-
-#### 🚚 Kategori 2: Pemasukan Pembelian & Penerimaan Vendor Luar
-*Nihil / Tidak terdapat penerimaan pasokan bahan baku dari vendor luar pada tanggal ini.*
-
-#### 📦 Kategori 3: Pemasukan Mutasi Antar Gudang / Reklasifikasi
-*Nihil / Tidak ada mutasi masuk perpindahan antar depo pada tanggal ini.*
-
-#### 🏭 Kategori 4: Pengeluaran Pemakaian Proses Produksi (Feeding/Molen)
-*Nihil / Tidak terdapat pemakaian pengeluaran olah langsung yang dibukukan pada tanggal ini.*
-
-#### 📤 Kategori 5: Pengeluaran Setoran Hasil Olah / Transit
-*Nihil / Tidak ada setoran keluar ke bagian berikutnya pada tanggal ini.*
-
-#### 🚛 Kategori 6: Pengeluaran Pengiriman & Logistik Keluar
-*Nihil / Tidak ada pengeluaran kirim/penjualan keluar pada tanggal ini.*
-
-#### 🔄 Kategori 7: Penyesuaian, Afkir & Koreksi Timbang Opname
-*Nihil / Tidak ada penyesuaian administratif selisih stok fisik pada tanggal ini.*
-
----
-**📊 Ringkasan Rekonsiliasi Akuntansi:**
-• **Total Mutasi Masuk:** **+1.529,3 Kg** (6 transaksi)
-• **Total Mutasi Keluar:** **0,0 Kg** (0 transaksi)
-• **Perubahan Netto Stok:** **+1.529,3 Kg**
-• **Status Integritas:** **CLEAN (100% Klop - Paripurna Tanpa Deviasi)**`;
+          if (stockContext?.categorizedReport?.formattedMarkdown) {
+            responseText = stockContext.categorizedReport.formattedMarkdown;
+          } else {
+            const activeDate = stockContext?.dailyAudit?.tanggalStr || stockContext?.selectedAuditDateFormatted || 'Hari Ini';
+            responseText = `🛡️ **Laporan Audit Mutasi Harian Per Kategori & Per Bahan**\nDivisi Produksi I PT Batu Karang · ${activeDate}\n\n*Laporan disajikan secara teratur per kategori jenis transaksi agar tidak saling tercampur:*`;
+          }
         } else if (qLower.includes('auditor') || qLower.includes('audit') || qLower.includes('detektif') || qLower.includes('rekonsiliasi') || qLower.includes('dhp')) {
           if (qLower.includes('cara') && qLower.includes('kerja') && !qLower.includes('briefing')) {
             responseText = `🛡️ **Cara Kerja Sistem Auditor Detektif Harian (5 Langkah Otomatis):**
@@ -338,25 +300,31 @@ Divisi Produksi I PT Batu Karang · Rabu, 14 Oktober 2026
 • **3. Verifikasi Toleransi Nol:** Membandingkan berat fisik vs netto DHP (Kolom I). Jika tepat 0,0 Kg, status **MATCH (100% Klop)**.
 • **4. Skoring Integritas:** Mengalkulasi persentase kesesuaian dan predikat status (**CLEAN / PERHATIAN / KRITIS**).
 • **5. Rekomendasi & PDF:** Mengeluarkan temuan otomatis dan dokumen laporan audit PDF resmi 1-klik.`;
-          } else {
+          } else if (stockContext?.executiveBriefing) {
+            responseText = stockContext.executiveBriefing;
+          } else if (stockContext?.dailyAudit) {
+            const da = stockContext.dailyAudit;
+            const statusLabel = da.overallStatus === 'CLEAN' ? 'CLEAN (100% KLOP - PARIPURNA)' : da.overallStatus === 'PERHATIAN' ? 'PERHATIAN (TERDAPAT SELISIH)' : 'KRITIS (PERLU INVESTIGASI)';
+            const items = da.details?.hasilProses?.items || [];
+            const itemLines = items.length > 0 
+              ? items.map((it: any, i: number) => `${i + 1}. **${it.kode}**: Fisik ${Number(it.fisikKg).toLocaleString('id-ID')} Kg = DHP ${Number(it.kertasKerjaKg).toLocaleString('id-ID')} Kg *(${Number(it.selisihKg).toLocaleString('id-ID')} Kg - ${it.status === 'MATCH' ? '✅ KLOP' : '⚠️ SELISIH'})*`).join('\n')
+              : `*Tidak tercatat mutasi pemasukan hasil proses pada tanggal ${da.tanggalStr}.*`;
+
             responseText = `🛡️ **Briefing Eksekutif Auditor Harian Otomatis**
-Divisi Produksi I — PT Batu Karang · Rabu, 14 Oktober 2026
+Divisi Produksi I — PT Batu Karang · ${da.tanggalStr}
 
-**Status Audit:** **CLEAN (100% KLOP - PARIPURNA)**
-• **Indeks Integritas:** **100% Akurasi** (Skor: 100/100)
-• **Hasil Olah Tervalidasi:** **+1.529,3 Kg** (6 dari 6 entri DHP Krosok 100% klop tanpa selisih timbangan)
-• **Total Deviasi Selisih:** **0,0 Kg** (Nol deviasi timbangan riil)
+**Status Audit:** **${statusLabel}**
+• **Indeks Integritas:** **${Number(da.kpi?.persentaseKesesuaian || 0).toFixed(1).replace('.', ',')}% Akurasi** (Skor: ${da.overallScore}/100)
+• **Hasil Olah Tervalidasi:** **+${Number(da.kpi?.totalHasilProsesKg || 0).toLocaleString('id-ID')} Kg** (${da.details?.hasilProses?.matchedCount || 0} dari ${da.details?.hasilProses?.totalEntri || 0} entri 100% klop)
+• **Total Deviasi Selisih:** **${Number(da.kpi?.totalSelisihKg || 0).toLocaleString('id-ID')} Kg**
 
-**Rincian Hasil Olah Terverifikasi (14 Okt 2026):**
-1. Kasturi 2024 (BE) - 1: Fisik 493,9 Kg = DHP 493,9 Kg *(0,0 Kg)*
-2. Brazil Grade B (2022) - 1: Fisik 144,2 Kg = DHP 144,2 Kg *(0,0 Kg)*
-3. Zimbabwe 2025 (L2OF/P) - 1: Fisik 300,5 Kg = DHP 300,5 Kg *(0,0 Kg)*
-4. Zambia M1L (2023) - 1: Fisik 255,6 Kg = DHP 255,6 Kg *(0,0 Kg)*
-5. Janturan Boyolali 2024 (VJI) - 1: Fisik 162,2 Kg = DHP 162,2 Kg *(0,0 Kg)*
-6. Krs. Garut 2024 (MYB/A) - 1: Fisik 172,9 Kg = DHP 172,9 Kg *(0,0 Kg)*
+**Rincian Hasil Olah Terverifikasi (${da.tanggalStr}):**
+${itemLines}
 
 **Kesimpulan Operasional:**
-Integritas data transaksi harian telah 100% valid dan memenuhi standar audit akuntansi persediaan PP1. Data siap digunakan sebagai baseline laporan produksi resmi ke Manajemen Pabrik.`;
+${da.overallSummary || 'Integritas data transaksi harian telah valid dan terverifikasi sesuai standar akuntansi persediaan.'}`;
+          } else {
+            responseText = `🛡️ **Briefing Eksekutif Auditor Harian Otomatis**\nDivisi Produksi I — PT Batu Karang\n\nSeluruh data transaksi persediaan telah terhubung dengan sistem verifikasi DHP & BSPP. Silakan pilih tanggal briefing untuk melihat audit spesifik.`;
           }
         } else if (qLower.includes('bspp') || qLower.includes('selisih') || qLower.includes('timbang')) {
           responseText = `Berdasarkan audit data BSPP (Bukti Selisih Persediaan) terkini Divisi Produksi I, seluruh variansi timbang ulang terhadap label netto masih berada dalam batas toleransi standar pabrik (< 0,5%). Tidak ditemukan anomali atau deviasi susut timbangan yang mencolok pada penerimaan saat ini.`;

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Bot, 
   X, 
@@ -16,13 +16,15 @@ import {
   Mic,
   MicOff,
   Volume2,
-  VolumeX
+  VolumeX,
+  Calendar
 } from 'lucide-react';
 import { AIChatMessage, AIService } from '../../services/aiService';
 import { DailyAuditorService } from '../../services/dailyAuditorService';
 import { VoiceSettingsService } from '../../services/voiceSettingsService';
 import { VoiceSettingsModal } from './VoiceSettingsModal';
 import { UserSession } from '../../types';
+import { formatTanggalIndo, getTanggalKey } from '../../utils/dateUtils';
 
 interface AIBotModalProps {
   isOpen: boolean;
@@ -59,6 +61,7 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [activeVoiceName, setActiveVoiceName] = useState<string>('');
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
+  const [selectedBriefingDate, setSelectedBriefingDate] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -169,7 +172,26 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
     });
   };
 
-  // Build stock context matching user permissions
+  // Available audit dates in descending order (latest first)
+  const availableDates = useMemo(() => {
+    return DailyAuditorService.getAvailableAuditDates(komoditasList);
+  }, [komoditasList]);
+
+  const currentBriefingDate = selectedBriefingDate || availableDates[0] || '2026-10-14';
+
+  const activeDailyAudit = useMemo(() => {
+    return DailyAuditorService.runDailyAudit(komoditasList, bsppList, currentBriefingDate);
+  }, [komoditasList, bsppList, currentBriefingDate]);
+
+  const activeCategorizedReport = useMemo(() => {
+    return DailyAuditorService.getCategorizedDailyAuditReport(komoditasList, bsppList, currentBriefingDate);
+  }, [komoditasList, bsppList, currentBriefingDate]);
+
+  const executiveBriefingText = useMemo(() => {
+    return DailyAuditorService.generateExecutiveBriefing(komoditasList, bsppList, currentBriefingDate);
+  }, [komoditasList, bsppList, currentBriefingDate]);
+
+  // Build stock context matching user permissions and active briefing date
   const stockContext = {
     komoditas: komoditasList.map(k => ({
       nama: k.komoditas,
@@ -198,7 +220,11 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
       totalEntries: b.entries?.length || 0,
       ringkasanTerbaru: b.entries?.slice(-5) || []
     })),
-    dailyAudit: DailyAuditorService.runDailyAudit(komoditasList, bsppList)
+    dailyAudit: activeDailyAudit,
+    categorizedReport: activeCategorizedReport,
+    executiveBriefing: executiveBriefingText,
+    selectedAuditDate: currentBriefingDate,
+    selectedAuditDateFormatted: activeDailyAudit.tanggalStr
   };
 
   const handleSend = async (textToSend?: string) => {
@@ -257,10 +283,16 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
   };
 
   const quickPrompts = [
-    { label: '🛡️ Briefing Auditor Harian', prompt: 'Berikan briefing eksekutif hasil pemeriksaan Auditor Harian Otomatis terkini: langsung sajikan status audit, tonase tervalidasi, dan rincian bahan hari ini secara to the point tanpa mengulang teori cara kerja sistem.' },
-    { label: '🎙️ Mutasi Per Kategori', prompt: 'Sajikan laporan audit harian per jenis bahan untuk semua jenis mutasi hari ini, dibacakan teratur per kategori jenis mutasi agar tidak lompat-lompat.' },
+    { 
+      label: `🛡️ Briefing Auditor (${activeDailyAudit.tanggalStr.split(',')[0]} · ${currentBriefingDate.slice(5)})`, 
+      prompt: `Berikan briefing eksekutif hasil pemeriksaan Auditor Harian Otomatis untuk tanggal ${activeDailyAudit.tanggalStr}: langsung sajikan status audit, tonase tervalidasi, dan rincian bahan pada tanggal tersebut secara to the point tanpa mengulang teori cara kerja sistem.` 
+    },
+    { 
+      label: `🎙️ Mutasi Per Kategori (${activeDailyAudit.tanggalStr.split(',')[0]})`, 
+      prompt: `Sajikan laporan audit harian per jenis bahan untuk semua jenis mutasi tanggal ${activeDailyAudit.tanggalStr}, dibacakan teratur per kategori jenis mutasi agar tidak lompat-lompat.` 
+    },
     { label: '🎯 Prediksi Sisa Hari', prompt: 'Berapa hari sisa persediaan (Days of Inventory) untuk grade yang mendekati level kritis?' },
-    { label: '⚖️ Cek Susut BSPP', prompt: 'Apakah ada selisih timbangan (BSPP) yang mencolok atau melebihi batas 0,5% pada data terbaru?' },
+    { label: '⚖️ Cek Susut BSPP', prompt: `Apakah ada selisih timbangan (BSPP) yang mencolok atau melebihi batas 0,5% pada tanggal ${activeDailyAudit.tanggalStr} atau data terbaru?` },
     { label: '📦 Stok Mengendap', prompt: 'Tampilkan grade atau komoditas yang tidak ada mutasi keluar lebih dari 25 hari (stok mengendap).' },
     { label: '📊 Ringkasan Saldo', prompt: 'Berikan ringkasan eksekutif saldo stok bahan baku saat ini secara singkat dan jelas.' }
   ];
@@ -328,6 +360,48 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
             <span>Izin Bahan: <strong className="font-semibold">{session.allowedKomoditas?.includes('*') ? 'Semua Bahan (Full Access)' : session.allowedKomoditas?.join(', ')}</strong></span>
           </div>
           <span className="text-[10px] text-blue-600/80 font-medium shrink-0">RBAC Verified</span>
+        </div>
+
+        {/* Auditor Briefing Date Control Bar */}
+        <div className="px-3.5 sm:px-4 py-2 bg-slate-100/90 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 text-slate-700 font-semibold text-[11px]">
+              <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>Tanggal Briefing:</span>
+            </div>
+            <select
+              value={currentBriefingDate}
+              onChange={e => setSelectedBriefingDate(e.target.value)}
+              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs cursor-pointer"
+            >
+              {availableDates.map((dIso, idx) => {
+                const formatted = formatTanggalIndo(dIso, { withWeekday: true, monthFormat: 'short', withYear: true });
+                const isToday = dIso === getTanggalKey(new Date());
+                const label = isToday ? `${formatted} (Hari Ini)` : (idx === 0 ? `${formatted} (Data Terkini)` : formatted);
+                return (
+                  <option key={dIso} value={dIso}>
+                    {label}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border shadow-2xs ${
+              activeDailyAudit.overallStatus === 'CLEAN'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : activeDailyAudit.overallStatus === 'PERHATIAN'
+                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                : 'bg-rose-50 text-rose-800 border-rose-200'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${activeDailyAudit.overallStatus === 'CLEAN' ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+              <span>{activeDailyAudit.overallStatus === 'CLEAN' ? '100% Klop' : activeDailyAudit.overallStatus}</span>
+            </span>
+            <span className="text-[10.5px] text-slate-600 font-mono hidden sm:inline">
+              +{activeDailyAudit.kpi.totalHasilProsesKg.toLocaleString('id-ID')} Kg
+            </span>
+          </div>
         </div>
 
         {/* Message List */}

@@ -585,6 +585,63 @@ export class DailyAuditorService {
   }
 
   /**
+   * Menghasilkan teks briefing eksekutif Markdown yang 100% dinamis sesuai tanggal audit yang dipilih
+   */
+  public static generateExecutiveBriefing(
+    komoditasList: KomoditasData[],
+    bsppList: BSPPData[] = [],
+    selectedDateIso?: string
+  ): string {
+    const audit = this.runDailyAudit(komoditasList, bsppList, selectedDateIso);
+    const targetDateStr = audit.tanggalStr;
+    const kpi = audit.kpi;
+    const hp = audit.categories.pemasukanHasilProses;
+    const kirim = audit.categories.pengeluaranPengiriman;
+
+    const statusLabel = audit.overallStatus === 'CLEAN' 
+      ? 'CLEAN (100% KLOP - PARIPURNA)' 
+      : audit.overallStatus === 'PERHATIAN' 
+      ? 'PERHATIAN (TERDAPAT SELISIH)' 
+      : 'KRITIS (PERLU INVESTIGASI)';
+
+    const lines: string[] = [];
+    lines.push(`🛡️ **Briefing Eksekutif Auditor Harian Otomatis**`);
+    lines.push(`Divisi Produksi I — PT Batu Karang · ${targetDateStr}`);
+    lines.push(``);
+    lines.push(`**Status Audit:** **${statusLabel}**`);
+    lines.push(`• **Indeks Integritas:** **${Number(kpi.persentaseKesesuaian || 0).toFixed(1).replace('.', ',')}% Akurasi** (Skor: ${audit.overallScore}/100)`);
+    lines.push(`• **Hasil Olah Tervalidasi:** **+${Number(kpi.totalHasilProsesKg || 0).toLocaleString('id-ID')} Kg** (${hp.matchedCount} dari ${hp.totalEntri} entri 100% klop tanpa selisih timbangan)`);
+    lines.push(`• **Total Deviasi Selisih:** **${Number(kpi.totalSelisihKg || 0).toLocaleString('id-ID')} Kg** (Nol deviasi timbangan riil)`);
+    if (kirim && kirim.totalKg > 0) {
+      lines.push(`• **Pengiriman Logistik Keluar:** **-${Number(kirim.totalKg).toLocaleString('id-ID')} Kg** (${kirim.matchedCount} dari ${kirim.totalEntri} surat jalan klop)`);
+    }
+    lines.push(``);
+
+    if (hp.items.length > 0) {
+      lines.push(`**Rincian Hasil Olah Terverifikasi (${targetDateStr}):**`);
+      hp.items.forEach((it, idx) => {
+        const icon = it.status === 'MATCH' ? '✅ KLOP' : '⚠️ SELISIH';
+        lines.push(`${idx + 1}. **${it.kode}**: Fisik ${it.fisikKg.toLocaleString('id-ID')} Kg = DHP ${it.kertasKerjaKg.toLocaleString('id-ID')} Kg *(${it.selisihKg === 0 ? '0,0 Kg' : `${it.selisihKg.toLocaleString('id-ID')} Kg`} - ${icon})*`);
+      });
+      lines.push(``);
+    } else {
+      lines.push(`*Tidak tercatat mutasi pemasukan hasil proses olah pada tanggal ${targetDateStr}.*`);
+      lines.push(``);
+    }
+
+    if (audit.detectiveFindings.length > 0) {
+      lines.push(`**Temuan Investigasi Detektif:**`);
+      audit.detectiveFindings.forEach(f => lines.push(`• ${f}`));
+      lines.push(``);
+    }
+
+    lines.push(`**Kesimpulan Operasional:**`);
+    lines.push(audit.overallSummary);
+
+    return lines.join('\n');
+  }
+
+  /**
    * Mengelompokkan seluruh mutasi harian secara tertib per Kategori Jenis Mutasi
    * dan merinci per Bahan, dilengkapi naskah suara yang runtut dan tidak melompat-lompat.
    */

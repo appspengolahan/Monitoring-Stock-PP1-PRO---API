@@ -40,6 +40,7 @@ import { exportExecutiveReportPdf, exportDailyAuditPdf } from '../../services/pd
 import { DailyAuditorService } from '../../services/dailyAuditorService';
 import { VoiceSettingsService } from '../../services/voiceSettingsService';
 import { VoiceSettingsModal } from '../modals/VoiceSettingsModal';
+import { formatTanggalIndo, getTanggalKey } from '../../utils/dateUtils';
 
 interface AILogistikPanelProps {
   komoditasList: KomoditasData[];
@@ -460,11 +461,16 @@ export const AILogistikPanel: React.FC<AILogistikPanelProps> = ({
                     onChange={e => setSelectedAuditDate(e.target.value)}
                     className="bg-transparent font-bold text-slate-800 focus:outline-hidden cursor-pointer"
                   >
-                    {dailyAudit.availableDates.map(dIso => (
-                      <option key={dIso} value={dIso}>
-                        {dIso === '2026-10-14' ? `Rabu, 14 Okt 2026 (Hari Ini)` : dIso === '2026-10-13' ? `Selasa, 13 Okt 2026` : dIso === '2026-10-12' ? `Senin, 12 Okt 2026` : dIso}
-                      </option>
-                    ))}
+                    {dailyAudit.availableDates.map((dIso, idx) => {
+                      const formatted = formatTanggalIndo(dIso, { withWeekday: true, monthFormat: 'short', withYear: true });
+                      const isToday = dIso === getTanggalKey(new Date());
+                      const label = isToday ? `${formatted} (Hari Ini)` : (idx === 0 ? `${formatted} (Data Terkini)` : formatted);
+                      return (
+                        <option key={dIso} value={dIso}>
+                          {label}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
