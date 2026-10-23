@@ -491,6 +491,113 @@ export class GasService {
   }
 
   /**
+   * Toleransi cerdas pencocokan tanggal rekonsiliasi (mengakomodasi shift malam hingga 36 jam & akhir pekan hingga 76 jam)
+   */
+  public static isDateMatchingReconciliation(date1?: string | null, date2?: string | null): boolean {
+    if (!date1 || !date2) return false;
+    const k1 = getTanggalKey(date1);
+    const k2 = getTanggalKey(date2);
+    if (k1 && k2 && k1 === k2) return true;
+
+    const ep1 = getEpochTime(date1);
+    const ep2 = getEpochTime(date2);
+    if (ep1 <= 0 || ep2 <= 0) return false;
+    const diffMs = Math.abs(ep1 - ep2);
+
+    // Toleransi shift malam normal (hingga 36 jam)
+    if (diffMs <= 36 * 3600 * 1000) return true;
+
+    // Toleransi akhir pekan (Jumat ke Senin = hingga 76 jam)
+    if (diffMs <= 76 * 3600 * 1000) {
+      const d1 = new Date(ep1);
+      const d2 = new Date(ep2);
+      const day1 = d1.getUTCDay();
+      const day2 = d2.getUTCDay();
+      const isWeekendTransition = 
+        (day1 === 5 || day1 === 6 || day1 === 0) || 
+        (day2 === 5 || day2 === 6 || day2 === 0);
+      if (isWeekendTransition) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Pencocokan ketat nama bahan Rajang II:
+   * 1. KROSOK VS TEMBAKAU adalah pembeda mutlak: Krs. Garut TIDAK BOLEH cocok dengan Garut
+   * 2. TAHUN PANEN (2024 vs 2025) adalah pembeda mutlak
+   * 3. INISIAL SUPPLIER/WILAYAH ((FR) vs (MYN)) adalah pembeda mutlak
+   * 4. Hanya menyamakan variasi sah: Krs. Garut == Krosok Garut, Kasturi (BE) - 1 == Kasturi (BE), Madura (BAT) R == Madura (BAT)
+   */
+  public static isRajangMaterialMatch(rawD: string, rawM: string): boolean {
+    if (!rawD || !rawM) return false;
+    const sD = rawD.trim().toUpperCase();
+    const sM = rawM.trim().toUpperCase();
+    if (sD === sM) return true;
+
+    // 1. Pembeda Mutlak Krosok vs Tembakau
+    const isKrosokD = /(^|[\s_.\-\(\)\/])(KRS\.?|KROSOK)($|[\s_.\-\(\)\/])/i.test(sD) || sD.startsWith('KRS.') || sD.startsWith('KRS ') || sD.startsWith('KROSOK');
+    const isKrosokM = /(^|[\s_.\-\(\)\/])(KRS\.?|KROSOK)($|[\s_.\-\(\)\/])/i.test(sM) || sM.startsWith('KRS.') || sM.startsWith('KRS ') || sM.startsWith('KROSOK');
+    if (isKrosokD !== isKrosokM) return false;
+
+    // 2. Pembeda Mutlak Tahun Panen
+    const yearD = sD.match(/\b(202\d)\b/)?.[1];
+    const yearM = sM.match(/\b(202\d)\b/)?.[1];
+    if (yearD && yearM && yearD !== yearM) return false;
+
+    // 3. Pembeda Mutlak Kode Asal / Supplier dalam Kurung
+    const parenD = sD.match(/\(([^)]+)\)/)?.[1]?.replace(/[^A-Z0-9]/g, '');
+    const parenM = sM.match(/\(([^)]+)\)/)?.[1]?.replace(/[^A-Z0-9]/g, '');
+    if (parenD && parenM && parenD !== parenM) {
+      const cleanParenD = parenD.replace(/1|2|3/g, '');
+      const cleanParenM = parenM.replace(/1|2|3/g, '');
+      if (cleanParenD !== cleanParenM) return false;
+    }
+
+    // 4. Normalisasi base name (KRS. disamakan dengan KROSOK)
+    const normD = sD.replace(/(^|[\s_.\-\(\)\/])KRS\.?($|[\s_.\-\(\)\/])/gi, '$1KROSOK$2').replace(/[^A-Z0-9]/g, '');
+    const normM = sM.replace(/(^|[\s_.\-\(\)\/])KRS\.?($|[\s_.\-\(\)\/])/gi, '$1KROSOK$2').replace(/[^A-Z0-9]/g, '');
+    if (normD === normM) return true;
+
+    // Handle trailing suffix "- 1" atau trailing 'R' pada Madura (MADURA2024BATR vs MADURA2024BAT)
+    if (normD.replace(/1|2|3|R$/g, '') === normM.replace(/1|2|3|R$/g, '')) return true;
+
+    return false;
+  }
+
+  /**
+   * Pencocokan cerdas Tembakau Blend:
+   * Mendukung kesamaan merk resmi (153 == 153-BK, KARANG == KARANG-BK, F REGULER == FR LN - AVE)
+   */
+  public static isBlendMaterialMatch(rawD: string, rawM: string): boolean {
+    if (!rawD || !rawM) return false;
+    const sD = rawD.trim().toUpperCase();
+    const sM = rawM.trim().toUpperCase();
+    if (sD === sM) return true;
+
+    const cleanD = this.normalizeBlendKodeAlias(sD);
+    const cleanM = this.normalizeBlendKodeAlias(sM);
+    if (cleanD === cleanM) return true;
+
+    // 153 vs 153 - BK
+    const is153D = cleanD.includes('153');
+    const is153M = cleanM.includes('153');
+    if (is153D && is153M) return true;
+
+    // KARANG vs KARANG - BK
+    const isKarangD = cleanD.includes('KARANG');
+    const isKarangM = cleanM.includes('KARANG');
+    if (isKarangD && isKarangM) return true;
+
+    // F REGULER (LN, AVE) vs FR LN - AVE
+    const isFrLnD = (cleanD.includes('FR') || cleanD.includes('FREG')) && (cleanD.includes('LN') || cleanD.includes('AVE'));
+    const isFrLnM = (cleanM.includes('FR') || cleanM.includes('FREG')) && (cleanM.includes('LN') || cleanM.includes('AVE'));
+    if (isFrLnD && isFrLnM) return true;
+
+    return false;
+  }
+
+  /**
    * Identifikasi apakah suatu nama tab merupakan tab rekap/validasi/summary (bukan kartu stok bahan murni)
    */
   public static isNonMaterialSheetName(name?: string): boolean {
@@ -620,32 +727,28 @@ export class GasService {
         const isHasilProses = (j?: string) => {
           if (!j) return false;
           const clean = j.trim().replace(/^['`\s]+/, '').toLowerCase();
-          return clean === 'pemasukan hasil proses' || clean.includes('hasil proses') || (clean.startsWith('pemasukan') && !clean.includes('awal') && !clean.includes('pindah'));
+          return (
+            clean === 'pemasukan hasil proses' ||
+            clean.includes('hasil proses') ||
+            clean.includes('hasil rajang') ||
+            clean.includes('proses rajang') ||
+            clean.includes('dhp rajang') ||
+            clean.includes('terima dhp') ||
+            clean.includes('masuk dhp') ||
+            clean.includes('hasil olah') ||
+            (clean.startsWith('pemasukan') && !clean.includes('awal') && !clean.includes('pindah') && !clean.includes('retur'))
+          );
         };
 
         const enrichedMutasi = normalizedMutasi.map(m => {
           if (!isHasilProses(m.jenisMutasi) || dhpList.length === 0) return m;
           const mKode = (m.kode || '').trim().toUpperCase();
-          const mDateKey = getTanggalKey(m.tanggal);
 
           const matchedDHP = dhpList.find(d => {
-            const rawD = (d.nama || '').trim().toUpperCase();
+            const rawD = (d.nama || '').trim();
             if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
-            const dDateKey = getTanggalKey(d.tanggal);
-            const exactDateMatch = Boolean(mDateKey && dDateKey && dDateKey === mDateKey);
-            const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
-            const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
-            const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
-            return exactDateMatch && kodeMatch;
-          }) || dhpList.find(d => {
-            const rawD = (d.nama || '').trim().toUpperCase();
-            if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
-            const dDateKey = getTanggalKey(d.tanggal);
-            const dateMatch = !mDateKey || !dDateKey || dDateKey === mDateKey ||
-              Math.abs(getEpochTime(m.tanggal) - getEpochTime(d.tanggal)) <= 86400000;
-            const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
-            const cleanM = mKode.replace(/[^A-Z0-9]/g, '');
-            const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
+            const dateMatch = this.isDateMatchingReconciliation(m.tanggal, d.tanggal);
+            const kodeMatch = this.isRajangMaterialMatch(rawD, mKode);
             return dateMatch && kodeMatch;
           });
 
@@ -677,24 +780,21 @@ export class GasService {
           return m;
         });
 
-        // Pastikan seluruh entri DHP yang sah (1 Tembakau & 6 Krosok) selalu ada di mutasi Rajang II
+        // Pastikan seluruh entri DHP yang sah selalu ada di mutasi Rajang II
         // (mencegah bahan hilang jika pemanggilan spreadsheet dibatasi kuota baris)
         dhpList.forEach(dhpItem => {
           const rawD = (dhpItem.nama || '').trim().toUpperCase();
           if (matchedDhpSet.has(rawD)) return;
           const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
           const matchedKode = (enrichedKodeList || []).find(kd => {
-            const cleanK = (kd.nama || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-            return cleanD === cleanK || cleanD.includes(cleanK) || cleanK.includes(cleanD);
+            return this.isRajangMaterialMatch(dhpItem.nama, kd.nama);
           });
           const kodeName = matchedKode ? matchedKode.nama : dhpItem.nama;
 
           const alreadyExists = enrichedMutasi.some(m => {
-            const cleanM = (m.kode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-            const mDateKey = getTanggalKey(m.tanggal);
-            const dDateKey = getTanggalKey(dhpItem.tanggal);
-            const sameDate = !mDateKey || !dDateKey || mDateKey === dDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(dhpItem.tanggal)) <= 86400000;
-            return sameDate && (isHasilProses(m.jenisMutasi) || !!m.dhpMatch) && (cleanM === cleanD || cleanD.includes(cleanM) || cleanM.includes(cleanD));
+            const sameDate = this.isDateMatchingReconciliation(m.tanggal, dhpItem.tanggal);
+            const sameKode = this.isRajangMaterialMatch(dhpItem.nama, m.kode);
+            return sameDate && (isHasilProses(m.jenisMutasi) || !!m.dhpMatch) && sameKode;
           });
 
           if (!alreadyExists) {
@@ -871,32 +971,29 @@ export class GasService {
         const isHasilBlend = (j?: string) => {
           if (!j) return false;
           const clean = j.trim().replace(/^['`\s]+/, '').toLowerCase();
-          return clean === 'pemasukan hasil blend' || clean.includes('hasil blend') || (clean.includes('blend') && clean.includes('pemasukan'));
+          return (
+            clean === 'pemasukan hasil blend' ||
+            clean.includes('hasil blend') ||
+            clean.includes('hasil molen') ||
+            clean.includes('proses molen') ||
+            clean.includes('pemasukan molen') ||
+            clean.includes('mixing') ||
+            clean.includes('hasil olah') ||
+            clean.includes('hasil proses') ||
+            (clean.includes('blend') && clean.includes('pemasukan')) ||
+            (clean.startsWith('pemasukan') && !clean.includes('awal') && !clean.includes('pindah') && !clean.includes('retur'))
+          );
         };
 
         const enrichedMutasi = normalizedMutasi.map(m => {
           if (!isHasilBlend(m.jenisMutasi) || dhpBlendList.length === 0) return m;
           const mKode = (m.kode || '').trim().toUpperCase();
-          const mDateKey = getTanggalKey(m.tanggal);
 
           const matchedDHP = dhpBlendList.find(d => {
-            const rawD = (d.nama || '').trim().toUpperCase();
+            const rawD = (d.nama || '').trim();
             if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
-            const dDateKey = getTanggalKey(d.tanggal);
-            const exactDateMatch = Boolean(mDateKey && dDateKey && dDateKey === mDateKey);
-            const cleanD = this.normalizeBlendKodeAlias(rawD);
-            const cleanM = this.normalizeBlendKodeAlias(mKode);
-            const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
-            return exactDateMatch && kodeMatch;
-          }) || dhpBlendList.find(d => {
-            const rawD = (d.nama || '').trim().toUpperCase();
-            if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
-            const dDateKey = getTanggalKey(d.tanggal);
-            const dateMatch = !mDateKey || !dDateKey || dDateKey === mDateKey ||
-              Math.abs(getEpochTime(m.tanggal) - getEpochTime(d.tanggal)) <= 86400000;
-            const cleanD = this.normalizeBlendKodeAlias(rawD);
-            const cleanM = this.normalizeBlendKodeAlias(mKode);
-            const kodeMatch = cleanD === cleanM || cleanD.includes(cleanM) || cleanM.includes(cleanD);
+            const dateMatch = this.isDateMatchingReconciliation(m.tanggal, d.tanggal);
+            const kodeMatch = this.isBlendMaterialMatch(rawD, mKode);
             return dateMatch && kodeMatch;
           });
 
@@ -905,21 +1002,36 @@ export class GasService {
             matchedDhpBlendSet.add(this.normalizeBlendKodeAlias(matchedDHP.nama || ''));
             matchedDhpBlendSet.add(mKode);
             matchedDhpBlendSet.add(this.normalizeBlendKodeAlias(mKode));
+
             let masukVal = Number(m.masuk) || 0;
-            const dhpVal = Number(matchedDHP.nettoKg) || 0;
-            if (masukVal === 0 && dhpVal > 0) {
-              masukVal = dhpVal;
+            const dhpTotalVal = Number(matchedDHP.nettoKg) || 0;
+
+            // Periksa apakah mutasi gudang ini dicatat per batch molen individual atau total
+            let dhpTargetVal = dhpTotalVal;
+            let sumberText = matchedDHP.sumber || 'DHP Blend (Kolom I)';
+
+            if (matchedDHP.molenList && matchedDHP.molenList.length > 0 && masukVal > 0) {
+              // Cari apakah ada baris molen yang nilainya cocok persis dengan nilai mutasi gudang (toleransi 0.5 Kg)
+              const matchedMolen = matchedDHP.molenList.find(mol => Math.abs(mol.nettoKg - masukVal) <= 0.5);
+              if (matchedMolen) {
+                dhpTargetVal = matchedMolen.nettoKg;
+                sumberText = `DHP Blend (${matchedMolen.namaMolen})`;
+              }
             }
-            const diff = Math.round((masukVal - dhpVal) * 10) / 10;
+
+            if (masukVal === 0 && dhpTargetVal > 0) {
+              masukVal = dhpTargetVal;
+            }
+            const diff = Math.round((masukVal - dhpTargetVal) * 10) / 10;
             return {
               ...m,
               masuk: masukVal,
-              cek: diff === 0 ? true : m.cek,
+              cek: Math.abs(diff) <= 0.1 ? true : m.cek,
               dhpMatch: {
                 matched: true,
-                dhpNetto: dhpVal,
+                dhpNetto: dhpTargetVal,
                 selisih: diff,
-                sumber: matchedDHP.sumber || 'DHP Blend (Kolom I)',
+                sumber: sumberText,
                 jalur: matchedDHP.jalur || 'Wagir',
                 molenList: matchedDHP.molenList
               }
@@ -936,17 +1048,14 @@ export class GasService {
           if (matchedDhpBlendSet.has(rawD) || matchedDhpBlendSet.has(cleanD)) return;
 
           const matchedKode = (k.kodeList || []).find(kd => {
-            const cleanK = this.normalizeBlendKodeAlias(kd.nama || '');
-            return cleanD === cleanK || cleanD.includes(cleanK) || cleanK.includes(cleanD);
+            return this.isBlendMaterialMatch(dhpItem.nama, kd.nama);
           });
           const kodeName = matchedKode ? matchedKode.nama : dhpItem.nama;
 
           const alreadyExists = enrichedMutasi.some(m => {
-            const cleanM = this.normalizeBlendKodeAlias(m.kode || '');
-            const mDateKey = getTanggalKey(m.tanggal);
-            const dDateKey = getTanggalKey(dhpItem.tanggal);
-            const sameDate = !mDateKey || !dDateKey || mDateKey === dDateKey || Math.abs(getEpochTime(m.tanggal) - getEpochTime(dhpItem.tanggal)) <= 86400000;
-            return sameDate && (isHasilBlend(m.jenisMutasi) || !!m.dhpMatch) && (cleanM === cleanD || cleanD.includes(cleanM) || cleanM.includes(cleanD));
+            const sameDate = this.isDateMatchingReconciliation(m.tanggal, dhpItem.tanggal);
+            const sameKode = this.isBlendMaterialMatch(dhpItem.nama, m.kode);
+            return sameDate && (isHasilBlend(m.jenisMutasi) || !!m.dhpMatch) && sameKode;
           });
 
           if (!alreadyExists) {
