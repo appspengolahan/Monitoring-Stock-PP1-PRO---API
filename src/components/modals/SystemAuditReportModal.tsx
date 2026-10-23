@@ -17,9 +17,16 @@ import {
   Layers,
   Sparkles,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  FileSpreadsheet,
+  Download,
+  ClipboardCheck,
+  Smartphone,
+  Tablet,
+  Check
 } from 'lucide-react';
 import { SystemAuditService, SystemAuditReportData, BASELINE_INFO } from '../../services/systemAuditService';
+import { exportStockOpnamePlanPdf } from '../../services/pdfExport';
 import { KomoditasData } from '../../types';
 
 interface SystemAuditReportModalProps {
@@ -35,7 +42,7 @@ export const SystemAuditReportModal: React.FC<SystemAuditReportModalProps> = ({
 }) => {
   const [report, setReport] = useState<SystemAuditReportData | null>(null);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'diagnostics' | 'reconciliation' | 'roadmap'>('diagnostics');
+  const [activeTab, setActiveTab] = useState<'diagnostics' | 'reconciliation' | 'roadmap' | 'stock_opname'>('diagnostics');
 
   useEffect(() => {
     if (isOpen) {
@@ -177,6 +184,19 @@ export const SystemAuditReportModal: React.FC<SystemAuditReportModalProps> = ({
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Rekomendasi Roadmap Baseline</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('stock_opname')}
+            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'stock_opname'
+                ? 'border-indigo-600 text-indigo-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Blueprint Stock Opname</span>
+            <span className="text-[9.5px] bg-indigo-100 text-indigo-700 px-1.5 py-0.2 rounded font-bold">PDF Siap</span>
           </button>
         </div>
 
@@ -403,6 +423,195 @@ export const SystemAuditReportModal: React.FC<SystemAuditReportModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* TAB 4: BLUEPRINT FITUR STOCK OPNAME PERIODIK */}
+          {activeTab === 'stock_opname' && (
+            <div className="space-y-4">
+              {/* Banner Aksi Utama: Unduh Dokumen PDF Resmi */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/30 border border-indigo-400/40 text-indigo-300 font-mono">
+                      BLUEPRINT TEKNIS v1.0
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 border border-emerald-400/30 text-emerald-300">
+                      Zero Regression Ready
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                    Rencana Penerapan Fitur Stock Opname Periodik
+                  </h3>
+                  <p className="text-xs text-indigo-200/90 leading-relaxed max-w-2xl">
+                    Dokumen spesifikasi rekayasa sistem lengkap yang siap diunduh dalam format PDF resmi untuk pegangan developer dan auditor sebelum input ID Sheet dimulai.
+                  </p>
+                </div>
+
+                <button
+                  onClick={exportStockOpnamePlanPdf}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-indigo-500/25 shrink-0 cursor-pointer active:scale-95"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Unduh Dokumen PDF (Formal)</span>
+                </button>
+              </div>
+
+              {/* 1. Ringkasan Keputusan Arsitektur: Opsi 3 */}
+              <div className="p-4 rounded-xl border border-indigo-200/80 bg-indigo-50/40 space-y-2">
+                <div className="flex items-center gap-2 text-indigo-950 font-bold text-xs uppercase tracking-wider">
+                  <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                  <span>1. Keputusan Arsitektur: Opsi 3 (Central Aggregator + Two-Way Sync)</span>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Sistem web apps bertindak sebagai <strong>Hub Konsolidasi Terpusat</strong> untuk membaca datasheet historis masing-masing unit, sekaligus menyediakan <strong>Formulir Hitung Fisik Lapangan</strong> (ramah Tablet/HP dengan Auto-Rotate) yang terhubung langsung ke Master Sheet baru secara permanen di Google Drive.
+                </p>
+              </div>
+
+              {/* 2. Jaminan Keamanan Sistem & Data Live */}
+              <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-950 font-bold text-xs uppercase tracking-wider">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>2. Jaminan Keamanan &amp; Perlindungan Data Live (Zero-Impact Guarantee)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs text-slate-700">
+                  <div className="p-2.5 bg-white rounded-lg border border-emerald-100 flex items-start gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 block">Strictly Read-Only pada Sheet Aktif</strong>
+                      <span>Sistem hanya membaca saldo cut-off tanpa pernah menimpa sel atau rumus lama.</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-lg border border-emerald-100 flex items-start gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 block">Sandboxing Lembar Kerja Baru</strong>
+                      <span>Seluruh arsip opname disimpan di Sheet/Tab terpisah [DB_STOCK_OPNAME].</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-lg border border-emerald-100 flex items-start gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 block">Isolasi Kode Komponen</strong>
+                      <span>Modul opname berjalan mandiri, tidak menyentuh kode Mutasi &amp; BSPP yang sudah ada.</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-lg border border-emerald-100 flex items-start gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 block">Offline Cache &amp; Auto-Flush</strong>
+                      <span>Aman dari sinyal lemah gudang, data tersimpan di buffer lokal dan dikirim saat online.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Spesifikasi Skema Database Master */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    3. Spesifikasi Struktur Kolom Database Master [DB_STOCK_OPNAME]
+                  </div>
+                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-mono text-slate-600">
+                    Kolom A s/d M (13 Field)
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border border-slate-200">
+                    <thead className="bg-slate-100 text-[10.5px] font-bold text-slate-700 uppercase">
+                      <tr>
+                        <th className="py-2 px-2.5 border-b text-center w-12">Kolom</th>
+                        <th className="py-2 px-3 border-b">Nama Field</th>
+                        <th className="py-2 px-2.5 border-b">Tipe Data</th>
+                        <th className="py-2 px-3 border-b">Logika &amp; Nilai</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-[11px] font-sans">
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">A</td><td className="font-semibold text-slate-900">ID_Opname</td><td className="font-mono text-slate-500">String (PK)</td><td>Kode unik (misal: SO-2026-Q4-001)</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">B</td><td className="font-semibold text-slate-900">Periode</td><td className="font-mono text-slate-500">String</td><td>Triwulan IV 2026 / Semesteran</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">C</td><td className="font-semibold text-slate-900">Tanggal_Cutoff</td><td className="font-mono text-slate-500">Date (ISO)</td><td>Tanggal patokan pembekuan saldo buku</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">D</td><td className="font-semibold text-slate-900">Tanggal_Input</td><td className="font-mono text-slate-500">Timestamp</td><td>Waktu aktual penimbangan di gudang</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">E</td><td className="font-semibold text-slate-900">Unit_Gudang</td><td className="font-mono text-slate-500">Enum</td><td>Rajang II, Krosok, Cengkeh, Blend</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">F</td><td className="font-semibold text-slate-900">Kode_Bahan</td><td className="font-mono text-slate-500">String</td><td>Kode grade bahan yang terdaftar</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">G</td><td className="font-semibold text-slate-900">Saldo_Buku_Kg</td><td className="font-mono text-slate-500">Number</td><td>Saldo sistem pada tanggal cut-off</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">H</td><td className="font-semibold text-slate-900">Fisik_Aktual_Kg</td><td className="font-mono text-slate-500">Number</td><td>Hasil timbangan fisik riil operator</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">I</td><td className="font-semibold text-slate-900">Selisih_Kg</td><td className="font-mono text-slate-500">Formula</td><td>Fisik_Aktual - Saldo_Buku (Kg)</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">J</td><td className="font-semibold text-slate-900">Persentase_Deviasi</td><td className="font-mono text-slate-500">Percent</td><td>(Selisih / Saldo_Buku) × 100%</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">K</td><td className="font-semibold text-slate-900">Status_Kesesuaian</td><td className="font-mono text-slate-500">Enum</td><td>KLOP 100%, SUSUT WAJAR, INVESTIGASI</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">L</td><td className="font-semibold text-slate-900">Catatan_Koreksi</td><td className="font-mono text-slate-500">String</td><td>Keterangan susut timbang / kondisi sak</td></tr>
+                      <tr><td className="py-1.5 px-2.5 text-center font-mono font-bold">M</td><td className="font-semibold text-slate-900">Petugas_Auditor</td><td className="font-mono text-slate-500">String</td><td>Nama penimbang dan auditor pendamping</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 4. Sinkronisasi dengan Modul "Saldo Kode" */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+                <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  4. Sinkronisasi &amp; Visualisasi ke Modul "Saldo Kode"
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                    <span className="text-[10px] text-slate-500 font-semibold block">Akurasi Stok</span>
+                    <span className="text-sm font-bold text-emerald-700">% Klop &amp; Wajar</span>
+                  </div>
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                    <span className="text-[10px] text-slate-500 font-semibold block">Rasio Kecocokan</span>
+                    <span className="text-sm font-bold text-blue-700">X dari Y Kode</span>
+                  </div>
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                    <span className="text-[10px] text-slate-500 font-semibold block">Deviasi Netto</span>
+                    <span className="text-sm font-bold text-slate-800">± Kg Netto</span>
+                  </div>
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                    <span className="text-[10px] text-slate-500 font-semibold block">Cakupan Audit</span>
+                    <span className="text-sm font-bold text-indigo-700">Tonase Dihitung</span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700 space-y-1">
+                  <strong className="text-slate-900 block font-semibold">Penyematan Badge Traffic Light Langsung di Tabel Saldo Kode:</strong>
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      ✓ KLOP 100% (0,0 Kg)
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                      ⚠ SUSUT WAJAR (≤ 0,5%)
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                      ✕ SELISIH INVESTIGASI
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
+                      🕒 BELUM DI-OPNAME
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Roadmap 4 Sprint Eksekusi */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2.5">
+                <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  5. Rencana Eksekusi Bertahap (Sprint Execution Plan)
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                    <span className="font-bold text-indigo-700 block text-[11px]">Sprint 1: Schema &amp; Backend API</span>
+                    <span className="text-slate-600">Pemetaan ID Sheet, pembuatan tab [DB_STOCK_OPNAME], dan REST endpoint GAS doGet/doPost.</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                    <span className="font-bold text-indigo-700 block text-[11px]">Sprint 2: UI Panel Input Tablet</span>
+                    <span className="text-slate-600">Formulir input lapangan mobile dengan auto-rotate, auto-fill saldo cut-off, dan kalkulasi deviasi instan.</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                    <span className="font-bold text-indigo-700 block text-[11px]">Sprint 3: Sinkronisasi Saldo Kode</span>
+                    <span className="text-slate-600">4 kartu KPI ringkasan dan penyematan badge status opname pada tabel Saldo Kode live.</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                    <span className="font-bold text-indigo-700 block text-[11px]">Sprint 4: Berita Acara &amp; Rilis</span>
+                    <span className="text-slate-600">Cetak PDF Berita Acara resmi tanda tangan, uji verifikasi tanpa regresi, dan perilisan penuh.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Modal Footer */}
@@ -411,13 +620,22 @@ export const SystemAuditReportModal: React.FC<SystemAuditReportModalProps> = ({
             <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
-              title="Cetak atau simpan laporan sebagai PDF"
+              title="Cetak atau simpan tampilan layar sebagai PDF"
             >
               <Printer className="w-3.5 h-3.5 text-slate-500" />
-              <span>Cetak / PDF</span>
+              <span>Cetak Layar</span>
+            </button>
+
+            <button
+              onClick={exportStockOpnamePlanPdf}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+              title="Unduh dokumen PDF resmi Blueprint Rencana Penerapan Stock Opname"
+            >
+              <Download className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Unduh Blueprint PDF</span>
             </button>
             <span className="text-[11px] text-slate-400 hidden sm:inline">
-              Baseline v2.0 Terkunci · Verifikasi Realtime Aktif
+              Baseline v2.0 Terkunci
             </span>
           </div>
 
