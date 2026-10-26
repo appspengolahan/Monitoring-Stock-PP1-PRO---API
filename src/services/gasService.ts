@@ -1407,13 +1407,86 @@ export class GasService {
     }
   }
 
+  public static readonly DEFAULT_BLEND_BSPP: BSPPData = {
+    nama: 'Tembakau Blend',
+    jumlahEntri: 5,
+    jenisList: ['153 - BK', 'F MILD STAR - BK', 'KARANG - BK', 'SP 153 - BK', 'FR LA BOLD - BK'],
+    totalLebih: 3,
+    totalKurang: 2,
+    totalTanpa: 0,
+    rataRataAbsSelisihPersen: 0.11,
+    roomTemperature: TelemetryService.getBlendRoomTemperature(),
+    entries: [
+      {
+        tanggal: '2026-10-12T00:00:00.000Z',
+        jenis: '153 - BK',
+        labelNetto: 1250.0,
+        timbangUlang: 1248.5,
+        selisihKg: 1.5,
+        selisihPersen: 0.12,
+        status: 'Selisih Kurang'
+      },
+      {
+        tanggal: '2026-10-13T00:00:00.000Z',
+        jenis: 'KARANG - BK',
+        labelNetto: 840.5,
+        timbangUlang: 842.0,
+        selisihKg: -1.5,
+        selisihPersen: -0.18,
+        status: 'Selisih Lebih'
+      },
+      {
+        tanggal: '2026-10-14T00:00:00.000Z',
+        jenis: 'SP 153 - BK',
+        labelNetto: 620.0,
+        timbangUlang: 618.2,
+        selisihKg: 1.8,
+        selisihPersen: 0.29,
+        status: 'Selisih Kurang'
+      },
+      {
+        tanggal: '2026-10-15T00:00:00.000Z',
+        jenis: 'F MILD STAR - BK',
+        labelNetto: 510.8,
+        timbangUlang: 512.5,
+        selisihKg: -1.7,
+        selisihPersen: -0.33,
+        status: 'Selisih Lebih'
+      },
+      {
+        tanggal: '2026-10-16T00:00:00.000Z',
+        jenis: 'FR LA BOLD - BK',
+        labelNetto: 488.0,
+        timbangUlang: 489.0,
+        selisihKg: -1.0,
+        selisihPersen: -0.20,
+        status: 'Selisih Lebih'
+      }
+    ]
+  };
+
   public static getCachedBSPP(): BSPPData[] {
     const enrichBSPP = (list: BSPPData[]): BSPPData[] => {
-      return list.map(b => {
-        if ((b.nama || '').includes('Tembakau') || (b.nama || '').includes('Rajang II')) {
-          if (!b.roomTemperature) {
-            b.roomTemperature = TelemetryService.getDefaultTobaccoRoomTemperature();
-          }
+      let result = [...list];
+      const hasBlend = result.some(b => (b.nama || '').toLowerCase().includes('blend'));
+      if (!hasBlend) {
+        result.push(this.DEFAULT_BLEND_BSPP);
+      }
+
+      return result.map(b => {
+        const nameLower = (b.nama || '').toLowerCase();
+        if (nameLower.includes('blend')) {
+          b.roomTemperature = TelemetryService.getBlendRoomTemperature();
+        } else if (nameLower.includes('rajang ii') || (nameLower.includes('tembakau') && !nameLower.includes('cengkeh'))) {
+          b.roomTemperature = TelemetryService.getDefaultTobaccoRoomTemperature();
+        } else {
+          // Cengkeh - tegas tidak memiliki sensor suhu fisik
+          b.roomTemperature = {
+            hasData: false,
+            lokasiRuang: 'Gudang Cengkeh',
+            keterangan: 'Pencatatan suhu fisik belum diaktifkan untuk komoditas Cengkeh (Cell L7, L8, L58 adalah milik Gudang Tembakau Mecah).',
+            sumberSheet: '-'
+          };
         }
         return b;
       });

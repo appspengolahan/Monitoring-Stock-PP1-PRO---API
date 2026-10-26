@@ -622,6 +622,8 @@ function fetchBlendSourceData_(cfg) {
   }
 }
 
+
+
 function updateSummarySheetData_(targetSs) {
   var sumSheet = targetSs.getSheetByName("RINGKASAN_KONSOLIDASI");
   if (!sumSheet) return;

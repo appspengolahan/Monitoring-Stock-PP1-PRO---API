@@ -368,7 +368,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
           Akses BSPP Dibatasi
         </h3>
         <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md mx-auto mb-4">
-          Akun Anda memiliki izin khusus bahan baku tertentu. Modul Bukti Selisih Persediaan (BSPP) saat ini hanya tersedia dan dikhususkan untuk komoditas <span className="font-semibold text-slate-800">Cengkeh</span> dan <span className="font-semibold text-slate-800">Tembakau &amp; Krosok (Rajang II)</span>.
+          Akun Anda memiliki izin khusus bahan baku tertentu. Modul Bukti Selisih Persediaan (BSPP) saat ini mencakup komoditas <span className="font-semibold text-slate-800">Cengkeh</span>, <span className="font-semibold text-slate-800">Tembakau &amp; Krosok (Rajang II)</span>, dan <span className="font-semibold text-slate-800">Tembakau Blend</span>.
         </p>
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
           <Info className="w-3.5 h-3.5 text-slate-500" />
