@@ -4847,6 +4847,15 @@ function buildBSPPSummary_(index) {
   }
 
   var jenisSet = {};
+  var totalLebih = 0, totalKurang = 0, totalTanpa = 0, sumAbsPersen = 0;
+  entries.forEach(function(e) {
+    jenisSet[e.jenis] = true;
+    if (e.status.indexOf('Lebih') !== -1) totalLebih++;
+    else if (e.status.indexOf('Kurang') !== -1) totalKurang++;
+    else totalTanpa++;
+    sumAbsPersen += Math.abs(e.selisihPersen);
+  });
+
   var roomTemp = null;
   if (source.nama.indexOf('Tembakau') !== -1 || source.nama.indexOf('Rajang II') !== -1) {
     try {

@@ -405,15 +405,26 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <a
-                    href="/download-gas-code"
-                    download="Code.gs"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
-                    title="Unduh langsung file Code.gs ke komputer"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const code = GasService.getHeadlessGasPatchCode();
+                      const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'Code[StockPP1].gs';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                    title="Unduh langsung file Code[StockPP1].gs ke komputer"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Unduh File Code.gs</span>
-                  </a>
+                    <span>Unduh File Code[StockPP1].gs</span>
+                  </button>
                   <button
                     onClick={handleCopyCode}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
