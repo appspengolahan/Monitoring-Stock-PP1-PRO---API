@@ -19,7 +19,8 @@ import {
   Loader2,
   TrendingUp,
   RotateCcw,
-  Wrench
+  Wrench,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface GasMigrationModalProps {
@@ -37,14 +38,23 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
   const [isTesting, setIsTesting] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; latencyMs: number; message: string } | null>(null);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
-  const [activeSubTab, setActiveSubTab] = useState<'review' | 'code' | 'deploy' | 'skt_skm' | 'speed_audit' | 'reconcile'>('review');
+  const [copiedBsppCode, setCopiedBsppCode] = useState<boolean>(false);
+  const [bsppCode, setBsppCode] = useState<string>('');
+  const [activeSubTab, setActiveSubTab] = useState<'review' | 'code' | 'deploy' | 'skt_skm' | 'speed_audit' | 'reconcile' | 'bspp_central'>('review');
   const [sktConfig, setSktConfig] = useState<Record<string, boolean>>(() => GasService.getSktSkmConfig());
   const [reconcileConfig, setReconcileConfig] = useState<ReconciliationDisplayConfig>(() => GasService.getReconciliationDisplayConfig());
   const [speedAuditLoading, setSpeedAuditLoading] = useState<boolean>(false);
   const [speedAuditResult, setSpeedAuditResult] = useState<any>(null);
   const [baselineNotice, setBaselineNotice] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  React.useEffect(() => {
+    if (isOpen && !bsppCode) {
+      fetch('/assets/scripts/BSPP_Central_Sync.gs')
+        .then(res => res.text())
+        .then(text => setBsppCode(text))
+        .catch(err => console.warn('Could not prefetch BSPP_Central_Sync.gs:', err));
+    }
+  }, [isOpen, bsppCode]);
 
   const handleRestoreBaseline = () => {
     GasService.restoreCleanBaseline();
@@ -110,6 +120,16 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2500);
   };
+
+  const handleCopyBsppCode = () => {
+    if (bsppCode) {
+      navigator.clipboard.writeText(bsppCode);
+      setCopiedBsppCode(true);
+      setTimeout(() => setCopiedBsppCode(false), 2500);
+    }
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
@@ -212,6 +232,17 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>6. Modul Rekonsiliasi</span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('bspp_central')}
+            className={`pb-2.5 border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              activeSubTab === 'bspp_central'
+                ? 'border-cyan-600 text-cyan-700 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-cyan-600" />
+            <span>7. Script BSPP Central Hub</span>
           </button>
         </div>
 
@@ -922,6 +953,97 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                 >
                   Kembalikan ke Default (Sembunyikan Semua Banner agar Layar Bersih)
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: SCRIPT BSPP CENTRAL SYNC */}
+          {activeSubTab === 'bspp_central' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-cyan-600" />
+                    <span>Script Otomatis: BSPP_Central_Sync.gs (4 Komoditas + Rekap)</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Membentuk datasheet terpusat &amp; sinkronisasi harian Cengkeh, Blend, Rajang I, dan Rajang II
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href="/assets/scripts/BSPP_Central_Sync.gs"
+                    download="BSPP_Central_Sync.gs"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-700 hover:bg-cyan-800 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs"
+                    title="Unduh file script BSPP_Central_Sync.gs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Unduh .gs</span>
+                  </a>
+                  <button
+                    onClick={handleCopyBsppCode}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm cursor-pointer"
+                  >
+                    {copiedBsppCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedBsppCode ? 'Tersalin Semua!' : 'Salin Seluruh Kode'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Chips */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                  <span className="text-[10px] text-emerald-800 font-bold block uppercase">Tab 1: Cengkeh</span>
+                  <span className="text-xs font-medium text-emerald-900">Format Bersih &amp; Isolasi</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200">
+                  <span className="text-[10px] text-blue-800 font-bold block uppercase">Tab 2: Tembakau Blend</span>
+                  <span className="text-xs font-medium text-blue-900">DHP Kol. W &amp; Master</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                  <span className="text-[10px] text-amber-800 font-bold block uppercase">Tab 3: Rajang II</span>
+                  <span className="text-xs font-medium text-amber-900">Suhu Lt 2 (L8 Mecah)</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-200">
+                  <span className="text-[10px] text-indigo-800 font-bold block uppercase">Tab 4: Rajang I</span>
+                  <span className="text-xs font-medium text-indigo-900">Struktur Standar Audit</span>
+                </div>
+              </div>
+
+              {/* Code Box */}
+              <div className="bg-slate-900 text-slate-200 p-4 rounded-xl font-mono text-xs overflow-x-auto max-h-80 border border-slate-800">
+                <pre>{bsppCode || 'Memuat kode BSPP_Central_Sync.gs...'}</pre>
+              </div>
+
+              {/* Panduan Pemakaian */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
+                <strong className="text-slate-900 block font-bold text-sm">
+                  Cara Penggunaan Script (Sangat Mudah &amp; 100% Otomatis):
+                </strong>
+                <ol className="list-decimal pl-4 space-y-1.5 mt-1 leading-relaxed">
+                  <li>
+                    <strong>Buka Google Drive</strong> Anda, lalu buat Spreadsheet Baru (atau biarkan kosong).
+                  </li>
+                  <li>
+                    Di Spreadsheet tersebut, klik menu <strong>Extensions &gt; Apps Script</strong>.
+                  </li>
+                  <li>
+                    Tempelkan seluruh kode script di atas (atau unggah file <code>BSPP_Central_Sync.gs</code>).
+                  </li>
+                  <li>
+                    Pilih fungsi <code>setupDatabaseBSPPPusat</code> di dropdown atas, lalu klik <strong>Run</strong> (Jalankan sekali). Script akan otomatis membentuk 5 Tab lengkap dengan header elegan, format angka khusus kg &amp; %, dan pewarnaan status!
+                  </li>
+                  <li>
+                    Pilih fungsi <code>sinkronisasiSemuaBSPP</code> lalu klik <strong>Run</strong>. Data dari semua sheet operasional akan ditarik dan dirapikan.
+                  </li>
+                  <li>
+                    <strong>Menu Kustom:</strong> Setelah di-refresh, Spreadsheet baru Anda akan memiliki menu <code>🚀 BSPP Central Hub</code> di toolbar untuk sinkronisasi sekali klik dan penjadwalan otomatis setiap pukul 16:00 sore!
+                  </li>
+                  <li>
+                    <strong>Deploy Web App &amp; Tautan /exec:</strong> Script ini sudah dilengkapi fungsi <code>doGet(e)</code> dan <code>doPost(e)</code>. Saat Anda deploy sebagai Web App (pilih <em>Deploy &gt; Manage deployments &gt; Edit &gt; Version: New version &gt; Deploy</em>), tautan <code>/exec</code> akan langsung menyajikan <strong>Web Dashboard Interaktif &amp; REST API</strong> siap pakai.
+                  </li>
+                </ol>
               </div>
             </div>
           )}
