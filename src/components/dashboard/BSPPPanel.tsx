@@ -10,14 +10,21 @@ import {
   Calendar,
   Layers,
   Info,
-  RotateCcw
+  RotateCcw,
+  Activity,
+  CloudSun,
+  Flame,
+  Thermometer
 } from 'lucide-react';
+import { BSPPTelemetryWidget } from './BSPPTelemetryWidget';
+import { BSPPClimateAnalysis } from './BSPPClimateAnalysis';
 
 interface BSPPPanelProps {
   bsppList: BSPPData[];
 }
 
 export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
+  const [activeBsppTab, setActiveBsppTab] = useState<'harian' | 'bulanan_iklim'>('harian');
   const [selectedBahanIndex, setSelectedBahanIndex] = useState<number>(0);
   const [filterJenis, setFilterJenis] = useState<string>('all');
   const [filterPeriod, setFilterPeriod] = useState<'bulan_berjalan' | 'semua' | 'custom'>('bulan_berjalan');
@@ -26,6 +33,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
   const [filterGranularity, setFilterGranularity] = useState<'bulan' | 'entri'>('bulan');
 
   const currentData = bsppList[selectedBahanIndex] || bsppList[0];
+  const isTobacco = (currentData?.nama || '').includes('Tembakau') || (currentData?.nama || '').includes('Rajang II');
 
   const formatNumber = (n: number): string => {
     return Number(n).toLocaleString('id-ID', {
@@ -421,8 +429,53 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
         </button>
       </div>
 
-      {/* Control Filter Bar - Complete with Period & Date Range Selection */}
-      <div className="px-4 py-3 sm:px-5 sm:py-3 bg-slate-50/70 border-b border-slate-200 space-y-2.5">
+      {/* Navigation Sub-Tabs: Skenario 1 (Harian + Live Telemetri) vs Skenario 2 (Analisis Bulanan vs Suhu Ruang) */}
+      <div className="flex border-b border-slate-200 bg-slate-50/90 px-4 sm:px-6 gap-2 sm:gap-4 overflow-x-auto select-none">
+        <button
+          type="button"
+          onClick={() => setActiveBsppTab('harian')}
+          className={`py-3 px-1 border-b-2 font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeBsppTab === 'harian'
+              ? 'border-blue-600 text-blue-700 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Activity className="w-4 h-4 text-blue-600" />
+          <span>1. Analisis Harian &amp; Live Telemetri Wagir</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveBsppTab('bulanan_iklim')}
+          className={`py-3 px-1 border-b-2 font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeBsppTab === 'bulanan_iklim'
+              ? 'border-amber-600 text-amber-700 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <CloudSun className="w-4 h-4 text-amber-600" />
+          <span>2. Analisis Bulanan &amp; Korelasi Suhu Ruang (Lt 2 vs Susut)</span>
+        </button>
+      </div>
+
+      {activeBsppTab === 'bulanan_iklim' ? (
+        <div className="p-4 sm:p-6 bg-slate-50/30">
+          <BSPPClimateAnalysis 
+            currentData={currentData} 
+            filterJenis={filterJenis} 
+          />
+        </div>
+      ) : (
+        <>
+          {/* Skenario 1: Widget Live Telemetri Wagir & Suhu Ruangan (Sheet Mecah L7, L8, L58) */}
+          <div className="p-4 sm:p-5 pb-0 bg-slate-50/30">
+            <BSPPTelemetryWidget 
+              currentKomoditas={currentData.nama} 
+              roomTemperature={currentData.roomTemperature} 
+            />
+          </div>
+
+          {/* Control Filter Bar - Complete with Period & Date Range Selection */}
+          <div className="px-4 py-3 sm:px-5 sm:py-3 bg-slate-50/70 border-b border-slate-200 space-y-2.5">
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
           {/* Bahan Selector */}
           <div className="flex items-center gap-1.5">
@@ -1071,15 +1124,26 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
                       {formatPercent(e.selisihPersen)}%
                     </td>
                     <td className="py-2 px-3 sm:px-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
-                        isLebih 
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-                          : isKurang 
-                            ? 'bg-rose-50 text-rose-800 border border-rose-200' 
-                            : 'bg-slate-50 text-slate-700 border border-slate-200'
-                      }`}>
-                        {e.status}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          isLebih 
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                            : isKurang 
+                              ? 'bg-rose-50 text-rose-800 border border-rose-200' 
+                              : 'bg-slate-50 text-slate-700 border border-slate-200'
+                        }`}>
+                          {e.status}
+                        </span>
+                        {isKurang && isTobacco && (
+                          <span 
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/80 cursor-help"
+                            title="Deviasi susut selaras dengan suhu hangat gudang Lt 2 (31.7°C) & kelembapan Wagir"
+                          >
+                            <Flame className="w-2.5 h-2.5 text-amber-600" />
+                            <span>Termal Lt 2</span>
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1088,6 +1152,8 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   );
 };

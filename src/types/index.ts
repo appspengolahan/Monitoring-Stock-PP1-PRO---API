@@ -147,6 +147,30 @@ export interface KomoditasData {
   error?: string;
 }
 
+export interface BSPPRoomTemperature {
+  suhuRataRata?: number; // Cell L7 (misal: 29.6 °C)
+  suhuLt2?: number;       // Cell L8 (misal: 31.7 °C)
+  suhuSesiLanjutan?: number; // Cell L58 (misal: 30.2 °C)
+  tanggal?: string;
+  keterangan?: string;
+  sumberSheet?: string;
+}
+
+export interface TelemetryData {
+  temperature: number;
+  relativeHumidity: number;
+  apparentTemperature?: number;
+  precipitation?: number;
+  weatherCode?: number;
+  surfacePressure?: number;
+  vpdKpa?: number;
+  timestamp: string;
+  locationName: string;
+  latitude: number;
+  longitude: number;
+  kondisiCuaca?: string;
+}
+
 export interface BSPPEntry {
   tanggal: string;
   jenis: string;
@@ -155,6 +179,13 @@ export interface BSPPEntry {
   selisihKg: number;
   selisihPersen: number;
   status: string;
+  suhuRuangan?: number;
+  suhuLt2?: number;
+  telemetrySnapshot?: {
+    outdoorTemp: number;
+    outdoorRh: number;
+    vpdKpa?: number;
+  };
 }
 
 export interface BSPPData {
@@ -166,6 +197,7 @@ export interface BSPPData {
   totalTanpa: number;
   rataRataAbsSelisihPersen: number;
   entries: BSPPEntry[];
+  roomTemperature?: BSPPRoomTemperature;
   error?: string;
 }
 

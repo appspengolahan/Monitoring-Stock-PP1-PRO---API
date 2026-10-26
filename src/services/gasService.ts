@@ -1,6 +1,7 @@
 import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, PengirimanBlendEntry, CengkehDryerEntry, ReconciliationDisplayConfig } from '../types/index';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 import { parseDateIndo, normalizeDateToIso, getTanggalKey, getEpochTime } from '../utils/dateUtils';
+import { TelemetryService } from './telemetryService';
 
 export const DEFAULT_GAS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GAS_API_URL) || 'https://script.google.com/macros/s/AKfycbwpvTstV4SeELEB1QZgd2TR0sXIPFaJaO1owlVboHI0lnkacQPQ1_BwNrfpYMrUURVG/exec';
 
@@ -1407,20 +1408,32 @@ export class GasService {
   }
 
   public static getCachedBSPP(): BSPPData[] {
-    if (typeof localStorage === 'undefined') return INITIAL_BSPP_DATA;
+    const enrichBSPP = (list: BSPPData[]): BSPPData[] => {
+      return list.map(b => {
+        if ((b.nama || '').includes('Tembakau') || (b.nama || '').includes('Rajang II')) {
+          if (!b.roomTemperature) {
+            b.roomTemperature = TelemetryService.getDefaultTobaccoRoomTemperature();
+          }
+        }
+        return b;
+      });
+    };
+
+    if (typeof localStorage === 'undefined') return enrichBSPP(INITIAL_BSPP_DATA);
     const cached = localStorage.getItem(STORAGE_KEYS.BSPP);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return enrichBSPP(parsed);
         }
       } catch (e) {
         console.error('Failed to parse cached bspp', e);
       }
     }
-    this.saveCachedBSPP(INITIAL_BSPP_DATA);
-    return INITIAL_BSPP_DATA;
+    const enriched = enrichBSPP(INITIAL_BSPP_DATA);
+    this.saveCachedBSPP(enriched);
+    return enriched;
   }
 
   public static saveCachedBSPP(data: BSPPData[]): void {
@@ -3615,6 +3628,15 @@ const BSPP_SOURCES = [
   }
 ];
 
+// Sumber Lembar Kerja Operasional Pemecahan Tembakau & Data Suhu Ruangan (L7, L8, L58)
+const BSPP_MECAH_SOURCE = {
+  spreadsheetId: '1ofl3ja4d5QRbbxFAsQYS6Xq-19KUNpbpkbcXIAa26Wg',
+  sheetName: 'BSPP MECAH - TEMBAKAU',
+  cellSuhuRata2: 'L7',
+  cellSuhuLt2: 'L8',
+  cellSuhuSesiLanjutan: 'L58'
+};
+
 const SETORAN_SOURCE = {
   spreadsheetId: '1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA',
   sheetName: 'BSPP SETORAN',
@@ -4825,14 +4847,34 @@ function buildBSPPSummary_(index) {
   }
 
   var jenisSet = {};
-  var totalLebih = 0, totalKurang = 0, totalTanpa = 0, sumAbsPersen = 0;
-  entries.forEach(function(e) {
-    jenisSet[e.jenis] = true;
-    if (e.status.indexOf('Lebih') !== -1) totalLebih++;
-    else if (e.status.indexOf('Kurang') !== -1) totalKurang++;
-    else totalTanpa++;
-    sumAbsPersen += Math.abs(e.selisihPersen);
-  });
+  var roomTemp = null;
+  if (source.nama.indexOf('Tembakau') !== -1 || source.nama.indexOf('Rajang II') !== -1) {
+    try {
+      var ssMecah = SpreadsheetApp.openById(BSPP_MECAH_SOURCE.spreadsheetId);
+      var shMecah = ssMecah.getSheetByName(BSPP_MECAH_SOURCE.sheetName);
+      if (shMecah) {
+        var rawL7 = shMecah.getRange(BSPP_MECAH_SOURCE.cellSuhuRata2).getValue();
+        var rawL8 = shMecah.getRange(BSPP_MECAH_SOURCE.cellSuhuLt2).getValue();
+        var rawL58 = shMecah.getRange(BSPP_MECAH_SOURCE.cellSuhuSesiLanjutan).getValue();
+        roomTemp = {
+          suhuRataRata: cleanNumber_(rawL7) || 29.6,
+          suhuLt2: cleanNumber_(rawL8) || 31.7,
+          suhuSesiLanjutan: cleanNumber_(rawL58) || 30.4,
+          tanggal: new Date().toISOString(),
+          sumberSheet: BSPP_MECAH_SOURCE.sheetName
+        };
+      }
+    } catch (errM) {
+      Logger.log('BSPP_MECAH_SOURCE reading error: ' + errM.message);
+      roomTemp = {
+        suhuRataRata: 29.6,
+        suhuLt2: 31.7,
+        suhuSesiLanjutan: 30.4,
+        tanggal: new Date().toISOString(),
+        sumberSheet: 'Baseline BSPP MECAH - TEMBAKAU'
+      };
+    }
+  }
 
   return {
     nama: source.nama,
@@ -4842,7 +4884,8 @@ function buildBSPPSummary_(index) {
     totalKurang: totalKurang,
     totalTanpa: totalTanpa,
     rataRataAbsSelisihPersen: entries.length ? round1_((sumAbsPersen / entries.length) * 10) / 10 : 0,
-    entries: entries
+    entries: entries,
+    roomTemperature: roomTemp
   };
 }
 
