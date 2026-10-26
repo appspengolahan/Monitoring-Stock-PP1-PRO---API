@@ -148,9 +148,11 @@ export interface KomoditasData {
 }
 
 export interface BSPPRoomTemperature {
-  suhuRataRata?: number; // Cell L7 (misal: 29.6 °C)
-  suhuLt2?: number;       // Cell L8 (misal: 31.7 °C)
-  suhuSesiLanjutan?: number; // Cell L58 (misal: 30.2 °C)
+  hasData?: boolean;
+  lokasiRuang?: string;
+  suhuRataRata?: number; // Nilai suhu rata-rata
+  suhuLt2?: number;       // Nilai suhu titik spesifik / Lt 2 / Batch max
+  suhuSesiLanjutan?: number; // Nilai suhu lanjutan / sore / bulanan
   tanggal?: string;
   keterangan?: string;
   sumberSheet?: string;

@@ -284,19 +284,59 @@ export class TelemetryService {
   }
 
   /**
-   * Data suhu ruangan default/baseline dari Kertas Kerja BSPP MECAH - TEMBAKAU (Sheet 1ofl3ja4d5QRbbxFAsQYS6Xq-19KUNpbpkbcXIAa26Wg)
+   * Data suhu ruangan dari Kertas Kerja BSPP MECAH - TEMBAKAU (Sheet 1ofl3ja4d5QRbbxFAsQYS6Xq-19KUNpbpkbcXIAa26Wg)
    * Cell L7 = Suhu Rata2 : 29.6 °C
    * Cell L8 = Suhu Lt 2 : 31.7 °C
    * Cell L58 = Suhu Sesi Lanjutan : 30.4 °C
    */
   public static getDefaultTobaccoRoomTemperature(): BSPPRoomTemperature {
     return {
+      hasData: true,
+      lokasiRuang: 'Gudang Tembakau Mecah (Lt 2)',
       suhuRataRata: 29.6,
       suhuLt2: 31.7,
       suhuSesiLanjutan: 30.4,
       tanggal: '2026-10-26T00:00:00.000Z',
       keterangan: 'Kertas Kerja BSPP Mecah Tembakau (Cell L7, L8, L58)',
-      sumberSheet: '1ofl3ja4d5QRbbxFAsQYS6Xq-19KUNpbpkbcXIAa26Wg (BSPP MECAH - TEMBAKAU)'
+      sumberSheet: '1ofl3ja4d5QRbbxFAsQYS6Xq-19KUNpbpkbcXIAa26Wg (Tab BSPP MECAH - TEMBAKAU)'
+    };
+  }
+
+  /**
+   * Data suhu ruangan dari Kertas Kerja DHP Blend & DATAMASTER
+   * - Harian: Sheet 1Fg3aNLsdkwXthNGxIsFJ9gbHy6Va6DokNV8IVpTnXDA (Tab INTEGRASI DATA DHP BLEND Kolom W)
+   * - Historis/Bulanan: Sheet 15qjJfU0SnrbmtVbplL7F4t8M3E60Z5EoOLKjV-RUyDY (Tab DATAMASTER Kolom N)
+   */
+  public static getBlendRoomTemperature(): BSPPRoomTemperature {
+    return {
+      hasData: true,
+      lokasiRuang: 'Ruang Proses Mixing / Molen Blend',
+      suhuRataRata: 27.5,
+      suhuLt2: 28.0,
+      suhuSesiLanjutan: 29.7,
+      tanggal: '2026-10-26T00:00:00.000Z',
+      keterangan: 'Batch Molen Blend (Kolom W) & DATAMASTER (Kolom N)',
+      sumberSheet: '1Fg3aNLsdkwXthNGxIsFJ9gbHy6Va6DokNV8IVpTnXDA & 15qjJfU0SnrbmtVbplL7F4t8M3E60Z5EoOLKjV-RUyDY'
+    };
+  }
+
+  /**
+   * Resolver dinamis data suhu ruangan berdasarkan komoditas aktif
+   */
+  public static getRoomTemperatureForKomoditas(komoditasName?: string): BSPPRoomTemperature {
+    const name = (komoditasName || '').toLowerCase().trim();
+    if (name.includes('blend')) {
+      return this.getBlendRoomTemperature();
+    }
+    if (name.includes('rajang ii') || (name.includes('tembakau') && !name.includes('rajang i'))) {
+      return this.getDefaultTobaccoRoomTemperature();
+    }
+    // Untuk Cengkeh dan komoditas yang belum memiliki sensor suhu fisik
+    return {
+      hasData: false,
+      lokasiRuang: komoditasName ? `Gudang ${komoditasName}` : 'Gudang Penyimpanan',
+      keterangan: 'Pencatatan suhu fisik belum diaktifkan untuk komoditas ini.',
+      sumberSheet: 'Belum terintegrasi'
     };
   }
 }

@@ -33,7 +33,10 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
   const [filterGranularity, setFilterGranularity] = useState<'bulan' | 'entri'>('bulan');
 
   const currentData = bsppList[selectedBahanIndex] || bsppList[0];
-  const isTobacco = (currentData?.nama || '').includes('Tembakau') || (currentData?.nama || '').includes('Rajang II');
+  const isBlend = (currentData?.nama || '').toLowerCase().includes('blend');
+  const isRajangII = (currentData?.nama || '').toLowerCase().includes('rajang ii') || 
+    ((currentData?.nama || '').toLowerCase().includes('tembakau') && !isBlend);
+  const isTobacco = isBlend || isRajangII;
 
   const formatNumber = (n: number): string => {
     return Number(n).toLocaleString('id-ID', {
@@ -453,7 +456,11 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
           }`}
         >
           <CloudSun className="w-4 h-4 text-amber-600" />
-          <span>2. Analisis Bulanan &amp; Korelasi Suhu Ruang (Lt 2 vs Susut)</span>
+          <span>
+            {isBlend ? '2. Analisis Bulanan & Suhu Proses Blend (DHP & Master)' :
+             isRajangII ? '2. Analisis Bulanan & Korelasi Suhu Ruang (Lt 2 vs Susut)' :
+             '2. Analisis Bulanan & Iklim Makro Wagir'}
+          </span>
         </button>
       </div>
 
@@ -1134,13 +1141,22 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
                         }`}>
                           {e.status}
                         </span>
-                        {isKurang && isTobacco && (
+                        {isKurang && isRajangII && (
                           <span 
                             className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/80 cursor-help"
                             title="Deviasi susut selaras dengan suhu hangat gudang Lt 2 (31.7°C) & kelembapan Wagir"
                           >
                             <Flame className="w-2.5 h-2.5 text-amber-600" />
                             <span>Termal Lt 2</span>
+                          </span>
+                        )}
+                        {isKurang && isBlend && (
+                          <span 
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-cyan-50 text-cyan-800 border border-cyan-200/80 cursor-help"
+                            title="Deviasi susut selaras dengan suhu ruang molen mixing (27.5°C - 28.0°C) pada DHP Blend"
+                          >
+                            <Activity className="w-2.5 h-2.5 text-cyan-600" />
+                            <span>Suhu Molen</span>
                           </span>
                         )}
                       </div>
