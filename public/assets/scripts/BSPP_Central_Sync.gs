@@ -35,12 +35,12 @@ var SINKRONISASI_CONFIG = {
     warnaHeader: "#065f46" // Hijau Zamrud Pekat
   },
 
-  // 2. BSPP TEMBAKAU BLEND (Otomatis membaca ID sheet harian dari Tab "codeIA" Kolom J)
+  // 2. BSPP TEMBAKAU BLEND (Membaca langsung dari Tab "codeIA" Tabel Transaksi C19:J)
   BLEND: {
     nama: "BSPP TEMBAKAU BLEND",
-    switchboardSpreadsheetId: "1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE", // Sheet Switchboard
-    switchboardSheetName: "codeIA",
-    switchboardColJ: 10, // Kolom J (berisi daftar/ID sheet harian BSPP yang berganti tiap hari)
+    sourceSpreadsheetId: "1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE", // Sheet BSPP Blend
+    sourceSheetName: "codeIA",
+    sourceRange: "C19:J",
     suhuDefault: 27.5,
     warnaHeader: "#1e3a8a" // Biru Navy Pekat
   },
@@ -80,7 +80,7 @@ function onOpen() {
     .addItem("⏰ Pasang Jadwal Sync Otomatis 2x Sehari (16:00 & 21:00)", "pasangTriggerOtomatisHarian")
     .addItem("🛑 Hapus Jadwal Sync Otomatis", "hapusSemuaTriggerOtomatis")
     .addSeparator()
-    .addItem("🔍 Cek ID Sheet Harian BSPP Blend (codeIA)", "cekSheetHarianBlend")
+    .addItem("🔍 Cek Tabel Transaksi BSPP Blend (codeIA)", "cekSheetHarianBlend")
     .addItem("🧹 Bersihkan Data DHP dari Tab Blend", "bersihkanTabBlend")
     .addItem("✨ Normalisasi & Standarkan Tab Cengkeh", "normalisasiTabCengkeh")
     .addItem("➕ Tambah 1.000 Baris Kosong ke Semua Tab", "tambahKapasitasBarisSemuaTab")
@@ -771,129 +771,145 @@ function parseIndonesianDateStringToIso_(str) {
 
 function fetchBlendSourceData_(cfg) {
   try {
-    var items = [];
-    var switchboardSs = null;
+    var ssId = cfg.sourceSpreadsheetId || cfg.switchboardSpreadsheetId || "1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE";
+    var ss = null;
     try {
-      switchboardSs = SpreadsheetApp.openById(cfg.switchboardSpreadsheetId);
-    } catch (eSw) {
-      return { error: "Gagal membuka Switchboard (" + cfg.switchboardSpreadsheetId + "): " + eSw.message };
+      ss = SpreadsheetApp.openById(ssId);
+    } catch (eOpen) {
+      return { error: "Gagal membuka Spreadsheet BSPP Blend (" + ssId + "): " + eOpen.message };
     }
 
-    if (!switchboardSs) {
-      return { error: "Switchboard spreadsheet tidak ditemukan." };
+    var sh = ss.getSheetByName(cfg.sourceSheetName || "codeIA");
+    if (!sh) {
+      // Cari tab alternatif jika penulisan huruf besar/kecil berbeda
+      var allSheets = ss.getSheets();
+      for (var s = 0; s < allSheets.length; s++) {
+        var sName = allSheets[s].getName().trim();
+        if (/code.*ia/i.test(sName)) {
+          sh = allSheets[s];
+          break;
+        }
+      }
     }
 
-    var codeSh = switchboardSs.getSheetByName(cfg.switchboardSheetName || "codeIA");
-    if (!codeSh) {
-      return { error: "Tab '" + (cfg.switchboardSheetName || "codeIA") + "' tidak ditemukan di Switchboard." };
+    if (!sh) {
+      return { error: "Tab 'codeIA' tidak ditemukan dalam spreadsheet BSPP Blend." };
     }
 
-    // Baca Switchboard menggunakan Multi-Format Extractor (Nilai, Formula Hyperlink, RichText URL, dan Auto-Scan)
-    var extraction = extractDailySheetIdsFromSwitchboard_(codeSh, cfg.switchboardColJ || 10, cfg.switchboardSpreadsheetId);
-    var dailySheetIds = extraction.ids;
-
-    if (dailySheetIds.length === 0) {
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 18) {
       return {
         items: [],
-        notice: "Tidak ditemukan ID sheet harian pada tab 'codeIA' (" + extraction.inspectedSource + ")."
+        notice: "Terhubung ke tab '" + sh.getName() + "', namun belum ada baris transaksi setelah baris header ke-17."
       };
     }
 
-    Logger.log("Ditemukan " + dailySheetIds.length + " ID Sheet Harian BSPP Blend (" + extraction.inspectedSource + ").");
+    // Pemetaan Kolom berdasarkan layout baku tab codeIA:
+    // Baris 17 adalah Header:
+    // Kolom C (Index 2): TANGGAL PROSES
+    // Kolom E (Index 4): MERK
+    // Kolom F (Index 5): LABEL AWAL
+    // Kolom G (Index 6): TIMBANG ULANG
+    // Kolom H (Index 7): BSPP
+    // Kolom I (Index 8): HASIL GABUNG
+    // Kolom J (Index 9): TOTAL BSPP TBK BLEND
+    var colTgl = 2;
+    var colMerk = 4;
+    var colLabelAwal = 5;
+    var colTimbang = 6;
+    var colBspp = 7;
+    var colHasilGabung = 8;
+    var colTotalBspp = 9;
 
-    // Buka Sheet Harian aktif:
-    // Baca hingga 7 sheet harian terbaru dari bawah ke atas agar riwayat hari-hari terakhir terserap tanpa timeout
-    var maxInspect = Math.min(dailySheetIds.length, 7);
-    var processedCount = 0;
-
-    for (var dIdx = dailySheetIds.length - 1; dIdx >= dailySheetIds.length - maxInspect; dIdx--) {
-      var dailyId = dailySheetIds[dIdx];
-      try {
-        var dailySs = SpreadsheetApp.openById(dailyId);
-        processedCount++;
-
-        // Cari tab BSPP pada file harian tersebut
-        var sheets = dailySs.getSheets();
-        var bsppSh = null;
-        for (var s = 0; s < sheets.length; s++) {
-          var name = sheets[s].getName().trim();
-          if (/bspp|persediaan|selisih|timbang/i.test(name)) {
-            bsppSh = sheets[s];
-            break;
-          }
+    // Deteksi letak baris header secara dinamis (fleksibel jika ada baris kosong di atas)
+    var headerRowIdx = 16; // default baris 17 (index 16)
+    for (var h = 0; h < Math.min(25, data.length); h++) {
+      var rowStr = data[h].map(function(c) { return String(c || "").trim().toUpperCase(); });
+      if (rowStr.indexOf("TANGGAL PROSES") !== -1 ||
+          (rowStr.some(function(v) { return v.indexOf("MERK") !== -1; }) &&
+           rowStr.some(function(v) { return v.indexOf("HASIL GABUNG") !== -1 || v.indexOf("TOTAL BSPP") !== -1; }))) {
+        headerRowIdx = h;
+        for (var c = 0; c < rowStr.length; c++) {
+          var v = rowStr[c];
+          if (v.indexOf("TANGGAL") !== -1) colTgl = c;
+          if (v.indexOf("MERK") !== -1 || v.indexOf("JENIS") !== -1) colMerk = c;
+          if (v.indexOf("LABEL") !== -1 || v.indexOf("AWAL") !== -1) colLabelAwal = c;
+          if (v.indexOf("TIMBANG") !== -1 || v.indexOf("ULANG") !== -1) colTimbang = c;
+          if (v === "BSPP") colBspp = c;
+          if (v.indexOf("HASIL GABUNG") !== -1 || v.indexOf("GABUNG") !== -1) colHasilGabung = c;
+          if (v.indexOf("TOTAL BSPP") !== -1 || (v.indexOf("BSPP") !== -1 && v.indexOf("BLEND") !== -1)) colTotalBspp = c;
         }
-        if (!bsppSh) bsppSh = sheets[0]; // fallback ke sheet pertama
-
-        var data = bsppSh.getDataRange().getValues();
-        if (!data || data.length < 2) continue;
-
-        // Cari header secara dinamis
-        var headerIdx = -1;
-        var colTgl = 1, colJenis = 2, colNetto = 3, colTimbang = 4, colSelisihKg = 5, colSelisihPct = 6, colStatus = 7;
-
-        for (var h = 0; h < Math.min(15, data.length); h++) {
-          var rowStr = data[h].map(function(c) { return String(c || "").trim().toUpperCase(); });
-          if (rowStr.some(function(v) { return v.indexOf("TIMBANG") !== -1 || v.indexOf("SELISIH") !== -1 || v.indexOf("NETTO") !== -1; })) {
-            headerIdx = h;
-            for (var c = 0; c < rowStr.length; c++) {
-              var v = rowStr[c];
-              if (v.indexOf("TANGGAL") !== -1) colTgl = c;
-              if (v.indexOf("JENIS") !== -1 || v.indexOf("MERK") !== -1 || v.indexOf("TEMBAKAU") !== -1) colJenis = c;
-              if (v.indexOf("NETTO") !== -1 || v.indexOf("AWAL") !== -1 || v.indexOf("LABEL") !== -1) colNetto = c;
-              if (v.indexOf("TIMBANG") !== -1 || v.indexOf("ULANG") !== -1) colTimbang = c;
-              if (v.indexOf("SELISIH") !== -1 && v.indexOf("KG") !== -1) colSelisihKg = c;
-              if (v.indexOf("SELISIH") !== -1 && (v.indexOf("%") !== -1 || v.indexOf("PERSEN") !== -1)) colSelisihPct = c;
-              if (v.indexOf("STATUS") !== -1 || v.indexOf("KETERANGAN") !== -1) colStatus = c;
-            }
-            break;
-          }
-        }
-
-        var startRow = headerIdx !== -1 ? headerIdx + 1 : 1;
-        for (var i = startRow; i < data.length; i++) {
-          var r = data[i];
-          var rawTgl = r[colTgl];
-          var rawJenis = r[colJenis];
-          var rawNetto = r[colNetto];
-          var rawTimbang = r[colTimbang];
-          var rawSelisihKg = r[colSelisihKg];
-          var rawSelisihPct = r[colSelisihPct];
-          var rawStatus = r[colStatus];
-
-          // Validasi baris formula FALSE atau kosong
-          if (rawNetto === false || rawTimbang === false || String(rawNetto || "").toUpperCase().trim() === "FALSE") continue;
-          var netto = parseIndonesianNumber_(rawNetto, 0);
-          var timbang = parseIndonesianNumber_(rawTimbang, 0);
-          if (netto <= 0 || timbang <= 0) continue;
-
-          var jenisStr = String(rawJenis || "").trim();
-          if (!jenisStr || jenisStr.toUpperCase() === "FALSE") continue;
-
-          var isoDate = parseIndonesianDateStringToIso_(rawTgl);
-          if (!isoDate) {
-            isoDate = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
-          }
-
-          var selisihKg = parseIndonesianNumber_(rawSelisihKg, timbang - netto);
-          var selisihPct = parseIndonesianNumber_(rawSelisihPct, netto > 0 ? (selisihKg / netto) : 0);
-          if (selisihPct > 1) selisihPct = selisihPct / 100;
-
-          var status = rawStatus ? String(rawStatus).trim() : (selisihKg > 0.05 ? "Selisih Lebih" : (selisihKg < -0.05 ? "Selisih Kurang" : "Tanpa Selisih"));
-
-          items.push({
-            tanggal: isoDate,
-            jenis: jenisStr,
-            labelNetto: netto,
-            timbangUlang: timbang,
-            selisihKg: selisihKg,
-            selisihPersen: selisihPct,
-            status: status,
-            suhu: cfg.suhuDefault || 27.5
-          });
-        }
-      } catch (errDaily) {
-        Logger.log("Gagal membaca daily sheet ID " + dailyId + ": " + errDaily.message);
+        break;
       }
+    }
+
+    var items = [];
+    var startRow = headerRowIdx + 1; // Mulai baris transaksi (baris 18/19 ke bawah)
+
+    for (var i = startRow; i < data.length; i++) {
+      var r = data[i];
+      var rawTgl = r[colTgl];
+      var rawMerk = r[colMerk];
+      var rawLabelAwal = r[colLabelAwal];
+      var rawTimbang = r[colTimbang];
+      var rawBspp = r[colBspp];
+      var rawHasilGabung = r[colHasilGabung];
+      var rawTotalBspp = r[colTotalBspp];
+
+      // 1. Lewati baris kosong
+      if (!rawMerk && !rawTgl && !rawLabelAwal && !rawTotalBspp) continue;
+
+      var merkStr = String(rawMerk || "").trim();
+      if (!merkStr || merkStr.toUpperCase() === "FALSE") continue;
+
+      // 2. Filter utilitas penunjang: "AIR BERSIH" memiliki tab terpisah dan Kolom J kosong
+      var isAirBersih = merkStr.toUpperCase().indexOf("AIR BERSIH") !== -1;
+      var hasBsppBlendVal = (rawTotalBspp !== "" && rawTotalBspp !== null && rawTotalBspp !== undefined && String(rawTotalBspp).trim() !== "");
+      if (isAirBersih && !hasBsppBlendVal) {
+        continue;
+      }
+
+      // 3. Konversi format Tanggal ke ISO YYYY-MM-DD
+      var isoDate = parseIndonesianDateStringToIso_(rawTgl);
+      if (!isoDate) {
+        isoDate = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
+      }
+
+      // 4. Hitung bobot netto awal dan hasil timbang ulang / hasil gabung
+      var labelNetto = parseIndonesianNumber_(rawLabelAwal, 0);
+      if (labelNetto <= 0) {
+        labelNetto = parseIndonesianNumber_(rawTimbang, 0);
+      }
+
+      var timbangUlang = parseIndonesianNumber_(rawHasilGabung, 0);
+      if (timbangUlang <= 0) {
+        timbangUlang = parseIndonesianNumber_(rawTimbang, labelNetto);
+      }
+
+      // 5. Hitung selisih kg dari Kolom J (TOTAL BSPP TBK BLEND)
+      var selisihKg = 0;
+      if (hasBsppBlendVal) {
+        selisihKg = parseIndonesianNumber_(rawTotalBspp, 0);
+      } else if (labelNetto > 0 && timbangUlang > 0) {
+        selisihKg = Math.round((timbangUlang - labelNetto) * 10) / 10;
+      }
+
+      var selisihPct = labelNetto > 0 ? (selisihKg / labelNetto) : 0;
+      var status = "";
+      if (selisihKg < -0.05) status = "Selisih Kurang";
+      else if (selisihKg > 0.05) status = "Selisih Lebih";
+      else status = "Tanpa Selisih";
+
+      items.push({
+        tanggal: isoDate,
+        jenis: merkStr,
+        labelNetto: labelNetto,
+        timbangUlang: timbangUlang,
+        selisihKg: selisihKg,
+        selisihPersen: selisihPct,
+        status: status,
+        suhu: cfg.suhuDefault || 27.5
+      });
     }
 
     if (items.length > 0) {
@@ -902,7 +918,7 @@ function fetchBlendSourceData_(cfg) {
 
     return {
       items: [],
-      notice: "Terhubung ke Switchboard 'codeIA' Kolom J (" + dailySheetIds.length + " sheet harian terdeteksi), namun belum ada transaksi penimbangan riil pada file harian tersebut."
+      notice: "Terhubung ke tab 'codeIA' (" + (data.length - startRow) + " baris diperiksa), namun belum ada data transaksi blend yang valid di C19:J."
     };
   } catch (e) {
     Logger.log("Error fetch Blend: " + e.message);
@@ -910,134 +926,46 @@ function fetchBlendSourceData_(cfg) {
   }
 }
 
-function extractDailySheetIdsFromSwitchboard_(codeSh, preferredCol, switchboardSpreadsheetId) {
-  var lastRow = codeSh.getLastRow();
-  var lastCol = codeSh.getLastColumn();
-  if (lastRow < 1 || lastCol < 1) {
-    return { ids: [], inspectedSource: "Sheet codeIA kosong (0 baris/kolom)." };
-  }
-
-  function tryExtractId(raw) {
-    if (!raw) return null;
-    var s = String(raw).trim();
-    if (!s) return null;
-    // 1. Ekstrak dari format link Docs Google Sheets (/d/SPREADSHEET_ID)
-    var m = s.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
-    if (m && m[1]) return m[1];
-    // 2. Ekstrak dari teks ID murni 30-50 karakter (misal 1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE)
-    var m2 = s.match(/([a-zA-Z0-9_-]{30,50})/);
-    if (m2 && m2[1]) return m2[1];
-    return null;
-  }
-
-  var dailySheetIds = [];
-
-  // Langkah 1: Periksa Kolom Pilihan (Default: Kolom J = Kolom 10)
-  var colIndex = preferredCol || 10;
-  if (colIndex <= lastCol) {
-    var range = codeSh.getRange(1, colIndex, lastRow, 1);
-    var values = range.getValues();
-    var formulas = range.getFormulas();
-    var richTexts = null;
-    try {
-      richTexts = range.getRichTextValues();
-    } catch (eRich) {}
-
-    for (var r = 0; r < values.length; r++) {
-      var val = values[r][0];
-      var formula = formulas[r][0];
-      var richUrl = (richTexts && richTexts[r] && richTexts[r][0]) ? richTexts[r][0].getLinkUrl() : null;
-
-      var foundId = tryExtractId(richUrl) || tryExtractId(formula) || tryExtractId(val);
-      if (foundId && dailySheetIds.indexOf(foundId) === -1 && foundId !== switchboardSpreadsheetId) {
-        dailySheetIds.push(foundId);
-      }
-    }
-  }
-
-  // Langkah 2: Jika Kolom J tidak menghasilkan ID sama sekali, pindai cerdas seluruh kolom (A-Z)
-  var inspectedSource = "Kolom J (Kol. " + colIndex + ")";
-  if (dailySheetIds.length === 0) {
-    var allRange = codeSh.getDataRange();
-    var allValues = allRange.getValues();
-    var allFormulas = allRange.getFormulas();
-    var allRich = null;
-    try {
-      allRich = allRange.getRichTextValues();
-    } catch (eAllRich) {}
-
-    for (var c = 0; c < allValues[0].length; c++) {
-      var foundInCol = [];
-      for (var r = 0; r < allValues.length; r++) {
-        var v = allValues[r][c];
-        var f = allFormulas[r][c];
-        var u = (allRich && allRich[r] && allRich[r][c]) ? allRich[r][c].getLinkUrl() : null;
-
-        var candId = tryExtractId(u) || tryExtractId(f) || tryExtractId(v);
-        if (candId && candId !== switchboardSpreadsheetId && foundInCol.indexOf(candId) === -1) {
-          foundInCol.push(candId);
-        }
-      }
-      if (foundInCol.length > 0) {
-        var colLetter = String.fromCharCode(65 + c);
-        inspectedSource = "Auto-Scan Kolom " + colLetter + " (" + foundInCol.length + " ID Sheet)";
-        dailySheetIds = foundInCol;
-        break; // Ambil kolom pertama yang valid berisi spreadsheet ID
-      }
-    }
-  }
-
-  return {
-    ids: dailySheetIds,
-    inspectedSource: inspectedSource
-  };
-}
-
 function cekSheetHarianBlend() {
   var cfg = SINKRONISASI_CONFIG.BLEND;
   try {
-    var swSs = SpreadsheetApp.openById(cfg.switchboardSpreadsheetId);
-    var codeSh = swSs.getSheetByName(cfg.switchboardSheetName);
-    if (!codeSh) {
-      SpreadsheetApp.getUi().alert("Tab 'codeIA' tidak ditemukan di Switchboard (" + cfg.switchboardSpreadsheetId + ").");
+    var ssId = cfg.sourceSpreadsheetId || "1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE";
+    var ss = SpreadsheetApp.openById(ssId);
+    var sh = ss.getSheetByName(cfg.sourceSheetName || "codeIA");
+    if (!sh) {
+      SpreadsheetApp.getUi().alert("Tab 'codeIA' tidak ditemukan di Spreadsheet (" + ssId + ").");
       return;
     }
 
-    var result = extractDailySheetIdsFromSwitchboard_(codeSh, cfg.switchboardColJ || 10, cfg.switchboardSpreadsheetId);
-    var list = result.ids;
+    var result = fetchBlendSourceData_(cfg);
+    var items = result.items || [];
 
-    var latestInfo = "Belum ada ID.";
-    if (list.length > 0) {
-      var lastId = list[list.length - 1];
-      try {
-        var testSs = SpreadsheetApp.openById(lastId);
-        latestInfo = "Sheet Terbaru: \"" + testSs.getName() + "\" (" + testSs.getSheets().length + " tab)";
-      } catch (eOpen) {
-        latestInfo = "Sheet ID: " + lastId + " (Error buka: " + eOpen.message + ")";
+    var previewText = "";
+    if (items.length > 0) {
+      previewText = "Daftar Transaksi Terdeteksi di C19:J (" + items.length + " entri):\n\n" +
+        items.slice(0, 6).map(function(it, idx) {
+          return (idx + 1) + ". " + it.tanggal + " | " + it.jenis + "\n" +
+                 "   • Label: " + it.labelNetto + " Kg | Hasil: " + it.timbangUlang + " Kg\n" +
+                 "   • Selisih: " + (it.selisihKg > 0 ? "+" : "") + it.selisihKg + " Kg (" + it.status + ")";
+        }).join("\n\n");
+
+      if (items.length > 6) {
+        previewText += "\n\n... dan " + (items.length - 6) + " transaksi lainnya siap disinkronkan!";
       }
     } else {
-      // Sampel isi Kolom J baris 1-5 untuk diagnosa
-      var sampleVals = [];
-      var maxRowsToSample = Math.min(codeSh.getLastRow(), 5);
-      if (maxRowsToSample > 0) {
-        var sampleRange = codeSh.getRange(1, Math.min(cfg.switchboardColJ || 10, codeSh.getLastColumn()), maxRowsToSample, 1).getValues();
-        for (var s = 0; s < sampleRange.length; s++) {
-          sampleVals.push("Brs " + (s + 1) + ": " + JSON.stringify(sampleRange[s][0]));
-        }
-      }
-      latestInfo = "Sampel isi Kolom J baris 1-5:\n" + (sampleVals.length > 0 ? sampleVals.join("\n") : "(kosong)");
+      previewText = "Pemberitahuan: " + (result.notice || result.error || "Belum ada transaksi.");
     }
 
     SpreadsheetApp.getUi().alert(
-      "🔍 Status Switchboard codeIA (BSPP Blend)",
-      "Pendeteksi Kolom: " + result.inspectedSource + "\n" +
-      "Total ID Terdeteksi: " + list.length + " sheet harian\n\n" +
-      latestInfo + "\n\n" +
-      (list.length > 0 ? "5 Baris ID Terakhir:\n" + list.slice(-5).join("\n") : "Periksa apakah tab 'codeIA' di Kolom J sudah terisi link atau ID Spreadsheet harian."),
+      "🔍 Status Tabel Transaksi BSPP Blend (codeIA)",
+      "Spreadsheet: \"" + ss.getName() + "\"\n" +
+      "Tab Sumber: " + sh.getName() + " (Rentang C19:J)\n" +
+      "Status: Siap Disinkronkan\n\n" +
+      previewText,
       SpreadsheetApp.getUi().ButtonSet.OK
     );
   } catch (e) {
-    SpreadsheetApp.getUi().alert("Error cek sheet switchboard: " + e.message);
+    SpreadsheetApp.getUi().alert("Error cek tabel codeIA: " + e.message);
   }
 }
 
