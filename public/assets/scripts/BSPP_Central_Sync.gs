@@ -35,13 +35,14 @@ var SINKRONISASI_CONFIG = {
     warnaHeader: "#065f46" // Hijau Zamrud Pekat
   },
 
-  // 2. BSPP TEMBAKAU BLEND (Membaca langsung dari Tab "codeIA" Tabel Transaksi C19:J)
+  // 2. BSPP TEMBAKAU BLEND (Membaca langsung dari Tab "codeIA" Rentang C8:J14)
   BLEND: {
     nama: "BSPP TEMBAKAU BLEND",
     sourceSpreadsheetId: "1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE", // Sheet BSPP Blend
     sourceSheetName: "codeIA",
-    sourceRange: "C19:J",
+    sourceRange: "C8:J14", // 7 varian blend (hanya ditarik jika Kolom F, G, dan I bernilai > 0)
     suhuDefault: 27.5,
+    isAccumulativeDaily: true, // Database pusat berfungsi sebagai rekap akumulasi harian
     warnaHeader: "#1e3a8a" // Biru Navy Pekat
   },
 
@@ -80,8 +81,8 @@ function onOpen() {
     .addItem("⏰ Pasang Jadwal Sync Otomatis 2x Sehari (16:00 & 21:00)", "pasangTriggerOtomatisHarian")
     .addItem("🛑 Hapus Jadwal Sync Otomatis", "hapusSemuaTriggerOtomatis")
     .addSeparator()
-    .addItem("🔍 Cek Tabel Transaksi BSPP Blend (codeIA)", "cekSheetHarianBlend")
-    .addItem("🧹 Bersihkan Data DHP dari Tab Blend", "bersihkanTabBlend")
+    .addItem("🔍 Cek Tabel codeIA C8:J14 (BSPP Blend)", "cekSheetHarianBlend")
+    .addItem("🧹 Bersihkan & Reset Tab Blend (Hapus Baris Kotor)", "bersihkanTabBlend")
     .addItem("✨ Normalisasi & Standarkan Tab Cengkeh", "normalisasiTabCengkeh")
     .addItem("➕ Tambah 1.000 Baris Kosong ke Semua Tab", "tambahKapasitasBarisSemuaTab")
     .addSeparator()
@@ -393,7 +394,11 @@ function syncCommodityDataBatch_(targetSs, cfg, fetchFunction) {
     }
 
     if (!sourceItems || sourceItems.length === 0) {
-      // Jika data sumber kosong (misal data dummy telah dihapus di sheet sumber), bersihkan baris data di sheet tujuan
+      if (cfg.isAccumulativeDaily) {
+        // Tab akumulasi harian (seperti Blend): jangan hapus rekaman historis di database pusat jika hari ini belum ada transaksi di C8:J14
+        return "ℹ️ " + cfg.nama + ": 0 data baru. Tidak ada varian di C8:J14 yang memenuhi syarat (Kolom F, G, dan I harus bernilai > 0). Data tersimpan sebelumnya tetap aman.";
+      }
+      // Jika data sumber kosong (misal data dummy telah dihapus di sheet sumber master seperti Rajang I), bersihkan baris data di sheet tujuan
       if (sheet.getLastRow() > 1) {
         sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).clearContent();
       }
@@ -771,7 +776,7 @@ function parseIndonesianDateStringToIso_(str) {
 
 function fetchBlendSourceData_(cfg) {
   try {
-    var ssId = cfg.sourceSpreadsheetId || cfg.switchboardSpreadsheetId || "1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE";
+    var ssId = cfg.sourceSpreadsheetId || "1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE";
     var ss = null;
     try {
       ss = SpreadsheetApp.openById(ssId);
@@ -781,7 +786,6 @@ function fetchBlendSourceData_(cfg) {
 
     var sh = ss.getSheetByName(cfg.sourceSheetName || "codeIA");
     if (!sh) {
-      // Cari tab alternatif jika penulisan huruf besar/kecil berbeda
       var allSheets = ss.getSheets();
       for (var s = 0; s < allSheets.length; s++) {
         var sName = allSheets[s].getName().trim();
@@ -793,108 +797,77 @@ function fetchBlendSourceData_(cfg) {
     }
 
     if (!sh) {
-      return { error: "Tab 'codeIA' tidak ditemukan dalam spreadsheet BSPP Blend." };
+      return { error: "Tab 'codeIA' tidak ditemukan dalam spreadsheet BSPP Blend (" + ssId + ")." };
     }
 
-    var data = sh.getDataRange().getValues();
-    if (!data || data.length < 18) {
+    // STRICT EXTRACTION: HANYA membaca rentang Cell C8:J14 (7 Varian Tembakau Blend)
+    // Rentang C8:J14 memiliki 7 baris dan 8 kolom:
+    // Index 0 (Col C): TANGGAL PROSES (e.g. "Selasa, 27 Oktober 2026")
+    // Index 1 (Col D): Spacer / kosong
+    // Index 2 (Col E): JENIS TBK BLEND (153-BK, KARANG-BK, TIS-KBT24, FR LN-AVE, FR 153 HIJAU-BK, F REG, FR LA BOLD)
+    // Index 3 (Col F): LABEL AWAL
+    // Index 4 (Col G): TIMBANG ULANG
+    // Index 5 (Col H): BSPP (bisa 0 jika F & G sama)
+    // Index 6 (Col I): HASIL GABUNG
+    // Index 7 (Col J): TOTAL BSPP TBK BLEND (bisa 0 jika F & I sama)
+    var vals = sh.getRange("C8:J14").getValues();
+    if (!vals || vals.length === 0) {
       return {
         items: [],
-        notice: "Terhubung ke tab '" + sh.getName() + "', namun belum ada baris transaksi setelah baris header ke-17."
+        notice: "Rentang C8:J14 pada tab 'codeIA' kosong."
       };
     }
 
-    // Pemetaan Kolom berdasarkan layout baku tab codeIA:
-    // Baris 17 adalah Header:
-    // Kolom C (Index 2): TANGGAL PROSES
-    // Kolom E (Index 4): MERK
-    // Kolom F (Index 5): LABEL AWAL
-    // Kolom G (Index 6): TIMBANG ULANG
-    // Kolom H (Index 7): BSPP
-    // Kolom I (Index 8): HASIL GABUNG
-    // Kolom J (Index 9): TOTAL BSPP TBK BLEND
-    var colTgl = 2;
-    var colMerk = 4;
-    var colLabelAwal = 5;
-    var colTimbang = 6;
-    var colBspp = 7;
-    var colHasilGabung = 8;
-    var colTotalBspp = 9;
-
-    // Deteksi letak baris header secara dinamis (fleksibel jika ada baris kosong di atas)
-    var headerRowIdx = 16; // default baris 17 (index 16)
-    for (var h = 0; h < Math.min(25, data.length); h++) {
-      var rowStr = data[h].map(function(c) { return String(c || "").trim().toUpperCase(); });
-      if (rowStr.indexOf("TANGGAL PROSES") !== -1 ||
-          (rowStr.some(function(v) { return v.indexOf("MERK") !== -1; }) &&
-           rowStr.some(function(v) { return v.indexOf("HASIL GABUNG") !== -1 || v.indexOf("TOTAL BSPP") !== -1; }))) {
-        headerRowIdx = h;
-        for (var c = 0; c < rowStr.length; c++) {
-          var v = rowStr[c];
-          if (v.indexOf("TANGGAL") !== -1) colTgl = c;
-          if (v.indexOf("MERK") !== -1 || v.indexOf("JENIS") !== -1) colMerk = c;
-          if (v.indexOf("LABEL") !== -1 || v.indexOf("AWAL") !== -1) colLabelAwal = c;
-          if (v.indexOf("TIMBANG") !== -1 || v.indexOf("ULANG") !== -1) colTimbang = c;
-          if (v === "BSPP") colBspp = c;
-          if (v.indexOf("HASIL GABUNG") !== -1 || v.indexOf("GABUNG") !== -1) colHasilGabung = c;
-          if (v.indexOf("TOTAL BSPP") !== -1 || (v.indexOf("BSPP") !== -1 && v.indexOf("BLEND") !== -1)) colTotalBspp = c;
-        }
-        break;
-      }
-    }
+    // Ambil tanggal proses dari C8 (vals[0][0]) sebagai tanggal utama hari tersebut
+    var headerDateRaw = vals[0][0];
 
     var items = [];
-    var startRow = headerRowIdx + 1; // Mulai baris transaksi (baris 18/19 ke bawah)
+    var skippedVarians = [];
 
-    for (var i = startRow; i < data.length; i++) {
-      var r = data[i];
-      var rawTgl = r[colTgl];
-      var rawMerk = r[colMerk];
-      var rawLabelAwal = r[colLabelAwal];
-      var rawTimbang = r[colTimbang];
-      var rawBspp = r[colBspp];
-      var rawHasilGabung = r[colHasilGabung];
-      var rawTotalBspp = r[colTotalBspp];
+    for (var i = 0; i < vals.length; i++) {
+      var r = vals[i];
+      var rowTgl = r[0] || headerDateRaw;
+      var rawJenis = r[2];
+      var rawF = r[3]; // LABEL AWAL
+      var rawG = r[4]; // TIMBANG ULANG
+      var rawH = r[5]; // BSPP
+      var rawI = r[6]; // HASIL GABUNG
+      var rawJ = r[7]; // TOTAL BSPP TBK BLEND
 
-      // 1. Lewati baris kosong
-      if (!rawMerk && !rawTgl && !rawLabelAwal && !rawTotalBspp) continue;
+      var jenisStr = String(rawJenis || "").trim();
+      if (!jenisStr || jenisStr.toUpperCase() === "FALSE") continue;
 
-      var merkStr = String(rawMerk || "").trim();
-      if (!merkStr || merkStr.toUpperCase() === "FALSE") continue;
+      // Filter pengaman jika ada teks label header
+      if (jenisStr.toUpperCase() === "MERK" || jenisStr.toUpperCase().indexOf("JENIS TBK") !== -1) continue;
 
-      // 2. Filter utilitas penunjang: "AIR BERSIH" memiliki tab terpisah dan Kolom J kosong
-      var isAirBersih = merkStr.toUpperCase().indexOf("AIR BERSIH") !== -1;
-      var hasBsppBlendVal = (rawTotalBspp !== "" && rawTotalBspp !== null && rawTotalBspp !== undefined && String(rawTotalBspp).trim() !== "");
-      if (isAirBersih && !hasBsppBlendVal) {
+      // Parsing nilai numerik Kolom F, G, dan I
+      var valF = parseIndonesianNumber_(rawF, 0); // LABEL AWAL
+      var valG = parseIndonesianNumber_(rawG, 0); // TIMBANG ULANG
+      var valI = parseIndonesianNumber_(rawI, 0); // HASIL GABUNG
+
+      // SYARAT MUTLAK: "Kolom F, G, dan I berisi nilai" (valF > 0 && valG > 0 && valI > 0)
+      // Kolom ini adalah dasar terbentuknya BSPP. Kolom H dan J bisa bernilai 0 jika F, G, dan I sama persis.
+      if (valF <= 0 || valG <= 0 || valI <= 0) {
+        skippedVarians.push(jenisStr + " (F=" + valF + ", G=" + valG + ", I=" + valI + ")");
         continue;
       }
 
-      // 3. Konversi format Tanggal ke ISO YYYY-MM-DD
-      var isoDate = parseIndonesianDateStringToIso_(rawTgl);
-      if (!isoDate) {
+      // Konversi format tanggal ke ISO (YYYY-MM-DD)
+      var isoDate = parseIndonesianDateStringToIso_(rowTgl);
+      if (!isoDate || isoDate.toUpperCase() === "TANGGAL PROSES") {
         isoDate = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
       }
 
-      // 4. Hitung bobot netto awal dan hasil timbang ulang / hasil gabung
-      var labelNetto = parseIndonesianNumber_(rawLabelAwal, 0);
-      if (labelNetto <= 0) {
-        labelNetto = parseIndonesianNumber_(rawTimbang, 0);
-      }
-
-      var timbangUlang = parseIndonesianNumber_(rawHasilGabung, 0);
-      if (timbangUlang <= 0) {
-        timbangUlang = parseIndonesianNumber_(rawTimbang, labelNetto);
-      }
-
-      // 5. Hitung selisih kg dari Kolom J (TOTAL BSPP TBK BLEND)
+      // Selisih (Kg): Baca Kolom J (TOTAL BSPP TBK BLEND), jika kosong gunakan (valI - valF)
       var selisihKg = 0;
-      if (hasBsppBlendVal) {
-        selisihKg = parseIndonesianNumber_(rawTotalBspp, 0);
-      } else if (labelNetto > 0 && timbangUlang > 0) {
-        selisihKg = Math.round((timbangUlang - labelNetto) * 10) / 10;
+      var hasColJ = (rawJ !== "" && rawJ !== null && rawJ !== undefined && String(rawJ).toUpperCase() !== "FALSE");
+      if (hasColJ) {
+        selisihKg = parseIndonesianNumber_(rawJ, valI - valF);
+      } else {
+        selisihKg = Math.round((valI - valF) * 10) / 10;
       }
 
-      var selisihPct = labelNetto > 0 ? (selisihKg / labelNetto) : 0;
+      var selisihPct = valF > 0 ? (selisihKg / valF) : 0;
       var status = "";
       if (selisihKg < -0.05) status = "Selisih Kurang";
       else if (selisihKg > 0.05) status = "Selisih Lebih";
@@ -902,10 +875,10 @@ function fetchBlendSourceData_(cfg) {
 
       items.push({
         tanggal: isoDate,
-        jenis: merkStr,
-        labelNetto: labelNetto,
-        timbangUlang: timbangUlang,
-        selisihKg: selisihKg,
+        jenis: jenisStr,
+        labelNetto: valF,       // LABEL AWAL (Kg)
+        timbangUlang: valI,     // HASIL GABUNG (Kg)
+        selisihKg: selisihKg,   // TOTAL BSPP TBK BLEND (Kg)
         selisihPersen: selisihPct,
         status: status,
         suhu: cfg.suhuDefault || 27.5
@@ -918,7 +891,7 @@ function fetchBlendSourceData_(cfg) {
 
     return {
       items: [],
-      notice: "Terhubung ke tab 'codeIA' (" + (data.length - startRow) + " baris diperiksa), namun belum ada data transaksi blend yang valid di C19:J."
+      notice: "Semua 7 varian di C8:J14 saat ini belum memenuhi syarat (Kolom F, G, dan I masih 0 / belum ada timbangan riil hari ini)."
     };
   } catch (e) {
     Logger.log("Error fetch Blend: " + e.message);
@@ -937,31 +910,42 @@ function cekSheetHarianBlend() {
       return;
     }
 
-    var result = fetchBlendSourceData_(cfg);
-    var items = result.items || [];
+    var vals = sh.getRange("C8:J14").getValues();
+    var headerDateRaw = vals[0][0];
+    var isoDate = parseIndonesianDateStringToIso_(headerDateRaw) || Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
 
-    var previewText = "";
-    if (items.length > 0) {
-      previewText = "Daftar Transaksi Terdeteksi di C19:J (" + items.length + " entri):\n\n" +
-        items.slice(0, 6).map(function(it, idx) {
-          return (idx + 1) + ". " + it.tanggal + " | " + it.jenis + "\n" +
-                 "   • Label: " + it.labelNetto + " Kg | Hasil: " + it.timbangUlang + " Kg\n" +
-                 "   • Selisih: " + (it.selisihKg > 0 ? "+" : "") + it.selisihKg + " Kg (" + it.status + ")";
-        }).join("\n\n");
+    var lines = [];
+    var readyCount = 0;
 
-      if (items.length > 6) {
-        previewText += "\n\n... dan " + (items.length - 6) + " transaksi lainnya siap disinkronkan!";
+    for (var i = 0; i < vals.length; i++) {
+      var r = vals[i];
+      var jenisStr = String(r[2] || "").trim();
+      var valF = parseIndonesianNumber_(r[3], 0); // Label Awal
+      var valG = parseIndonesianNumber_(r[4], 0); // Timbang Ulang
+      var valH = parseIndonesianNumber_(r[5], 0); // BSPP
+      var valI = parseIndonesianNumber_(r[6], 0); // Hasil Gabung
+      var valJ = parseIndonesianNumber_(r[7], valI - valF); // Total BSPP Tbk Blend
+
+      var isEligible = (valF > 0 && valG > 0 && valI > 0);
+      if (isEligible) {
+        readyCount++;
+        lines.push((i + 1) + ". " + jenisStr + " (Baris " + (i + 8) + ")\n" +
+                   "   ✅ Memenuhi Syarat (F=" + valF + " Kg, G=" + valG + " Kg, I=" + valI + " Kg)\n" +
+                   "   • BSPP Selisih (Kolom J): " + (valJ > 0 ? "+" : "") + valJ + " Kg");
+      } else {
+        lines.push((i + 1) + ". " + jenisStr + " (Baris " + (i + 8) + ")\n" +
+                   "   ⚪ Belum Ada Timbangan (F=" + valF + ", G=" + valG + ", I=" + valI + ") -> Syarat F,G,I > 0");
       }
-    } else {
-      previewText = "Pemberitahuan: " + (result.notice || result.error || "Belum ada transaksi.");
     }
 
+    var summaryMsg = "📊 Audit Tabel codeIA C8:J14 (7 Varian Tembakau Blend)\n" +
+                     "Tanggal Terdeteksi di C8: " + String(headerDateRaw || isoDate) + "\n" +
+                     "Status Kelayakan: " + readyCount + " dari 7 varian siap disinkronkan.\n\n" +
+                     lines.join("\n\n");
+
     SpreadsheetApp.getUi().alert(
-      "🔍 Status Tabel Transaksi BSPP Blend (codeIA)",
-      "Spreadsheet: \"" + ss.getName() + "\"\n" +
-      "Tab Sumber: " + sh.getName() + " (Rentang C19:J)\n" +
-      "Status: Siap Disinkronkan\n\n" +
-      previewText,
+      "🔍 Status Tabel codeIA C8:J14 (BSPP Blend)",
+      summaryMsg,
       SpreadsheetApp.getUi().ButtonSet.OK
     );
   } catch (e) {
@@ -987,8 +971,8 @@ function bersihkanTabBlend() {
   SpreadsheetApp.flush();
   updateSummarySheetData_(ss);
   SpreadsheetApp.getUi().alert(
-    "🧹 Pembersihan Selesai",
-    "Seluruh data DHP masak blend (1.999 baris proses) dan baris tanggal rusak telah dikosongkan dari tab '" + SINKRONISASI_CONFIG.BLEND.nama + "'.\n\nTab kini bersih dan siap menerima data audit persediaan (BSPP) yang sesungguhnya.",
+    "🧹 Pembersihan Tab Blend Berhasil",
+    "Seluruh baris kotor/duplikat (termasuk baris 'TANGGAL PROSES' dan baris bernilai 0) telah berhasil dikosongkan dari tab '" + SINKRONISASI_CONFIG.BLEND.nama + "'.\n\nTab kini bersih dan siap menerima data murni dari rentang C8:J14.",
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }
