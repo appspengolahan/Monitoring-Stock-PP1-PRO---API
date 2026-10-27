@@ -94,6 +94,26 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     ],
     "mutasiTerbaru": [
       {
+        "id": "tembakau-blend-20261027-1",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pemasukan Hasil Blend",
+        "masuk": 1754.1,
+        "keluar": 0,
+        "saldo": 1754.1,
+        "cek": true
+      },
+      {
+        "id": "tembakau-blend-20261027-2",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "KARANG - BK",
+        "jenisMutasi": "Pemasukan Hasil Blend",
+        "masuk": 2627.9,
+        "keluar": 0,
+        "saldo": 2627.9,
+        "cek": true
+      },
+      {
         "id": "tembakau-blend-0",
         "tanggal": "2026-09-22T00:00:00.000Z",
         "kode": "153 - BK",
@@ -1126,6 +1146,116 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       }
     ],
     "mutasiTerbaru": [
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-maesan",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "MAESAN 2024 (HS)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 337.2,
+        "keluar": 0,
+        "saldo": 337.2,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-paiton",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "PAITON 2024 (VJI)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 490.0,
+        "keluar": 0,
+        "saldo": 490.0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-mranggen",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "MRANGGEN 2024 (LL)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 671.7,
+        "keluar": 0,
+        "saldo": 671.7,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-weleri-hk",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "WELERI 2024 (HK)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 647.7,
+        "keluar": 0,
+        "saldo": 647.7,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-weleri-b",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "WELERI GRADE B (2021)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 190.7,
+        "keluar": 0,
+        "saldo": 190.7,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-amerika",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "AMERIKA 2025 (BO1)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 725.9,
+        "keluar": 0,
+        "saldo": 725.9,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-lombok-fs",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "LOMBOK 2024 (FS) - 1",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 124.8,
+        "keluar": 0,
+        "saldo": 124.8,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-lombok-be",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "LOMBOK 2024 (BE) - 1",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 350.0,
+        "keluar": 0,
+        "saldo": 350.0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-kasturi",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "KASTURI 2023 (ST)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 100.3,
+        "keluar": 0,
+        "saldo": 100.3,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-jombang",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "JANTURAN JOMBANG 2024 (MYN)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 73.9,
+        "keluar": 0,
+        "saldo": 73.9,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261027-joning",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "JONING 2024 (AR)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 207.6,
+        "keluar": 0,
+        "saldo": 207.6,
+        "cek": true
+      },
       {
         "id": "tembakau---krosok--rajang-ii--dhp-madura-2024",
         "tanggal": "2026-10-07T00:00:00.000Z",

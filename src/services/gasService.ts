@@ -1,4 +1,4 @@
-import { KomoditasData, BSPPData, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, PengirimanBlendEntry, CengkehDryerEntry, ReconciliationDisplayConfig } from '../types/index';
+import { KomoditasData, BSPPData, BSPPEntry, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, PengirimanBlendEntry, CengkehDryerEntry, ReconciliationDisplayConfig } from '../types/index';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 import { parseDateIndo, normalizeDateToIso, getTanggalKey, getEpochTime } from '../utils/dateUtils';
 import { TelemetryService } from './telemetryService';
@@ -1589,6 +1589,85 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 27 OKTOBER 2026 (Live Worksheet DHP Krosok & DHP Tembakau - Kolom I Hasil Proses) ===
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Amerika 2025 (BO1)',
+      nettoKg: 725.9,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Lombok 2024 (FS) - 1',
+      nettoKg: 124.8,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Lombok 2024 (BE) - 1',
+      nettoKg: 350.0,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Kasturi 2023 (ST)',
+      nettoKg: 100.3,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Janturan Jombang 2024 (MYN)',
+      nettoKg: 73.9,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Paiton 2024 (VJI)',
+      nettoKg: 490.0,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Maesan 2024 (HS)',
+      nettoKg: 337.2,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Mranggen 2024 (LL)',
+      nettoKg: 671.7,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Weleri 2024 (HK)',
+      nettoKg: 647.7,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Weleri Grade B (2021)',
+      nettoKg: 190.7,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'Joning 2024 (AR)',
+      nettoKg: 207.6,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+
     // === DATA 15 OKTOBER 2026 (Live Worksheet DHP Krosok - Kolom I Hasil Proses) ===
     {
       tanggal: '2026-10-15T00:00:00.000Z',
@@ -1908,11 +1987,12 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Pastikan cache memiliki entri baseline sah 13, 14, & 15 Oktober (Diet Trial / Hang Madura / Maesan / Amerika / dll)
+          // Pastikan cache memiliki entri baseline sah 13, 14, 15, & 27 Oktober (Diet Trial / Hang Madura / Maesan / Amerika / dll)
           const hasOct13 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-13'));
           const hasOct14 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-14'));
           const hasOct15 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-15'));
-          if (hasOct13 && hasOct14 && hasOct15) {
+          const hasOct27 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-27'));
+          if (hasOct13 && hasOct14 && hasOct15 && hasOct27) {
             return this.cleanDHPEntries(parsed);
           } else {
             const missingEntries = this.DEFAULT_DHP_ENTRIES.filter(d => {
@@ -1920,10 +2000,13 @@ export class GasService {
               if (!hasOct13 && dStr.startsWith('2026-10-13')) return true;
               if (!hasOct14 && dStr.startsWith('2026-10-14')) return true;
               if (!hasOct15 && dStr.startsWith('2026-10-15')) return true;
+              if (!hasOct27 && dStr.startsWith('2026-10-27')) return true;
               return false;
             });
             const merged = [...parsed, ...missingEntries];
-            this.saveCachedDHP(merged, true);
+            try {
+              localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(merged));
+            } catch {}
             return this.cleanDHPEntries(merged);
           }
         }
@@ -2011,6 +2094,31 @@ export class GasService {
 
   // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---
   public static readonly DEFAULT_DHP_BLEND_ENTRIES: DHPEntry[] = [
+    // === DATA 27 OKTOBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi) ===
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: '153 - BK',
+      nettoKg: 1754.1,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: '153 - BK 05', nettoKg: 877.1 },
+        { no: 2, namaMolen: '153 - BK 06', nettoKg: 877.0 }
+      ]
+    },
+    {
+      tanggal: '2026-10-27T00:00:00.000Z',
+      nama: 'KARANG - BK',
+      nettoKg: 2627.9,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: 'KARANG - BK 01', nettoKg: 876.2 },
+        { no: 2, namaMolen: 'KARANG - BK 02', nettoKg: 875.7 },
+        { no: 3, namaMolen: 'KARANG - BK 03', nettoKg: 876.0 }
+      ]
+    },
+
     // === DATA 15 OKTOBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi) ===
     {
       tanggal: '2026-10-15T00:00:00.000Z',
@@ -2086,7 +2194,7 @@ export class GasService {
         return true;
       })
       .map(item => ({
-        tanggal: normalizeDateToIso(item.tanggal, '2026-10-15T00:00:00.000Z'),
+        tanggal: normalizeDateToIso(item.tanggal, '2026-10-27T00:00:00.000Z'),
         nama: String(item.nama).trim(),
         nettoKg: Math.round((Number(item.nettoKg) || 0) * 10) / 10,
         jalur: item.jalur || 'Wagir',
@@ -2107,20 +2215,27 @@ export class GasService {
           // Jika cache lokal masih menyimpan nilai dummy lama 4.350,0 Kg, auto-reset ke data riil
           const hasStaleMock = parsed.some(p => p.nama === '153 - BK' && Math.abs((Number(p.nettoKg) || 0) - 4350.0) < 0.1);
           if (hasStaleMock) {
-            this.saveCachedDHPBlend(this.DEFAULT_DHP_BLEND_ENTRIES);
+            try {
+              localStorage.setItem(STORAGE_KEYS.DHP_BLEND_RECONCILIATION, JSON.stringify(this.DEFAULT_DHP_BLEND_ENTRIES));
+            } catch {}
             return this.DEFAULT_DHP_BLEND_ENTRIES;
           }
-          // Pastikan data 15 Oktober ada di cache
+          // Pastikan data 15 Oktober & 27 Oktober ada di cache
           const hasOct15 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-15'));
-          if (hasOct15) {
+          const hasOct27 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-27'));
+          if (hasOct15 && hasOct27) {
             return this.cleanDHPBlendEntries(parsed);
           } else {
             const missingEntries = this.DEFAULT_DHP_BLEND_ENTRIES.filter(d => {
               const dStr = String(d.tanggal || '');
-              return dStr.startsWith('2026-10-15');
+              if (!hasOct15 && dStr.startsWith('2026-10-15')) return true;
+              if (!hasOct27 && dStr.startsWith('2026-10-27')) return true;
+              return false;
             });
             const merged = [...parsed, ...missingEntries];
-            this.saveCachedDHPBlend(merged, true);
+            try {
+              localStorage.setItem(STORAGE_KEYS.DHP_BLEND_RECONCILIATION, JSON.stringify(merged));
+            } catch {}
             return this.cleanDHPBlendEntries(merged);
           }
         }
@@ -2793,7 +2908,7 @@ export class GasService {
       const lines = rawText.split(/\r?\n/);
       const molenMap: Record<string, { tanggal: string; nama: string; nettoKg: number; jalur: string; sumber: string; molenList: { no: number; namaMolen: string; nettoKg: number }[] }> = {};
       let startProcessingMolen = false;
-      let lastKnownTanggal = '2026-10-15T00:00:00.000Z';
+      let lastKnownTanggal = '2026-10-27T00:00:00.000Z';
 
       for (let idx = 0; idx < lines.length; idx++) {
         const line = lines[idx];
@@ -2814,20 +2929,26 @@ export class GasService {
           continue;
         }
 
-        // Hindari membaca baris rekapitulasi atas (idx < 8 atau saat rawMolen identik dengan rawMerk)
-        if (!startProcessingMolen && idx < 8) continue;
-        if (rawMolen === rawMerk) continue;
-
         const cleanNum = rawHasilJadi.replace(/\./g, '').replace(/,/g, '.');
         const nettoVal = parseFloat(cleanNum);
+        if (isNaN(nettoVal) || nettoVal <= 0) continue;
 
-        if (rawMerk && rawMerk !== 'MERK' && rawMerk !== '-' && !isNaN(nettoVal) && nettoVal > 0) {
-          const itemTanggal = rawTanggal ? normalizeDateToIso(rawTanggal, lastKnownTanggal) : lastKnownTanggal;
-          const mapKey = `${getTanggalKey(itemTanggal)}_${rawMerk}`;
+        const targetMerk = (rawMerk && rawMerk !== 'MERK' && rawMerk !== '-') 
+          ? rawMerk 
+          : (rawMolen && rawMolen !== 'MOLEN' && rawMolen !== '-') 
+          ? rawMolen 
+          : '';
+
+        if (!targetMerk) continue;
+
+        const itemTanggal = rawTanggal ? normalizeDateToIso(rawTanggal, lastKnownTanggal) : lastKnownTanggal;
+        const mapKey = `${getTanggalKey(itemTanggal)}_${this.normalizeBlendKodeAlias(targetMerk)}`;
+
+        if (startProcessingMolen) {
           if (!molenMap[mapKey]) {
             molenMap[mapKey] = {
               tanggal: itemTanggal,
-              nama: rawMerk,
+              nama: targetMerk,
               nettoKg: 0,
               jalur: 'Wagir',
               sumber: 'DHP Blend (Kolom I)',
@@ -2841,6 +2962,18 @@ export class GasService {
               namaMolen: rawMolen,
               nettoKg: Math.round(nettoVal * 10) / 10
             });
+          }
+        } else {
+          // Baris rekapitulasi ringkasan atas (misal idx 1 & 2 sebelum rincian molen)
+          if (!molenMap[mapKey]) {
+            molenMap[mapKey] = {
+              tanggal: itemTanggal,
+              nama: targetMerk,
+              nettoKg: Math.round(nettoVal * 10) / 10,
+              jalur: 'Wagir',
+              sumber: 'DHP Blend (Kolom I)',
+              molenList: []
+            };
           }
         }
       }
