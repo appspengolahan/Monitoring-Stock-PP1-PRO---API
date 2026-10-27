@@ -368,7 +368,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
           Akses BSPP Dibatasi
         </h3>
         <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md mx-auto mb-4">
-          Akun Anda memiliki izin khusus bahan baku tertentu. Modul Bukti Selisih Persediaan (BSPP) saat ini mencakup komoditas <span className="font-semibold text-slate-800">Cengkeh</span>, <span className="font-semibold text-slate-800">Tembakau &amp; Krosok (Rajang II)</span>, dan <span className="font-semibold text-slate-800">Tembakau Blend</span>.
+          Akun Anda memiliki izin khusus bahan baku tertentu. Modul Bukti Selisih Persediaan (BSPP) saat ini mencakup komoditas <span className="font-semibold text-slate-800">Cengkeh</span>, <span className="font-semibold text-slate-800">Tembakau &amp; Krosok (Rajang II)</span>, <span className="font-semibold text-slate-800">Tembakau Blend</span>, dan <span className="font-semibold text-slate-800">Tembakau &amp; Krosok (Rajang I)</span>.
         </p>
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
           <Info className="w-3.5 h-3.5 text-slate-500" />
@@ -1097,8 +1097,19 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
           <tbody className="divide-y divide-slate-100 text-xs">
             {tableEntries.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-slate-400">
-                  Tidak ada data BSPP yang cocok dengan filter atau periode terpilih.
+                <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <div className="max-w-md mx-auto space-y-1.5">
+                    <p className="font-semibold text-slate-800 text-sm">
+                      {currentData.nama.includes('Rajang I')
+                        ? 'Data BSPP Rajang I Saat Ini Kosong'
+                        : 'Tidak ada data BSPP yang cocok dengan filter atau periode terpilih.'}
+                    </p>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      {currentData.nama.includes('Rajang I')
+                        ? 'Data dummy sebelumnya telah dikosongkan. Sheet tujuan bersih dan siap menerima data riil saat jadwal penimbangan Rajang I berlangsung.'
+                        : 'Silakan sesuaikan pilihan jenis varian atau ubah periode waktu ke "Semua" untuk melihat entri lainnya.'}
+                    </p>
+                  </div>
                 </td>
               </tr>
             ) : (
