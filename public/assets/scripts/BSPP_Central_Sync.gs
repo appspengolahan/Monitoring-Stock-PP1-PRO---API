@@ -78,7 +78,9 @@ function onOpen() {
     .addItem("⚡ Sinkronisasi Semua Data BSPP Sekarang", "sinkronisasiSemuaBSPP")
     .addItem("🛠️ Inisialisasi & Rapikan Format Datasheet", "setupDatabaseBSPPPusat")
     .addSeparator()
-    .addItem("⏰ Pasang Jadwal Sync Otomatis Tiap Sore (16:00)", "pasangTriggerOtomatisHarian")
+    .addItem("⏰ Pasang Jadwal Sync Otomatis 2x Sehari (16:00 & 21:00)", "pasangTriggerOtomatisHarian")
+    .addItem("🛑 Hapus Jadwal Sync Otomatis", "hapusSemuaTriggerOtomatis")
+    .addSeparator()
     .addItem("ℹ️ Cek Status & ID Spreadsheet", "tampilkanInfoSpreadsheet")
     .addToUi();
 }
@@ -337,6 +339,9 @@ function sinkronisasiSemuaBSPP() {
   var resRajangI = syncCommodityDataBatch_(ss, SINKRONISASI_CONFIG.RAJANG_I, fetchRajangISourceData_);
   logReport.push(resRajangI);
 
+  // Pastikan seluruh baris baru ter-flush ke sheet sebelum menghitung ringkasan konsolidasi
+  SpreadsheetApp.flush();
+
   // 5. Update Ringkasan Konsolidasi
   updateSummarySheetData_(ss);
 
@@ -494,9 +499,11 @@ function parseIndonesianNumber_(val, defaultVal) {
 }
 
 function generateUniqueId_(item, commodityName) {
+  var idPart = String(item.nomer || item.molen || item.batch || "").trim();
   var raw = String(item.tanggal || "") + "_" +
             String(commodityName || "") + "_" +
             String(item.jenis || "").trim().toUpperCase() + "_" +
+            (idPart ? idPart + "_" : "") +
             String(item.labelNetto || "");
   var hash = 0;
   for (var i = 0; i < raw.length; i++) {
@@ -975,7 +982,7 @@ function pasangTriggerOtomatisHarian() {
     }
   }
 
-  // Buat trigger harian pukul 16:00 - 17:00 (WIB)
+  // 1. Jadwal Shift Reguler Sore: Pukul 16:00 - 17:00 (WIB)
   ScriptApp.newTrigger("sinkronisasiSemuaBSPP")
     .timeBased()
     .everyDays(1)
@@ -983,10 +990,39 @@ function pasangTriggerOtomatisHarian() {
     .inTimezone("Asia/Jakarta")
     .create();
 
+  // 2. Jadwal Shift Lembur Malam: Pukul 21:00 - 22:00 (WIB)
+  ScriptApp.newTrigger("sinkronisasiSemuaBSPP")
+    .timeBased()
+    .everyDays(1)
+    .atHour(21)
+    .inTimezone("Asia/Jakarta")
+    .create();
+
   try {
     SpreadsheetApp.getUi().alert(
-      "⏰ Penjadwal Otomatis Aktif",
-      "Sinkronisasi data BSPP akan dijalankan secara otomatis setiap hari pada pukul 16:00 WIB (setelah selesai penimbangan harian).",
+      "⏰ Penjadwal Otomatis 2x Sehari Berhasil Dipasang",
+      "Sinkronisasi data BSPP akan dijalankan otomatis 2 kali setiap hari:\n\n" +
+      "1. Pukul 16:00 WIB (Penutupan Shift Reguler Sore)\n" +
+      "2. Pukul 21:00 WIB (Penutupan Shift Lembur Malam)\n\n" +
+      "✅ Aman dari Duplikasi: Script menggunakan sistem ID Sidik Jari (Idempotent). Data yang sudah ada tidak akan diduplikasi, dan data baru dari shift lembur akan otomatis ditambahkan.",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (e) {}
+}
+
+function hapusSemuaTriggerOtomatis() {
+  var triggers = ScriptApp.getProjectTriggers();
+  var count = 0;
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "sinkronisasiSemuaBSPP") {
+      ScriptApp.deleteTrigger(triggers[i]);
+      count++;
+    }
+  }
+  try {
+    SpreadsheetApp.getUi().alert(
+      "🛑 Jadwal Otomatis Dinonaktifkan",
+      "Sebanyak " + count + " jadwal sinkronisasi otomatis telah dibersihkan.",
       SpreadsheetApp.getUi().ButtonSet.OK
     );
   } catch (e) {}
