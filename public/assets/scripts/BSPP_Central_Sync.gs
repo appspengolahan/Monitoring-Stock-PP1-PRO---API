@@ -788,36 +788,18 @@ function fetchBlendSourceData_(cfg) {
       return { error: "Tab '" + (cfg.switchboardSheetName || "codeIA") + "' tidak ditemukan di Switchboard." };
     }
 
-    // Baca Kolom J (Kolom ke-10) untuk mendapatkan ID / URL Sheet Harian BSPP Blend
-    var lastRow = codeSh.getLastRow();
-    if (lastRow < 1) {
-      return { items: [], notice: "Tab 'codeIA' di switchboard kosong." };
-    }
-
-    var colJVals = codeSh.getRange(1, cfg.switchboardColJ || 10, lastRow, 1).getValues();
-    var dailySheetIds = [];
-
-    for (var r = 0; r < colJVals.length; r++) {
-      var cellVal = String(colJVals[r][0] || "").trim();
-      if (!cellVal) continue;
-      // Ekstrak ID Spreadsheet (44 karakter) atau dari format URL
-      var match = cellVal.match(/\/d\/([-\w]{25,})/) || cellVal.match(/^([-\w]{25,})$/);
-      if (match && match[1]) {
-        var foundId = match[1];
-        if (dailySheetIds.indexOf(foundId) === -1 && foundId !== cfg.switchboardSpreadsheetId) {
-          dailySheetIds.push(foundId);
-        }
-      }
-    }
+    // Baca Switchboard menggunakan Multi-Format Extractor (Nilai, Formula Hyperlink, RichText URL, dan Auto-Scan)
+    var extraction = extractDailySheetIdsFromSwitchboard_(codeSh, cfg.switchboardColJ || 10, cfg.switchboardSpreadsheetId);
+    var dailySheetIds = extraction.ids;
 
     if (dailySheetIds.length === 0) {
       return {
         items: [],
-        notice: "Tidak ditemukan ID sheet harian pada tab 'codeIA' Kolom J."
+        notice: "Tidak ditemukan ID sheet harian pada tab 'codeIA' (" + extraction.inspectedSource + ")."
       };
     }
 
-    Logger.log("Ditemukan " + dailySheetIds.length + " ID Sheet Harian BSPP Blend di Kolom J.");
+    Logger.log("Ditemukan " + dailySheetIds.length + " ID Sheet Harian BSPP Blend (" + extraction.inspectedSource + ").");
 
     // Buka Sheet Harian aktif:
     // Baca hingga 7 sheet harian terbaru dari bawah ke atas agar riwayat hari-hari terakhir terserap tanpa timeout
@@ -928,6 +910,89 @@ function fetchBlendSourceData_(cfg) {
   }
 }
 
+function extractDailySheetIdsFromSwitchboard_(codeSh, preferredCol, switchboardSpreadsheetId) {
+  var lastRow = codeSh.getLastRow();
+  var lastCol = codeSh.getLastColumn();
+  if (lastRow < 1 || lastCol < 1) {
+    return { ids: [], inspectedSource: "Sheet codeIA kosong (0 baris/kolom)." };
+  }
+
+  function tryExtractId(raw) {
+    if (!raw) return null;
+    var s = String(raw).trim();
+    if (!s) return null;
+    // 1. Ekstrak dari format link Docs Google Sheets (/d/SPREADSHEET_ID)
+    var m = s.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
+    if (m && m[1]) return m[1];
+    // 2. Ekstrak dari teks ID murni 30-50 karakter (misal 1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE)
+    var m2 = s.match(/([a-zA-Z0-9_-]{30,50})/);
+    if (m2 && m2[1]) return m2[1];
+    return null;
+  }
+
+  var dailySheetIds = [];
+
+  // Langkah 1: Periksa Kolom Pilihan (Default: Kolom J = Kolom 10)
+  var colIndex = preferredCol || 10;
+  if (colIndex <= lastCol) {
+    var range = codeSh.getRange(1, colIndex, lastRow, 1);
+    var values = range.getValues();
+    var formulas = range.getFormulas();
+    var richTexts = null;
+    try {
+      richTexts = range.getRichTextValues();
+    } catch (eRich) {}
+
+    for (var r = 0; r < values.length; r++) {
+      var val = values[r][0];
+      var formula = formulas[r][0];
+      var richUrl = (richTexts && richTexts[r] && richTexts[r][0]) ? richTexts[r][0].getLinkUrl() : null;
+
+      var foundId = tryExtractId(richUrl) || tryExtractId(formula) || tryExtractId(val);
+      if (foundId && dailySheetIds.indexOf(foundId) === -1 && foundId !== switchboardSpreadsheetId) {
+        dailySheetIds.push(foundId);
+      }
+    }
+  }
+
+  // Langkah 2: Jika Kolom J tidak menghasilkan ID sama sekali, pindai cerdas seluruh kolom (A-Z)
+  var inspectedSource = "Kolom J (Kol. " + colIndex + ")";
+  if (dailySheetIds.length === 0) {
+    var allRange = codeSh.getDataRange();
+    var allValues = allRange.getValues();
+    var allFormulas = allRange.getFormulas();
+    var allRich = null;
+    try {
+      allRich = allRange.getRichTextValues();
+    } catch (eAllRich) {}
+
+    for (var c = 0; c < allValues[0].length; c++) {
+      var foundInCol = [];
+      for (var r = 0; r < allValues.length; r++) {
+        var v = allValues[r][c];
+        var f = allFormulas[r][c];
+        var u = (allRich && allRich[r] && allRich[r][c]) ? allRich[r][c].getLinkUrl() : null;
+
+        var candId = tryExtractId(u) || tryExtractId(f) || tryExtractId(v);
+        if (candId && candId !== switchboardSpreadsheetId && foundInCol.indexOf(candId) === -1) {
+          foundInCol.push(candId);
+        }
+      }
+      if (foundInCol.length > 0) {
+        var colLetter = String.fromCharCode(65 + c);
+        inspectedSource = "Auto-Scan Kolom " + colLetter + " (" + foundInCol.length + " ID Sheet)";
+        dailySheetIds = foundInCol;
+        break; // Ambil kolom pertama yang valid berisi spreadsheet ID
+      }
+    }
+  }
+
+  return {
+    ids: dailySheetIds,
+    inspectedSource: inspectedSource
+  };
+}
+
 function cekSheetHarianBlend() {
   var cfg = SINKRONISASI_CONFIG.BLEND;
   try {
@@ -937,36 +1002,38 @@ function cekSheetHarianBlend() {
       SpreadsheetApp.getUi().alert("Tab 'codeIA' tidak ditemukan di Switchboard (" + cfg.switchboardSpreadsheetId + ").");
       return;
     }
-    var lastRow = codeSh.getLastRow();
-    var colJVals = codeSh.getRange(1, cfg.switchboardColJ, lastRow, 1).getValues();
-    var list = [];
-    for (var r = 0; r < colJVals.length; r++) {
-      var val = String(colJVals[r][0] || "").trim();
-      if (!val) continue;
-      var match = val.match(/\/d\/([-\w]{25,})/) || val.match(/^([-\w]{25,})$/);
-      if (match && match[1]) {
-        list.push("Baris " + (r + 1) + ": " + match[1]);
-      }
-    }
+
+    var result = extractDailySheetIdsFromSwitchboard_(codeSh, cfg.switchboardColJ || 10, cfg.switchboardSpreadsheetId);
+    var list = result.ids;
 
     var latestInfo = "Belum ada ID.";
     if (list.length > 0) {
-      var lastEntry = list[list.length - 1];
-      var lastId = lastEntry.split(": ")[1];
+      var lastId = list[list.length - 1];
       try {
         var testSs = SpreadsheetApp.openById(lastId);
         latestInfo = "Sheet Terbaru: \"" + testSs.getName() + "\" (" + testSs.getSheets().length + " tab)";
       } catch (eOpen) {
         latestInfo = "Sheet ID: " + lastId + " (Error buka: " + eOpen.message + ")";
       }
+    } else {
+      // Sampel isi Kolom J baris 1-5 untuk diagnosa
+      var sampleVals = [];
+      var maxRowsToSample = Math.min(codeSh.getLastRow(), 5);
+      if (maxRowsToSample > 0) {
+        var sampleRange = codeSh.getRange(1, Math.min(cfg.switchboardColJ || 10, codeSh.getLastColumn()), maxRowsToSample, 1).getValues();
+        for (var s = 0; s < sampleRange.length; s++) {
+          sampleVals.push("Brs " + (s + 1) + ": " + JSON.stringify(sampleRange[s][0]));
+        }
+      }
+      latestInfo = "Sampel isi Kolom J baris 1-5:\n" + (sampleVals.length > 0 ? sampleVals.join("\n") : "(kosong)");
     }
 
     SpreadsheetApp.getUi().alert(
-      "🔍 Status Switchboard codeIA Kolom J (BSPP Blend)",
+      "🔍 Status Switchboard codeIA (BSPP Blend)",
+      "Pendeteksi Kolom: " + result.inspectedSource + "\n" +
       "Total ID Terdeteksi: " + list.length + " sheet harian\n\n" +
       latestInfo + "\n\n" +
-      "5 Baris Terakhir di Kolom J:\n" +
-      (list.length > 0 ? list.slice(-5).join("\n") : "-"),
+      (list.length > 0 ? "5 Baris ID Terakhir:\n" + list.slice(-5).join("\n") : "Periksa apakah tab 'codeIA' di Kolom J sudah terisi link atau ID Spreadsheet harian."),
       SpreadsheetApp.getUi().ButtonSet.OK
     );
   } catch (e) {
