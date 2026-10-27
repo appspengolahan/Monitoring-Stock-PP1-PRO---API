@@ -35,13 +35,12 @@ var SINKRONISASI_CONFIG = {
     warnaHeader: "#065f46" // Hijau Zamrud Pekat
   },
 
-  // 2. BSPP TEMBAKAU BLEND
+  // 2. BSPP TEMBAKAU BLEND (Otomatis membaca ID sheet harian dari Tab "codeIA" Kolom J)
   BLEND: {
     nama: "BSPP TEMBAKAU BLEND",
-    sourceSpreadsheetId: "1Fg3aNLsdkwXthNGxIsFJ9gbHy6Va6DokNV8IVpTnXDA", // DHP Blend
-    sourceSheetName: "INTEGRASI DATA DHP BLEND",
-    masterSpreadsheetId: "15qjJfU0SnrbmtVbplL7F4t8M3E60Z5EoOLKjV-RUyDY", // DATAMASTER
-    colSuhuDHP: 22, // Kolom W (index 22)
+    switchboardSpreadsheetId: "1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE", // Sheet Switchboard
+    switchboardSheetName: "codeIA",
+    switchboardColJ: 10, // Kolom J (berisi daftar/ID sheet harian BSPP yang berganti tiap hari)
     suhuDefault: 27.5,
     warnaHeader: "#1e3a8a" // Biru Navy Pekat
   },
@@ -81,6 +80,7 @@ function onOpen() {
     .addItem("⏰ Pasang Jadwal Sync Otomatis 2x Sehari (16:00 & 21:00)", "pasangTriggerOtomatisHarian")
     .addItem("🛑 Hapus Jadwal Sync Otomatis", "hapusSemuaTriggerOtomatis")
     .addSeparator()
+    .addItem("🔍 Cek ID Sheet Harian BSPP Blend (codeIA)", "cekSheetHarianBlend")
     .addItem("🧹 Bersihkan Data DHP dari Tab Blend", "bersihkanTabBlend")
     .addItem("✨ Normalisasi & Standarkan Tab Cengkeh", "normalisasiTabCengkeh")
     .addItem("➕ Tambah 1.000 Baris Kosong ke Semua Tab", "tambahKapasitasBarisSemuaTab")
@@ -772,77 +772,205 @@ function parseIndonesianDateStringToIso_(str) {
 function fetchBlendSourceData_(cfg) {
   try {
     var items = [];
-    var ssBlend = null;
+    var switchboardSs = null;
     try {
-      ssBlend = SpreadsheetApp.openById(cfg.sourceSpreadsheetId);
-    } catch (e) {
-      return { error: "Gagal membuka Spreadsheet Blend (" + cfg.sourceSpreadsheetId + "): " + e.message };
+      switchboardSs = SpreadsheetApp.openById(cfg.switchboardSpreadsheetId);
+    } catch (eSw) {
+      return { error: "Gagal membuka Switchboard (" + cfg.switchboardSpreadsheetId + "): " + eSw.message };
     }
 
-    if (!ssBlend) {
-      return { error: "Spreadsheet Blend tidak ditemukan." };
+    if (!switchboardSs) {
+      return { error: "Switchboard spreadsheet tidak ditemukan." };
     }
 
-    // Cari tab khusus BSPP Blend (misal: "REKAP BSPP", "BSPP BLEND", atau "BSPP TEMBAKAU BLEND")
-    var sh = ssBlend.getSheetByName("REKAP BSPP") ||
-             ssBlend.getSheetByName("BSPP BLEND") ||
-             ssBlend.getSheetByName("BSPP TEMBAKAU BLEND") ||
-             ssBlend.getSheetByName("BSPP");
+    var codeSh = switchboardSs.getSheetByName(cfg.switchboardSheetName || "codeIA");
+    if (!codeSh) {
+      return { error: "Tab '" + (cfg.switchboardSheetName || "codeIA") + "' tidak ditemukan di Switchboard." };
+    }
 
-    // Jika tab khusus BSPP belum ada, jangan tarik data DHP masak harian agar tidak bercampur
-    if (!sh) {
+    // Baca Kolom J (Kolom ke-10) untuk mendapatkan ID / URL Sheet Harian BSPP Blend
+    var lastRow = codeSh.getLastRow();
+    if (lastRow < 1) {
+      return { items: [], notice: "Tab 'codeIA' di switchboard kosong." };
+    }
+
+    var colJVals = codeSh.getRange(1, cfg.switchboardColJ || 10, lastRow, 1).getValues();
+    var dailySheetIds = [];
+
+    for (var r = 0; r < colJVals.length; r++) {
+      var cellVal = String(colJVals[r][0] || "").trim();
+      if (!cellVal) continue;
+      // Ekstrak ID Spreadsheet (44 karakter) atau dari format URL
+      var match = cellVal.match(/\/d\/([-\w]{25,})/) || cellVal.match(/^([-\w]{25,})$/);
+      if (match && match[1]) {
+        var foundId = match[1];
+        if (dailySheetIds.indexOf(foundId) === -1 && foundId !== cfg.switchboardSpreadsheetId) {
+          dailySheetIds.push(foundId);
+        }
+      }
+    }
+
+    if (dailySheetIds.length === 0) {
       return {
         items: [],
-        notice: "Tab khusus 'REKAP BSPP' belum ditemukan pada file Tembakau Blend. Data produksi masak harian (DHP) sengaja dipisahkan dari audit persediaan fisik (BSPP)."
+        notice: "Tidak ditemukan ID sheet harian pada tab 'codeIA' Kolom J."
       };
     }
 
-    var data = sh.getDataRange().getValues();
-    if (!data || data.length < 2) {
-      return {
-        items: [],
-        notice: "Tab '" + sh.getName() + "' ditemukan namun belum memiliki baris transaksi penimbangan ulang."
-      };
+    Logger.log("Ditemukan " + dailySheetIds.length + " ID Sheet Harian BSPP Blend di Kolom J.");
+
+    // Buka Sheet Harian aktif:
+    // Baca hingga 7 sheet harian terbaru dari bawah ke atas agar riwayat hari-hari terakhir terserap tanpa timeout
+    var maxInspect = Math.min(dailySheetIds.length, 7);
+    var processedCount = 0;
+
+    for (var dIdx = dailySheetIds.length - 1; dIdx >= dailySheetIds.length - maxInspect; dIdx--) {
+      var dailyId = dailySheetIds[dIdx];
+      try {
+        var dailySs = SpreadsheetApp.openById(dailyId);
+        processedCount++;
+
+        // Cari tab BSPP pada file harian tersebut
+        var sheets = dailySs.getSheets();
+        var bsppSh = null;
+        for (var s = 0; s < sheets.length; s++) {
+          var name = sheets[s].getName().trim();
+          if (/bspp|persediaan|selisih|timbang/i.test(name)) {
+            bsppSh = sheets[s];
+            break;
+          }
+        }
+        if (!bsppSh) bsppSh = sheets[0]; // fallback ke sheet pertama
+
+        var data = bsppSh.getDataRange().getValues();
+        if (!data || data.length < 2) continue;
+
+        // Cari header secara dinamis
+        var headerIdx = -1;
+        var colTgl = 1, colJenis = 2, colNetto = 3, colTimbang = 4, colSelisihKg = 5, colSelisihPct = 6, colStatus = 7;
+
+        for (var h = 0; h < Math.min(15, data.length); h++) {
+          var rowStr = data[h].map(function(c) { return String(c || "").trim().toUpperCase(); });
+          if (rowStr.some(function(v) { return v.indexOf("TIMBANG") !== -1 || v.indexOf("SELISIH") !== -1 || v.indexOf("NETTO") !== -1; })) {
+            headerIdx = h;
+            for (var c = 0; c < rowStr.length; c++) {
+              var v = rowStr[c];
+              if (v.indexOf("TANGGAL") !== -1) colTgl = c;
+              if (v.indexOf("JENIS") !== -1 || v.indexOf("MERK") !== -1 || v.indexOf("TEMBAKAU") !== -1) colJenis = c;
+              if (v.indexOf("NETTO") !== -1 || v.indexOf("AWAL") !== -1 || v.indexOf("LABEL") !== -1) colNetto = c;
+              if (v.indexOf("TIMBANG") !== -1 || v.indexOf("ULANG") !== -1) colTimbang = c;
+              if (v.indexOf("SELISIH") !== -1 && v.indexOf("KG") !== -1) colSelisihKg = c;
+              if (v.indexOf("SELISIH") !== -1 && (v.indexOf("%") !== -1 || v.indexOf("PERSEN") !== -1)) colSelisihPct = c;
+              if (v.indexOf("STATUS") !== -1 || v.indexOf("KETERANGAN") !== -1) colStatus = c;
+            }
+            break;
+          }
+        }
+
+        var startRow = headerIdx !== -1 ? headerIdx + 1 : 1;
+        for (var i = startRow; i < data.length; i++) {
+          var r = data[i];
+          var rawTgl = r[colTgl];
+          var rawJenis = r[colJenis];
+          var rawNetto = r[colNetto];
+          var rawTimbang = r[colTimbang];
+          var rawSelisihKg = r[colSelisihKg];
+          var rawSelisihPct = r[colSelisihPct];
+          var rawStatus = r[colStatus];
+
+          // Validasi baris formula FALSE atau kosong
+          if (rawNetto === false || rawTimbang === false || String(rawNetto || "").toUpperCase().trim() === "FALSE") continue;
+          var netto = parseIndonesianNumber_(rawNetto, 0);
+          var timbang = parseIndonesianNumber_(rawTimbang, 0);
+          if (netto <= 0 || timbang <= 0) continue;
+
+          var jenisStr = String(rawJenis || "").trim();
+          if (!jenisStr || jenisStr.toUpperCase() === "FALSE") continue;
+
+          var isoDate = parseIndonesianDateStringToIso_(rawTgl);
+          if (!isoDate) {
+            isoDate = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
+          }
+
+          var selisihKg = parseIndonesianNumber_(rawSelisihKg, timbang - netto);
+          var selisihPct = parseIndonesianNumber_(rawSelisihPct, netto > 0 ? (selisihKg / netto) : 0);
+          if (selisihPct > 1) selisihPct = selisihPct / 100;
+
+          var status = rawStatus ? String(rawStatus).trim() : (selisihKg > 0.05 ? "Selisih Lebih" : (selisihKg < -0.05 ? "Selisih Kurang" : "Tanpa Selisih"));
+
+          items.push({
+            tanggal: isoDate,
+            jenis: jenisStr,
+            labelNetto: netto,
+            timbangUlang: timbang,
+            selisihKg: selisihKg,
+            selisihPersen: selisihPct,
+            status: status,
+            suhu: cfg.suhuDefault || 27.5
+          });
+        }
+      } catch (errDaily) {
+        Logger.log("Gagal membaca daily sheet ID " + dailyId + ": " + errDaily.message);
+      }
     }
 
-    // Format standar REKAP BSPP (Kolom E:M atau baris data standar)
-    for (var i = 1; i < data.length; i++) {
-      var r = data[i];
-      var rawTgl = r[1] || r[0];
-      var rawJenis = r[3] || r[2];
-      var rawNetto = r[4];
-      var rawTimbang = r[5];
-      var rawSelisihKg = r[6];
-      var rawSelisihPct = r[7];
-      var rawStatus = r[8];
-
-      var netto = parseIndonesianNumber_(rawNetto, 0);
-      var timbang = parseIndonesianNumber_(rawTimbang, 0);
-      if (!rawTgl || !rawJenis || netto <= 0 || timbang <= 0) continue;
-
-      var isoDate = parseIndonesianDateStringToIso_(rawTgl);
-      if (!isoDate) continue;
-
-      var selisihKg = parseIndonesianNumber_(rawSelisihKg, timbang - netto);
-      var selisihPct = parseIndonesianNumber_(rawSelisihPct, netto > 0 ? (selisihKg / netto) : 0);
-      if (selisihPct > 1) selisihPct = selisihPct / 100;
-
-      items.push({
-        tanggal: isoDate,
-        jenis: String(rawJenis).trim(),
-        labelNetto: netto,
-        timbangUlang: timbang,
-        selisihKg: selisihKg,
-        selisihPersen: selisihPct,
-        status: String(rawStatus || (selisihKg > 0 ? "Selisih Lebih" : "Selisih Kurang")).trim(),
-        suhu: cfg.suhuDefault || 27.5
-      });
+    if (items.length > 0) {
+      return { items: items };
     }
 
-    return { items: items };
+    return {
+      items: [],
+      notice: "Terhubung ke Switchboard 'codeIA' Kolom J (" + dailySheetIds.length + " sheet harian terdeteksi), namun belum ada transaksi penimbangan riil pada file harian tersebut."
+    };
   } catch (e) {
     Logger.log("Error fetch Blend: " + e.message);
     return { error: e.message };
+  }
+}
+
+function cekSheetHarianBlend() {
+  var cfg = SINKRONISASI_CONFIG.BLEND;
+  try {
+    var swSs = SpreadsheetApp.openById(cfg.switchboardSpreadsheetId);
+    var codeSh = swSs.getSheetByName(cfg.switchboardSheetName);
+    if (!codeSh) {
+      SpreadsheetApp.getUi().alert("Tab 'codeIA' tidak ditemukan di Switchboard (" + cfg.switchboardSpreadsheetId + ").");
+      return;
+    }
+    var lastRow = codeSh.getLastRow();
+    var colJVals = codeSh.getRange(1, cfg.switchboardColJ, lastRow, 1).getValues();
+    var list = [];
+    for (var r = 0; r < colJVals.length; r++) {
+      var val = String(colJVals[r][0] || "").trim();
+      if (!val) continue;
+      var match = val.match(/\/d\/([-\w]{25,})/) || val.match(/^([-\w]{25,})$/);
+      if (match && match[1]) {
+        list.push("Baris " + (r + 1) + ": " + match[1]);
+      }
+    }
+
+    var latestInfo = "Belum ada ID.";
+    if (list.length > 0) {
+      var lastEntry = list[list.length - 1];
+      var lastId = lastEntry.split(": ")[1];
+      try {
+        var testSs = SpreadsheetApp.openById(lastId);
+        latestInfo = "Sheet Terbaru: \"" + testSs.getName() + "\" (" + testSs.getSheets().length + " tab)";
+      } catch (eOpen) {
+        latestInfo = "Sheet ID: " + lastId + " (Error buka: " + eOpen.message + ")";
+      }
+    }
+
+    SpreadsheetApp.getUi().alert(
+      "🔍 Status Switchboard codeIA Kolom J (BSPP Blend)",
+      "Total ID Terdeteksi: " + list.length + " sheet harian\n\n" +
+      latestInfo + "\n\n" +
+      "5 Baris Terakhir di Kolom J:\n" +
+      (list.length > 0 ? list.slice(-5).join("\n") : "-"),
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("Error cek sheet switchboard: " + e.message);
   }
 }
 

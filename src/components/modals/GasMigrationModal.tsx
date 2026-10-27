@@ -999,15 +999,15 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
                 </div>
                 <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200">
                   <span className="text-[10px] text-blue-800 font-bold block uppercase">Tab 2: Tembakau Blend</span>
-                  <span className="text-xs font-medium text-blue-900">DHP Kol. W &amp; Master</span>
+                  <span className="text-xs font-medium text-blue-900">Switchboard codeIA (Harian)</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
                   <span className="text-[10px] text-amber-800 font-bold block uppercase">Tab 3: Rajang II</span>
-                  <span className="text-xs font-medium text-amber-900">Suhu Lt 2 (L8 Mecah)</span>
+                  <span className="text-xs font-medium text-amber-900">Auto-Expand &gt; 6.300 Baris</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-200">
                   <span className="text-[10px] text-indigo-800 font-bold block uppercase">Tab 4: Rajang I</span>
-                  <span className="text-xs font-medium text-indigo-900">Struktur Standar Audit</span>
+                  <span className="text-xs font-medium text-indigo-900">Sinkron Transaksi Riil</span>
                 </div>
               </div>
 
@@ -1019,29 +1019,27 @@ export const GasMigrationModal: React.FC<GasMigrationModalProps> = ({
               {/* Panduan Pemakaian */}
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
                 <strong className="text-slate-900 block font-bold text-sm">
-                  Cara Penggunaan Script (Sangat Mudah &amp; 100% Otomatis):
+                  Cara Penggunaan Script &amp; Pembaruan V1.3 (100% Otomatis &amp; Aman):
                 </strong>
                 <ol className="list-decimal pl-4 space-y-1.5 mt-1 leading-relaxed">
                   <li>
-                    <strong>Buka Google Drive</strong> Anda, lalu buat Spreadsheet Baru (atau biarkan kosong).
+                    <strong>Buka Spreadsheet BSPP CENTER</strong> (ID: <code>1Qm3dLQaKpnwCRUiAGxR2UmVxV1MdxbTFvTVnnrRwoK8</code>).
                   </li>
                   <li>
-                    Di Spreadsheet tersebut, klik menu <strong>Extensions &gt; Apps Script</strong>.
+                    Klik menu <strong>Extensions &gt; Apps Script</strong>, timpa seluruh kode lama dengan kode <code>BSPP_Central_Sync.gs</code> terbaru di atas, lalu tekan <strong>Save (Ctrl+S)</strong>.
                   </li>
                   <li>
-                    Tempelkan seluruh kode script di atas (atau unggah file <code>BSPP_Central_Sync.gs</code>).
+                    Refresh halaman Google Sheets. Menu <code>🚀 BSPP Central Hub</code> akan muncul di toolbar atas dengan alat perawatan instan:
+                    <ul className="list-disc pl-4 mt-1 space-y-1 text-slate-600">
+                      <li><code>🧹 Bersihkan Data DHP dari Tab Blend</code>: Mengosongkan 1.999 baris proses masak DHP lama agar tab Blend bersih khusus untuk data BSPP murni.</li>
+                      <li><code>🔍 Cek ID Sheet Harian BSPP Blend (codeIA)</code>: Memverifikasi koneksi ke Switchboard dan sheet harian yang terdeteksi.</li>
+                      <li><code>✨ Normalisasi &amp; Standarkan Tab Cengkeh</code>: Merapikan baris 2-411 agar konsisten tertulis &quot;BSPP CENGKEH&quot; &amp; ID standar.</li>
+                      <li><code>➕ Tambah 1.000 Baris Kosong ke Semua Tab</code>: Memastikan Rajang II (dan tab lain) selalu memiliki ruang baris kosong cadangan.</li>
+                      <li><code>⏰ Pasang Jadwal Sync Otomatis 2x Sehari (16:00 &amp; 21:00)</code>: Menjalankan sinkronisasi sore dan lembur malam tanpa duplikasi.</li>
+                    </ul>
                   </li>
                   <li>
-                    Pilih fungsi <code>setupDatabaseBSPPPusat</code> di dropdown atas, lalu klik <strong>Run</strong> (Jalankan sekali). Script akan otomatis membentuk 5 Tab lengkap dengan header elegan, format angka khusus kg &amp; %, dan pewarnaan status!
-                  </li>
-                  <li>
-                    Pilih fungsi <code>sinkronisasiSemuaBSPP</code> lalu klik <strong>Run</strong>. Data dari semua sheet operasional akan ditarik dan dirapikan.
-                  </li>
-                  <li>
-                    <strong>Menu Kustom:</strong> Setelah di-refresh, Spreadsheet baru Anda akan memiliki menu <code>🚀 BSPP Central Hub</code> di toolbar untuk sinkronisasi sekali klik dan penjadwalan otomatis setiap pukul 16:00 sore!
-                  </li>
-                  <li>
-                    <strong>Deploy Web App &amp; Tautan /exec:</strong> Script ini sudah dilengkapi fungsi <code>doGet(e)</code> dan <code>doPost(e)</code>. Saat Anda deploy sebagai Web App (pilih <em>Deploy &gt; Manage deployments &gt; Edit &gt; Version: New version &gt; Deploy</em>), tautan <code>/exec</code> akan langsung menyajikan <strong>Web Dashboard Interaktif &amp; REST API</strong> siap pakai.
+                    Jalankan <code>⚡ Sinkronisasi Semua Data BSPP Sekarang</code> untuk menarik data terkini secara terisolasi dan akurat.
                   </li>
                 </ol>
               </div>
