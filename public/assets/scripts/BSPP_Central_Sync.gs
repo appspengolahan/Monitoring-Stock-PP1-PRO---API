@@ -60,9 +60,9 @@ var SINKRONISASI_CONFIG = {
   // 4. BSPP TEMBAKAU & KROSOK (RAJANG I)
   RAJANG_I: {
     nama: "BSPP TEMBAKAU & KROSOK (RAJANG I)",
-    sourceSpreadsheetId: "1s7o445qm3-r-l3auAK0KkBk3mIJBQMM0ZO643sLNV6E",
-    sourceSheetName: "REKAP BSPP",
-    sourceRange: "E:M",
+    sourceSpreadsheetId: "1YH-M8q_56MINQ1Lu9MqoWZQIcYe8KK1-6ZCpMbpxfWo",
+    sourceSheetName: "BSPP TEMBAKAU KROSOK-RAJANG 1",
+    sourceRange: "B9:H",
     suhuDefault: 29.5,
     warnaHeader: "#312e81" // Indigo Pekat
   }
@@ -369,9 +369,25 @@ function syncCommodityDataBatch_(targetSs, cfg, fetchFunction) {
       sheet = targetSs.getSheetByName(cfg.nama);
     }
 
-    var sourceItems = fetchFunction(cfg);
+    var fetchRes = fetchFunction(cfg);
+    var sourceItems = [];
+    var noticeMsg = "";
+
+    if (Array.isArray(fetchRes)) {
+      sourceItems = fetchRes;
+    } else if (fetchRes && typeof fetchRes === "object") {
+      if (fetchRes.error) {
+        return "❌ " + cfg.nama + ": " + fetchRes.error;
+      }
+      sourceItems = fetchRes.items || [];
+      noticeMsg = fetchRes.notice || "";
+    }
+
     if (!sourceItems || sourceItems.length === 0) {
-      return "⚠️ " + cfg.nama + ": Tidak ada data sumber ditemukan.";
+      if (noticeMsg) {
+        return "ℹ️ " + cfg.nama + ": " + noticeMsg;
+      }
+      return "⚠️ " + cfg.nama + ": Tidak ada data sumber transaksi ditemukan.";
     }
 
     var lastRow = sheet.getLastRow();
@@ -457,6 +473,24 @@ function syncCommodityDataBatch_(targetSs, cfg, fetchFunction) {
     Logger.log("Error sync " + cfg.nama + ": " + err.message);
     return "❌ " + cfg.nama + " Gagal: " + err.message;
   }
+}
+
+function parseIndonesianNumber_(val, defaultVal) {
+  if (defaultVal === undefined) defaultVal = 0;
+  if (val === null || val === undefined || typeof val === "boolean") return defaultVal;
+  if (typeof val === "number") return isNaN(val) ? defaultVal : val;
+  var s = String(val).trim();
+  if (!s || s.toUpperCase() === "FALSE") return defaultVal;
+  // Hapus satuan dan teks non-numerik seperti "Kg", "%", "°C", spasi
+  s = s.replace(/kg|%|°c|c\b/gi, "").trim();
+  // Tangani ribuan titik dan desimal koma: e.g. 1.825.517,7 atau 877,8 atau 877.8
+  if (s.indexOf(".") !== -1 && s.indexOf(",") !== -1) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (s.indexOf(",") !== -1) {
+    s = s.replace(",", ".");
+  }
+  var num = parseFloat(s);
+  return isNaN(num) ? defaultVal : num;
 }
 
 function generateUniqueId_(item, commodityName) {
@@ -549,76 +583,335 @@ function fetchRajangIISourceData_(cfg) {
 
 function fetchRajangISourceData_(cfg) {
   try {
-    var ss = SpreadsheetApp.openById(cfg.sourceSpreadsheetId);
+    var ss = null;
+    try {
+      ss = SpreadsheetApp.openById(cfg.sourceSpreadsheetId);
+    } catch (eOpen) {
+      return { error: "Gagal membuka Spreadsheet ID Rajang I (" + cfg.sourceSpreadsheetId + "): " + eOpen.message };
+    }
+
     var sh = ss.getSheetByName(cfg.sourceSheetName);
-    if (!sh) return [];
-    var vals = sh.getRange(cfg.sourceRange).getValues();
+    if (!sh) {
+      var allSheets = ss.getSheets();
+      for (var s = 0; s < allSheets.length; s++) {
+        var sName = allSheets[s].getName().trim();
+        if (sName.toLowerCase() === cfg.sourceSheetName.toLowerCase() ||
+            /rajang.*1|rajang.*i|krosok.*rajang/i.test(sName)) {
+          sh = allSheets[s];
+          break;
+        }
+      }
+    }
+
+    if (!sh) {
+      return { error: "Tab sheet '" + cfg.sourceSheetName + "' tidak ditemukan dalam spreadsheet Rajang I." };
+    }
+
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 9) {
+      return {
+        items: [],
+        notice: "Terhubung ke tab '" + sh.getName() + "', namun belum ada baris transaksi setelah baris header ke-8."
+      };
+    }
 
     var items = [];
-    for (var i = 2; i < vals.length; i++) {
-      var r = vals[i];
-      var tgl = r[0];
-      var jenis = r[3];
-      var netto = Number(r[4]) || 0;
-      var timbang = Number(r[5]) || 0;
-      if (!tgl || !jenis || netto <= 0) continue;
+    var falseCount = 0;
+    var checkedRows = 0;
 
-      var iso = (tgl instanceof Date) ? Utilities.formatDate(tgl, "Asia/Jakarta", "yyyy-MM-dd") : String(tgl);
+    // Data mulai baris 9 (index 8)
+    for (var i = 8; i < data.length; i++) {
+      var r = data[i];
+      var rawTgl = r[1];          // Kolom B: TANGGAL
+      var rawJenis = r[2];        // Kolom C: JENIS TEMBAKAU & KROSOK
+      var rawNetto = r[3];        // Kolom D: NETTO AWAL
+      var rawTimbang = r[4];      // Kolom E: TIMBANG ULANG
+      var rawSelisihKg = r[5];    // Kolom F: SELISIH (Kg)
+      var rawSelisihPersen = r[6];// Kolom G: SELISIH (%)
+      var rawStatus = r[7];       // Kolom H: STATUS
+
+      // 1. Cek baris kosong / baris tanpa tanggal & jenis
+      if (!rawTgl && !rawJenis && !rawNetto && !rawTimbang) continue;
+      checkedRows++;
+
+      // 2. Validasi rumus bernilai FALSE (khas saat formula belum terisi bobot riil)
+      var isNettoFalse = (rawNetto === false || String(rawNetto || "").toUpperCase().trim() === "FALSE");
+      var isTimbangFalse = (rawTimbang === false || String(rawTimbang || "").toUpperCase().trim() === "FALSE");
+
+      if (isNettoFalse || isTimbangFalse) {
+        falseCount++;
+        continue;
+      }
+
+      var netto = parseIndonesianNumber_(rawNetto, 0);
+      var timbang = parseIndonesianNumber_(rawTimbang, 0);
+
+      // Hanya proses jika netto dan timbangan riil valid > 0
+      if (netto <= 0 || timbang <= 0) {
+        falseCount++;
+        continue;
+      }
+
+      var jenisStr = String(rawJenis || "").trim();
+      if (!jenisStr || jenisStr.toUpperCase() === "FALSE") continue;
+
+      var isoDate = parseIndonesianDateStringToIso_(rawTgl);
+      if (!isoDate) continue;
+
+      var selisihKg = 0;
+      if (rawSelisihKg !== "" && rawSelisihKg !== null && rawSelisihKg !== undefined && String(rawSelisihKg).toUpperCase() !== "FALSE") {
+        selisihKg = parseIndonesianNumber_(rawSelisihKg, timbang - netto);
+      } else {
+        selisihKg = Math.round((timbang - netto) * 10) / 10;
+      }
+
+      var selisihPersen = 0;
+      if (rawSelisihPersen !== "" && rawSelisihPersen !== null && rawSelisihPersen !== undefined && String(rawSelisihPersen).toUpperCase() !== "FALSE") {
+        var p = parseIndonesianNumber_(rawSelisihPersen, 0);
+        selisihPersen = p > 1 ? p / 100 : p;
+      } else {
+        selisihPersen = netto > 0 ? (selisihKg / netto) : 0;
+      }
+
+      var status = "";
+      if (rawStatus && typeof rawStatus === "string" && rawStatus.trim() !== "" && rawStatus.trim().toUpperCase() !== "FALSE") {
+        status = rawStatus.trim();
+      } else {
+        if (timbang < netto) status = "Selisih Kurang";
+        else if (timbang > netto) status = "Selisih Lebih";
+        else status = "Tanpa Selisih";
+      }
+
       items.push({
-        tanggal: iso,
-        jenis: String(jenis).trim(),
+        tanggal: isoDate,
+        jenis: jenisStr,
         labelNetto: netto,
         timbangUlang: timbang,
-        selisihKg: Number(r[6]) || (netto - timbang),
-        selisihPersen: Number(r[7]) || (netto > 0 ? (netto - timbang) / netto : 0),
-        status: String(r[8] || "").trim(),
+        selisihKg: selisihKg,
+        selisihPersen: selisihPersen,
+        status: status,
         suhu: cfg.suhuDefault || 29.5
       });
     }
-    return items;
+
+    if (items.length > 0) {
+      return { items: items };
+    }
+
+    return {
+      items: [],
+      notice: "Terhubung ke tab '" + sh.getName() + "' (" + (falseCount > 0 ? falseCount + " baris formula bernilai FALSE / belum ada timbangan riil" : "belum ada transaksi timbangan") + "). Wajar karena Rajang I terjadi secara berkala."
+    };
   } catch (e) {
     Logger.log("Error fetch Rajang I: " + e.message);
-    return [];
+    return { error: e.message };
   }
+}
+
+function parseIndonesianDateStringToIso_(str) {
+  if (!str) return "";
+  if (str instanceof Date) {
+    return Utilities.formatDate(str, "Asia/Jakarta", "yyyy-MM-dd");
+  }
+  var s = String(str).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    return s.substring(0, 10);
+  }
+  // Bersihkan nama hari (misal "Rabu, 21 Oktober 2026" -> "21 Oktober 2026")
+  var clean = s.replace(/^[a-zA-Z]+,\s*/, "");
+  var parts = clean.split(/[\s\-\/]+/);
+  if (parts.length >= 3) {
+    var day = parseInt(parts[0], 10);
+    var monthStr = parts[1].toLowerCase();
+    var year = parseInt(parts[2], 10);
+    var months = {
+      jan: 1, januari: 1,
+      feb: 2, februari: 2,
+      mar: 3, maret: 3,
+      apr: 4, april: 4,
+      mei: 5, may: 5,
+      jun: 6, juni: 6,
+      jul: 7, juli: 7,
+      agu: 8, agust: 8, agustus: 8, aug: 8,
+      sep: 9, sept: 9, september: 9,
+      okt: 10, oktober: 10, oct: 10,
+      nop: 11, nov: 11, november: 11,
+      des: 12, desember: 12, dec: 12
+    };
+    var month = months[monthStr];
+    if (day > 0 && month > 0 && year > 2000) {
+      var mm = month < 10 ? "0" + month : "" + month;
+      var dd = day < 10 ? "0" + day : "" + day;
+      return year + "-" + mm + "-" + dd;
+    }
+  }
+  return s;
 }
 
 function fetchBlendSourceData_(cfg) {
   try {
-    var ss = SpreadsheetApp.openById(cfg.sourceSpreadsheetId);
-    var sh = ss.getSheetByName(cfg.sourceSheetName);
-    if (!sh) return [];
-    var data = sh.getDataRange().getValues();
-
     var items = [];
-    for (var i = 7; i < data.length; i++) {
-      var r = data[i];
-      var tgl = r[5]; // Tanggal
-      var jenis = r[1]; // Nama Blend
-      var netto = Number(r[7]) || 0; // Netto
-      var timbang = Number(r[8]) || netto; // Timbang Ulang
-      var rawSuhu = r[cfg.colSuhuDHP]; // Kolom W Suhu
-
-      if (!tgl || !jenis || netto <= 0) continue;
-
-      var suhuNum = typeof rawSuhu === "number" ? rawSuhu : parseFloat(String(rawSuhu || "").replace(",", "."));
-      if (isNaN(suhuNum) || suhuNum <= 0) suhuNum = cfg.suhuDefault || 27.5;
-
-      var iso = (tgl instanceof Date) ? Utilities.formatDate(tgl, "Asia/Jakarta", "yyyy-MM-dd") : String(tgl);
-      items.push({
-        tanggal: iso,
-        jenis: String(jenis).trim(),
-        labelNetto: netto,
-        timbangUlang: timbang,
-        selisihKg: netto - timbang,
-        selisihPersen: netto > 0 ? (netto - timbang) / netto : 0,
-        status: (netto - timbang) > 0.1 ? "Kurang" : ((netto - timbang) < -0.1 ? "Lebih" : "Pas / Sesuai"),
-        suhu: suhuNum
-      });
+    var ssBlend = null;
+    try {
+      ssBlend = SpreadsheetApp.openById(cfg.sourceSpreadsheetId);
+    } catch (e) {
+      Logger.log("Tidak dapat membuka spreadsheet DHP Blend ID: " + cfg.sourceSpreadsheetId + " - " + e.message);
     }
-    return items;
+
+    // 1. Coba baca dari tab INTEGRASI DATA DHP BLEND
+    if (ssBlend) {
+      var sh = ssBlend.getSheetByName(cfg.sourceSheetName);
+      if (!sh) {
+        var allSheets = ssBlend.getSheets();
+        for (var s = 0; s < allSheets.length; s++) {
+          var name = allSheets[s].getName().trim();
+          if (name.toLowerCase() === cfg.sourceSheetName.toLowerCase() ||
+              /integrasi.*dhp|dhp.*blend|hasil.*proses.*blend/i.test(name)) {
+            sh = allSheets[s];
+            break;
+          }
+        }
+      }
+
+      if (sh) {
+        var data = sh.getDataRange().getValues();
+        if (data && data.length > 10) {
+          // Cari baris header dinamis (yang berisi TANGGAL, NOMER, BOBOT BAKU, HASIL PROSES, dll)
+          var headerRowIdx = -1;
+          var colTgl = 2;        // Default Col C
+          var colNomer = 0;      // Default Col A
+          var colMerk = 4;       // Default Col E
+          var colBobotBaku = 5;  // Default Col F
+          var colTimbang = 6;    // Default Col G (HASIL PROSES)
+          var colSusutKg = 9;    // Default Col J
+          var colSusutPct = 10;  // Default Col K
+
+          for (var rIdx = 0; rIdx < Math.min(20, data.length); rIdx++) {
+            var rowVals = data[rIdx].map(function(c) { return String(c || "").trim().toUpperCase(); });
+            var hasHeader = rowVals.some(function(v) { return v.indexOf("BOBOT BAKU") !== -1 || v.indexOf("HASIL PROSES") !== -1; });
+            if (hasHeader) {
+              headerRowIdx = rIdx;
+              for (var cIdx = 0; cIdx < rowVals.length; cIdx++) {
+                var v = rowVals[cIdx];
+                if (v.indexOf("TANGGAL") !== -1 && v.indexOf("PROSES") !== -1) colTgl = cIdx;
+                else if (v.indexOf("TANGGAL") !== -1 && colTgl === 2) colTgl = cIdx;
+                if (v === "NOMER" || v === "NO" || v.indexOf("NOMOR") !== -1) colNomer = cIdx;
+                if (v === "MERK" || v.indexOf("JENIS") !== -1) colMerk = cIdx;
+                if (v.indexOf("BOBOT BAKU") !== -1) colBobotBaku = cIdx;
+                if (v.indexOf("HASIL PROSES") !== -1 && colTimbang === 6) colTimbang = cIdx;
+                if (v.indexOf("TIMBANG ULANG") !== -1) colTimbang = cIdx;
+                if (v.indexOf("SUSUT") !== -1 && v.indexOf("KG") !== -1) colSusutKg = cIdx;
+                if (v.indexOf("SUSUT") !== -1 && v.indexOf("%") !== -1) colSusutPct = cIdx;
+              }
+              break;
+            }
+          }
+
+          var startDataRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 13;
+          for (var i = startDataRow; i < data.length; i++) {
+            var r = data[i];
+            var rawTgl = r[colTgl];
+            var rawMerk = r[colMerk];
+            var rawNetto = r[colBobotBaku];
+            var rawTimbang = r[colTimbang];
+            var rawSusutKg = r[colSusutKg];
+            var rawSusutPct = r[colSusutPct];
+
+            var netto = parseIndonesianNumber_(rawNetto, 0);
+            var timbang = parseIndonesianNumber_(rawTimbang, 0);
+            if (!rawTgl || !rawMerk || netto <= 0) continue;
+
+            var jenisStr = String(rawMerk).trim();
+            if (!jenisStr || jenisStr === "-" || jenisStr.toUpperCase() === "FALSE") continue;
+
+            var isoDate = parseIndonesianDateStringToIso_(rawTgl);
+            if (!isoDate) continue;
+
+            var selisihKg = parseIndonesianNumber_(rawSusutKg, netto - timbang);
+            var selisihPersen = parseIndonesianNumber_(rawSusutPct, netto > 0 ? (selisihKg / netto) * 100 : 0);
+            if (selisihPersen > 1) selisihPersen = selisihPersen / 100;
+
+            var status = selisihKg > 0.05 ? "Selisih Kurang" : (selisihKg < -0.05 ? "Selisih Lebih" : "Tanpa Selisih");
+
+            items.push({
+              tanggal: isoDate,
+              jenis: jenisStr,
+              labelNetto: netto,
+              timbangUlang: timbang > 0 ? timbang : (netto - selisihKg),
+              selisihKg: selisihKg,
+              selisihPersen: selisihPersen,
+              status: status,
+              suhu: cfg.suhuDefault || 27.5
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Jika dari INTEGRASI DATA DHP BLEND kosong, fallback ke DATAMASTER (masterSpreadsheetId)
+    if (items.length === 0 && cfg.masterSpreadsheetId) {
+      try {
+        var ssMaster = SpreadsheetApp.openById(cfg.masterSpreadsheetId);
+        var shMaster = ssMaster.getSheetByName("DATAMASTER") || ssMaster.getSheetByName("Data Master");
+        if (shMaster) {
+          var mData = shMaster.getDataRange().getValues();
+          // Header biasanya baris 13 (index 12)
+          var mStartRow = 13;
+          for (var mi = 0; mi < Math.min(25, mData.length); mi++) {
+            var mRow = mData[mi].map(function(c) { return String(c || "").trim().toUpperCase(); });
+            if (mRow.indexOf("BOBOT BAKU") !== -1 && mRow.indexOf("HASIL PROSES") !== -1) {
+              mStartRow = mi + 1;
+              break;
+            }
+          }
+
+          for (var k = mStartRow; k < mData.length; k++) {
+            var mr = mData[k];
+            var mTgl = mr[1];      // Kolom B: TANGGAL
+            var mJenis = mr[5];    // Kolom F: JENIS TBK BLEND
+            var mNetto = parseIndonesianNumber_(mr[8], 0);  // Kolom I: BOBOT BAKU
+            var mTimbang = parseIndonesianNumber_(mr[9], 0); // Kolom J: HASIL PROSES
+            var mSusutKg = parseIndonesianNumber_(mr[10], mNetto - mTimbang); // Kolom K: SUSUT
+            var mSusutPct = parseIndonesianNumber_(mr[11], 0); // Kolom L: SUSUT %
+            var mSuhu = parseIndonesianNumber_(mr[13], cfg.suhuDefault || 27.5); // Kolom N: SUHU
+
+            if (!mTgl || !mJenis || mNetto <= 0) continue;
+            var jenisClean = String(mJenis).trim();
+            if (!jenisClean || jenisClean === "-" || jenisClean.toUpperCase() === "FALSE") continue;
+
+            var iso = parseIndonesianDateStringToIso_(mTgl);
+            if (!iso) continue;
+
+            if (mSusutPct > 1) mSusutPct = mSusutPct / 100;
+            var mStatus = mSusutKg > 0.05 ? "Selisih Kurang" : (mSusutKg < -0.05 ? "Selisih Lebih" : "Tanpa Selisih");
+
+            items.push({
+              tanggal: iso,
+              jenis: jenisClean,
+              labelNetto: mNetto,
+              timbangUlang: mTimbang > 0 ? mTimbang : (mNetto - mSusutKg),
+              selisihKg: mSusutKg,
+              selisihPersen: mSusutPct,
+              status: mStatus,
+              suhu: mSuhu > 0 ? mSuhu : (cfg.suhuDefault || 27.5)
+            });
+          }
+        }
+      } catch (errM) {
+        Logger.log("Fallback DATAMASTER error: " + errM.message);
+      }
+    }
+
+    if (items.length > 0) {
+      return { items: items };
+    }
+    return {
+      items: [],
+      notice: "Sheet terhubung, namun belum ditemukan baris transaksi berbobot baku > 0 pada sheet DHP Blend / DATAMASTER."
+    };
   } catch (e) {
     Logger.log("Error fetch Blend: " + e.message);
-    return [];
+    return { error: e.message };
   }
 }
 
