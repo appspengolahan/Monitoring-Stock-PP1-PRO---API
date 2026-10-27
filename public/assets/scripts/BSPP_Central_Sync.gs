@@ -864,8 +864,9 @@ function fetchBlendSourceData_(cfg) {
       if (hasColJ) {
         selisihKg = parseIndonesianNumber_(rawJ, valI - valF);
       } else {
-        selisihKg = Math.round((valI - valF) * 10) / 10;
+        selisihKg = valI - valF;
       }
+      selisihKg = Math.round(selisihKg * 100) / 100;
 
       var selisihPct = valF > 0 ? (selisihKg / valF) : 0;
       var status = "";
@@ -876,9 +877,9 @@ function fetchBlendSourceData_(cfg) {
       items.push({
         tanggal: isoDate,
         jenis: jenisStr,
-        labelNetto: valF,       // LABEL AWAL (Kg)
-        timbangUlang: valI,     // HASIL GABUNG (Kg)
-        selisihKg: selisihKg,   // TOTAL BSPP TBK BLEND (Kg)
+        labelNetto: Math.round(valF * 100) / 100,       // LABEL AWAL (Kg)
+        timbangUlang: Math.round(valI * 100) / 100,     // HASIL GABUNG (Kg)
+        selisihKg: selisihKg,                           // TOTAL BSPP TBK BLEND (Kg)
         selisihPersen: selisihPct,
         status: status,
         suhu: cfg.suhuDefault || 27.5
@@ -920,11 +921,12 @@ function cekSheetHarianBlend() {
     for (var i = 0; i < vals.length; i++) {
       var r = vals[i];
       var jenisStr = String(r[2] || "").trim();
-      var valF = parseIndonesianNumber_(r[3], 0); // Label Awal
-      var valG = parseIndonesianNumber_(r[4], 0); // Timbang Ulang
-      var valH = parseIndonesianNumber_(r[5], 0); // BSPP
-      var valI = parseIndonesianNumber_(r[6], 0); // Hasil Gabung
+      var valF = Math.round(parseIndonesianNumber_(r[3], 0) * 100) / 100; // Label Awal
+      var valG = Math.round(parseIndonesianNumber_(r[4], 0) * 100) / 100; // Timbang Ulang
+      var valH = Math.round(parseIndonesianNumber_(r[5], 0) * 100) / 100; // BSPP
+      var valI = Math.round(parseIndonesianNumber_(r[6], 0) * 100) / 100; // Hasil Gabung
       var valJ = parseIndonesianNumber_(r[7], valI - valF); // Total BSPP Tbk Blend
+      valJ = Math.round(valJ * 100) / 100;
 
       var isEligible = (valF > 0 && valG > 0 && valI > 0);
       if (isEligible) {
@@ -939,7 +941,7 @@ function cekSheetHarianBlend() {
     }
 
     var summaryMsg = "📊 Audit Tabel codeIA C8:J14 (7 Varian Tembakau Blend)\n" +
-                     "Tanggal Terdeteksi di C8: " + String(headerDateRaw || isoDate) + "\n" +
+                     "Tanggal Terdeteksi di C8: " + isoDate + "\n" +
                      "Status Kelayakan: " + readyCount + " dari 7 varian siap disinkronkan.\n\n" +
                      lines.join("\n\n");
 
