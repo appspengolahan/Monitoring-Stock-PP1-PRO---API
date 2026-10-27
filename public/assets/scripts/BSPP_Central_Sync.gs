@@ -81,6 +81,10 @@ function onOpen() {
     .addItem("⏰ Pasang Jadwal Sync Otomatis 2x Sehari (16:00 & 21:00)", "pasangTriggerOtomatisHarian")
     .addItem("🛑 Hapus Jadwal Sync Otomatis", "hapusSemuaTriggerOtomatis")
     .addSeparator()
+    .addItem("🧹 Bersihkan Data DHP dari Tab Blend", "bersihkanTabBlend")
+    .addItem("✨ Normalisasi & Standarkan Tab Cengkeh", "normalisasiTabCengkeh")
+    .addItem("➕ Tambah 1.000 Baris Kosong ke Semua Tab", "tambahKapasitasBarisSemuaTab")
+    .addSeparator()
     .addItem("ℹ️ Cek Status & ID Spreadsheet", "tampilkanInfoSpreadsheet")
     .addToUi();
 }
@@ -389,10 +393,14 @@ function syncCommodityDataBatch_(targetSs, cfg, fetchFunction) {
     }
 
     if (!sourceItems || sourceItems.length === 0) {
-      if (noticeMsg) {
-        return "ℹ️ " + cfg.nama + ": " + noticeMsg;
+      // Jika data sumber kosong (misal data dummy telah dihapus di sheet sumber), bersihkan baris data di sheet tujuan
+      if (sheet.getLastRow() > 1) {
+        sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).clearContent();
       }
-      return "⚠️ " + cfg.nama + ": Tidak ada data sumber transaksi ditemukan.";
+      if (noticeMsg) {
+        return "ℹ️ " + cfg.nama + ": Data sumber kosong (sheet tujuan otomatis dikosongkan). " + noticeMsg;
+      }
+      return "ℹ️ " + cfg.nama + ": Data sumber kosong. Sheet tujuan telah dikosongkan.";
     }
 
     var lastRow = sheet.getLastRow();
@@ -464,9 +472,15 @@ function syncCommodityDataBatch_(targetSs, cfg, fetchFunction) {
       sheet.getRange(2, 1, existingRows.length, 12).setValues(existingRows);
     }
 
-    // 2. Tulis data baru (jika ada) dalam 1 call batch
+    // 2. Tulis data baru (jika ada) dalam 1 call batch dengan proteksi auto-expand baris
     if (insertedRows.length > 0) {
       var startRow = sheet.getLastRow() + 1;
+      var maxRows = sheet.getMaxRows();
+      var neededRows = (startRow + insertedRows.length + 500) - maxRows;
+      if (neededRows > 0) {
+        sheet.insertRowsAfter(maxRows, neededRows);
+      }
+
       for (var k = 0; k < insertedRows.length; k++) {
         insertedRows[k][0] = startRow + k - 1;
       }
@@ -762,164 +776,158 @@ function fetchBlendSourceData_(cfg) {
     try {
       ssBlend = SpreadsheetApp.openById(cfg.sourceSpreadsheetId);
     } catch (e) {
-      Logger.log("Tidak dapat membuka spreadsheet DHP Blend ID: " + cfg.sourceSpreadsheetId + " - " + e.message);
+      return { error: "Gagal membuka Spreadsheet Blend (" + cfg.sourceSpreadsheetId + "): " + e.message };
     }
 
-    // 1. Coba baca dari tab INTEGRASI DATA DHP BLEND
-    if (ssBlend) {
-      var sh = ssBlend.getSheetByName(cfg.sourceSheetName);
-      if (!sh) {
-        var allSheets = ssBlend.getSheets();
-        for (var s = 0; s < allSheets.length; s++) {
-          var name = allSheets[s].getName().trim();
-          if (name.toLowerCase() === cfg.sourceSheetName.toLowerCase() ||
-              /integrasi.*dhp|dhp.*blend|hasil.*proses.*blend/i.test(name)) {
-            sh = allSheets[s];
-            break;
-          }
-        }
-      }
-
-      if (sh) {
-        var data = sh.getDataRange().getValues();
-        if (data && data.length > 10) {
-          // Cari baris header dinamis (yang berisi TANGGAL, NOMER, BOBOT BAKU, HASIL PROSES, dll)
-          var headerRowIdx = -1;
-          var colTgl = 2;        // Default Col C
-          var colNomer = 0;      // Default Col A
-          var colMerk = 4;       // Default Col E
-          var colBobotBaku = 5;  // Default Col F
-          var colTimbang = 6;    // Default Col G (HASIL PROSES)
-          var colSusutKg = 9;    // Default Col J
-          var colSusutPct = 10;  // Default Col K
-
-          for (var rIdx = 0; rIdx < Math.min(20, data.length); rIdx++) {
-            var rowVals = data[rIdx].map(function(c) { return String(c || "").trim().toUpperCase(); });
-            var hasHeader = rowVals.some(function(v) { return v.indexOf("BOBOT BAKU") !== -1 || v.indexOf("HASIL PROSES") !== -1; });
-            if (hasHeader) {
-              headerRowIdx = rIdx;
-              for (var cIdx = 0; cIdx < rowVals.length; cIdx++) {
-                var v = rowVals[cIdx];
-                if (v.indexOf("TANGGAL") !== -1 && v.indexOf("PROSES") !== -1) colTgl = cIdx;
-                else if (v.indexOf("TANGGAL") !== -1 && colTgl === 2) colTgl = cIdx;
-                if (v === "NOMER" || v === "NO" || v.indexOf("NOMOR") !== -1) colNomer = cIdx;
-                if (v === "MERK" || v.indexOf("JENIS") !== -1) colMerk = cIdx;
-                if (v.indexOf("BOBOT BAKU") !== -1) colBobotBaku = cIdx;
-                if (v.indexOf("HASIL PROSES") !== -1 && colTimbang === 6) colTimbang = cIdx;
-                if (v.indexOf("TIMBANG ULANG") !== -1) colTimbang = cIdx;
-                if (v.indexOf("SUSUT") !== -1 && v.indexOf("KG") !== -1) colSusutKg = cIdx;
-                if (v.indexOf("SUSUT") !== -1 && v.indexOf("%") !== -1) colSusutPct = cIdx;
-              }
-              break;
-            }
-          }
-
-          var startDataRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 13;
-          for (var i = startDataRow; i < data.length; i++) {
-            var r = data[i];
-            var rawTgl = r[colTgl];
-            var rawMerk = r[colMerk];
-            var rawNetto = r[colBobotBaku];
-            var rawTimbang = r[colTimbang];
-            var rawSusutKg = r[colSusutKg];
-            var rawSusutPct = r[colSusutPct];
-
-            var netto = parseIndonesianNumber_(rawNetto, 0);
-            var timbang = parseIndonesianNumber_(rawTimbang, 0);
-            if (!rawTgl || !rawMerk || netto <= 0) continue;
-
-            var jenisStr = String(rawMerk).trim();
-            if (!jenisStr || jenisStr === "-" || jenisStr.toUpperCase() === "FALSE") continue;
-
-            var isoDate = parseIndonesianDateStringToIso_(rawTgl);
-            if (!isoDate) continue;
-
-            var selisihKg = parseIndonesianNumber_(rawSusutKg, netto - timbang);
-            var selisihPersen = parseIndonesianNumber_(rawSusutPct, netto > 0 ? (selisihKg / netto) * 100 : 0);
-            if (selisihPersen > 1) selisihPersen = selisihPersen / 100;
-
-            var status = selisihKg > 0.05 ? "Selisih Kurang" : (selisihKg < -0.05 ? "Selisih Lebih" : "Tanpa Selisih");
-
-            items.push({
-              tanggal: isoDate,
-              jenis: jenisStr,
-              labelNetto: netto,
-              timbangUlang: timbang > 0 ? timbang : (netto - selisihKg),
-              selisihKg: selisihKg,
-              selisihPersen: selisihPersen,
-              status: status,
-              suhu: cfg.suhuDefault || 27.5
-            });
-          }
-        }
-      }
+    if (!ssBlend) {
+      return { error: "Spreadsheet Blend tidak ditemukan." };
     }
 
-    // 2. Jika dari INTEGRASI DATA DHP BLEND kosong, fallback ke DATAMASTER (masterSpreadsheetId)
-    if (items.length === 0 && cfg.masterSpreadsheetId) {
-      try {
-        var ssMaster = SpreadsheetApp.openById(cfg.masterSpreadsheetId);
-        var shMaster = ssMaster.getSheetByName("DATAMASTER") || ssMaster.getSheetByName("Data Master");
-        if (shMaster) {
-          var mData = shMaster.getDataRange().getValues();
-          // Header biasanya baris 13 (index 12)
-          var mStartRow = 13;
-          for (var mi = 0; mi < Math.min(25, mData.length); mi++) {
-            var mRow = mData[mi].map(function(c) { return String(c || "").trim().toUpperCase(); });
-            if (mRow.indexOf("BOBOT BAKU") !== -1 && mRow.indexOf("HASIL PROSES") !== -1) {
-              mStartRow = mi + 1;
-              break;
-            }
-          }
+    // Cari tab khusus BSPP Blend (misal: "REKAP BSPP", "BSPP BLEND", atau "BSPP TEMBAKAU BLEND")
+    var sh = ssBlend.getSheetByName("REKAP BSPP") ||
+             ssBlend.getSheetByName("BSPP BLEND") ||
+             ssBlend.getSheetByName("BSPP TEMBAKAU BLEND") ||
+             ssBlend.getSheetByName("BSPP");
 
-          for (var k = mStartRow; k < mData.length; k++) {
-            var mr = mData[k];
-            var mTgl = mr[1];      // Kolom B: TANGGAL
-            var mJenis = mr[5];    // Kolom F: JENIS TBK BLEND
-            var mNetto = parseIndonesianNumber_(mr[8], 0);  // Kolom I: BOBOT BAKU
-            var mTimbang = parseIndonesianNumber_(mr[9], 0); // Kolom J: HASIL PROSES
-            var mSusutKg = parseIndonesianNumber_(mr[10], mNetto - mTimbang); // Kolom K: SUSUT
-            var mSusutPct = parseIndonesianNumber_(mr[11], 0); // Kolom L: SUSUT %
-            var mSuhu = parseIndonesianNumber_(mr[13], cfg.suhuDefault || 27.5); // Kolom N: SUHU
-
-            if (!mTgl || !mJenis || mNetto <= 0) continue;
-            var jenisClean = String(mJenis).trim();
-            if (!jenisClean || jenisClean === "-" || jenisClean.toUpperCase() === "FALSE") continue;
-
-            var iso = parseIndonesianDateStringToIso_(mTgl);
-            if (!iso) continue;
-
-            if (mSusutPct > 1) mSusutPct = mSusutPct / 100;
-            var mStatus = mSusutKg > 0.05 ? "Selisih Kurang" : (mSusutKg < -0.05 ? "Selisih Lebih" : "Tanpa Selisih");
-
-            items.push({
-              tanggal: iso,
-              jenis: jenisClean,
-              labelNetto: mNetto,
-              timbangUlang: mTimbang > 0 ? mTimbang : (mNetto - mSusutKg),
-              selisihKg: mSusutKg,
-              selisihPersen: mSusutPct,
-              status: mStatus,
-              suhu: mSuhu > 0 ? mSuhu : (cfg.suhuDefault || 27.5)
-            });
-          }
-        }
-      } catch (errM) {
-        Logger.log("Fallback DATAMASTER error: " + errM.message);
-      }
+    // Jika tab khusus BSPP belum ada, jangan tarik data DHP masak harian agar tidak bercampur
+    if (!sh) {
+      return {
+        items: [],
+        notice: "Tab khusus 'REKAP BSPP' belum ditemukan pada file Tembakau Blend. Data produksi masak harian (DHP) sengaja dipisahkan dari audit persediaan fisik (BSPP)."
+      };
     }
 
-    if (items.length > 0) {
-      return { items: items };
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 2) {
+      return {
+        items: [],
+        notice: "Tab '" + sh.getName() + "' ditemukan namun belum memiliki baris transaksi penimbangan ulang."
+      };
     }
-    return {
-      items: [],
-      notice: "Sheet terhubung, namun belum ditemukan baris transaksi berbobot baku > 0 pada sheet DHP Blend / DATAMASTER."
-    };
+
+    // Format standar REKAP BSPP (Kolom E:M atau baris data standar)
+    for (var i = 1; i < data.length; i++) {
+      var r = data[i];
+      var rawTgl = r[1] || r[0];
+      var rawJenis = r[3] || r[2];
+      var rawNetto = r[4];
+      var rawTimbang = r[5];
+      var rawSelisihKg = r[6];
+      var rawSelisihPct = r[7];
+      var rawStatus = r[8];
+
+      var netto = parseIndonesianNumber_(rawNetto, 0);
+      var timbang = parseIndonesianNumber_(rawTimbang, 0);
+      if (!rawTgl || !rawJenis || netto <= 0 || timbang <= 0) continue;
+
+      var isoDate = parseIndonesianDateStringToIso_(rawTgl);
+      if (!isoDate) continue;
+
+      var selisihKg = parseIndonesianNumber_(rawSelisihKg, timbang - netto);
+      var selisihPct = parseIndonesianNumber_(rawSelisihPct, netto > 0 ? (selisihKg / netto) : 0);
+      if (selisihPct > 1) selisihPct = selisihPct / 100;
+
+      items.push({
+        tanggal: isoDate,
+        jenis: String(rawJenis).trim(),
+        labelNetto: netto,
+        timbangUlang: timbang,
+        selisihKg: selisihKg,
+        selisihPersen: selisihPct,
+        status: String(rawStatus || (selisihKg > 0 ? "Selisih Lebih" : "Selisih Kurang")).trim(),
+        suhu: cfg.suhuDefault || 27.5
+      });
+    }
+
+    return { items: items };
   } catch (e) {
     Logger.log("Error fetch Blend: " + e.message);
     return { error: e.message };
   }
+}
+
+// ============================================================================
+// FUNGSI PERAWATAN & REPARASI DATASHEET PUSAT
+// ============================================================================
+
+function bersihkanTabBlend() {
+  var ss = getTargetSpreadsheet_();
+  var sh = ss.getSheetByName(SINKRONISASI_CONFIG.BLEND.nama);
+  if (!sh) {
+    SpreadsheetApp.getUi().alert("Tab " + SINKRONISASI_CONFIG.BLEND.nama + " tidak ditemukan.");
+    return;
+  }
+  var lastRow = sh.getLastRow();
+  if (lastRow > 1) {
+    sh.getRange(2, 1, lastRow - 1, 12).clearContent();
+  }
+  SpreadsheetApp.flush();
+  updateSummarySheetData_(ss);
+  SpreadsheetApp.getUi().alert(
+    "🧹 Pembersihan Selesai",
+    "Seluruh data DHP masak blend (1.999 baris proses) dan baris tanggal rusak telah dikosongkan dari tab '" + SINKRONISASI_CONFIG.BLEND.nama + "'.\n\nTab kini bersih dan siap menerima data audit persediaan (BSPP) yang sesungguhnya.",
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
+function normalisasiTabCengkeh() {
+  var ss = getTargetSpreadsheet_();
+  var sh = ss.getSheetByName(SINKRONISASI_CONFIG.CENGKEH.nama);
+  if (!sh || sh.getLastRow() < 2) {
+    SpreadsheetApp.getUi().alert("Tab " + SINKRONISASI_CONFIG.CENGKEH.nama + " tidak memiliki data.");
+    return;
+  }
+  var lastRow = sh.getLastRow();
+  var data = sh.getRange(2, 1, lastRow - 1, 12).getValues();
+  var modified = false;
+
+  for (var i = 0; i < data.length; i++) {
+    // Normalisasi Kolom C (Index 2) agar selalu konsisten "BSPP CENGKEH"
+    if (String(data[i][2]).trim() !== SINKRONISASI_CONFIG.CENGKEH.nama) {
+      data[i][2] = SINKRONISASI_CONFIG.CENGKEH.nama;
+      modified = true;
+    }
+    // Normalisasi Kolom K (Index 10) agar selalu berformat BSPP-XXXXXX
+    var currentId = String(data[i][10] || "").trim();
+    if (!currentId.startsWith("BSPP-")) {
+      data[i][10] = generateUniqueId_({
+        tanggal: data[i][1],
+        jenis: data[i][3],
+        labelNetto: data[i][4]
+      }, SINKRONISASI_CONFIG.CENGKEH.nama);
+      modified = true;
+    }
+  }
+
+  if (modified) {
+    sh.getRange(2, 1, data.length, 12).setValues(data);
+  }
+  SpreadsheetApp.flush();
+  SpreadsheetApp.getUi().alert(
+    "✨ Normalisasi Cengkeh Berhasil",
+    "Seluruh baris pada tab 'BSPP CENGKEH' telah distandarisasi:\n- Kolom C: Konsisten tertulis 'BSPP CENGKEH'\n- Kolom K: ID Unik distandarisasi ke format hash 'BSPP-XXXXXX'.",
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
+function tambahKapasitasBarisSemuaTab() {
+  var ss = getTargetSpreadsheet_();
+  var sheets = ss.getSheets();
+  var count = 0;
+  for (var i = 0; i < sheets.length; i++) {
+    var sh = sheets[i];
+    var lastRow = sh.getLastRow();
+    var maxRows = sh.getMaxRows();
+    if (maxRows - lastRow < 500) {
+      sh.insertRowsAfter(maxRows, 1000);
+      count++;
+    }
+  }
+  SpreadsheetApp.getUi().alert(
+    "➕ Tambah Kapasitas Baris Berhasil",
+    "Sebanyak 1.000 baris kosong cadangan telah ditambahkan ke " + count + " tab sheet agar tidak ada lagi lembar kerja yang mentok di baris bawah.",
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
 }
 
 

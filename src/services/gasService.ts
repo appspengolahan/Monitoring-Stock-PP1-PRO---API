@@ -2985,7 +2985,13 @@ export class GasService {
         }
       });
       clearTimeout(id);
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        return { ok: false, fallback: true, error: 'Respon server kosong' };
+      }
+      if (data.fallback) {
+        return data;
+      }
       if (!res.ok || (data && data.isHtml)) {
         throw new Error(data.error || `HTTP ${res.status}: Respon server tidak valid`);
       }
@@ -2993,9 +2999,9 @@ export class GasService {
     } catch (err: any) {
       clearTimeout(id);
       if (err.name === 'AbortError' || err.message?.includes('aborted')) {
-        throw new Error(timeoutMsg);
+        return { ok: false, fallback: true, timeout: true, error: timeoutMsg };
       }
-      throw err;
+      return { ok: false, fallback: true, error: err?.message || 'Koneksi gagal' };
     }
   }
 

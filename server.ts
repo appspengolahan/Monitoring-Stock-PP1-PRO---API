@@ -687,34 +687,55 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
 
   // In-memory micro-cache for GAS proxy to accelerate repeat calls and reduce latency to < 5ms
   const proxyMemoryCache = new Map<string, { data: any; expiry: number }>();
-  const PROXY_CACHE_TTL_MS = 30000; // 30 seconds cache for rapid repeat queries
+  const PROXY_CACHE_TTL_MS = 60000; // 60 seconds cache for rapid repeat queries
 
   // Proxy API endpoint to bypass browser CORS and follow 302 redirect transparently
   app.get('/api/gas-proxy', async (req, res) => {
-    try {
-      const targetUrl = req.query.url as string;
-      const noCache = req.query.noCache === 'true';
+    const targetUrl = req.query.url as string;
+    const noCache = req.query.noCache === 'true';
 
-      if (!targetUrl) {
-        return res.status(400).json({ ok: false, error: 'Target URL is required' });
+    if (!targetUrl) {
+      return res.status(400).json({ ok: false, error: 'Target URL is required' });
+    }
+
+    const now = Date.now();
+    if (!noCache) {
+      const cached = proxyMemoryCache.get(targetUrl);
+      if (cached && cached.expiry > now) {
+        res.setHeader('X-Cache', 'HIT');
+        return res.json(cached.data);
       }
+    }
 
-      const now = Date.now();
-      if (!noCache) {
-        const cached = proxyMemoryCache.get(targetUrl);
-        if (cached && cached.expiry > now) {
-          res.setHeader('X-Cache', 'HIT');
-          return res.json(cached.data);
+    try {
+      let response: Response | null = null;
+      let lastErr: any = null;
+
+      // Resilient fetch with browser User-Agent and single retry on network blip
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          response = await fetch(targetUrl, {
+            headers: {
+              'Accept': 'application/json, text/plain, text/csv, */*',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept-Language': 'id,en;q=0.9',
+              'Cache-Control': 'no-cache'
+            },
+            redirect: 'follow',
+            signal: AbortSignal.timeout(18000)
+          });
+          if (response && response.status < 500) break;
+        } catch (fetchErr: any) {
+          lastErr = fetchErr;
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 400));
+          }
         }
       }
 
-      // Fetch with redirect: 'follow'
-      const response = await fetch(targetUrl, {
-        headers: {
-          'Accept': 'application/json, text/plain, */*'
-        },
-        redirect: 'follow'
-      });
+      if (!response) {
+        throw lastErr || new Error('Gagal menghubungi endpoint Google Apps Script');
+      }
 
       const contentType = response.headers.get('content-type') || '';
       let resultData: any;
@@ -753,7 +774,7 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
       if ((typeof resultData === 'object' && resultData !== null) || (typeof resultData === 'string' && resultData.trim().length > 0)) {
         proxyMemoryCache.set(targetUrl, { data: resultData, expiry: now + PROXY_CACHE_TTL_MS });
         // Periodically purge expired cache entries
-        if (proxyMemoryCache.size > 60) {
+        if (proxyMemoryCache.size > 100) {
           for (const [k, v] of proxyMemoryCache.entries()) {
             if (v.expiry < now) proxyMemoryCache.delete(k);
           }
@@ -763,10 +784,19 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
       res.setHeader('X-Cache', 'MISS');
       return res.json(resultData);
     } catch (err: any) {
-      console.error('GAS Proxy Error:', err.message);
-      return res.status(500).json({
+      // If we have any cached data for this URL, return it as stale fallback instead of failing
+      const staleCached = proxyMemoryCache.get(targetUrl);
+      if (staleCached) {
+        res.setHeader('X-Cache', 'STALE');
+        return res.json(staleCached.data);
+      }
+
+      console.warn('GAS Proxy warning:', err?.message || String(err));
+      return res.status(200).json({
         ok: false,
-        error: `Proxy failed: ${err.message}`
+        fallback: true,
+        error: `Koneksi Google Apps Script sementara tidak merespon: ${err?.message || 'fetch failed'}. Menggunakan data lokal.`,
+        details: null
       });
     }
   });
