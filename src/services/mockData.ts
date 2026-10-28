@@ -1187,6 +1187,66 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     ],
     "mutasiTerbaru": [
       {
+        "id": "tembakau---krosok--rajang-ii--20261028-madura",
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "kode": "MADURA 2024 (BAT) R",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 3642.0,
+        "keluar": 0,
+        "saldo": 3642.0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261028-zimbabwe-l2of",
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "kode": "ZIMBABWE 2025 (L2OF/P)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 225.4,
+        "keluar": 0,
+        "saldo": 225.4,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261028-zambia-m1l",
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "kode": "ZAMBIA M1L (2023)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 198.5,
+        "keluar": 0,
+        "saldo": 198.5,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261028-brazil-b",
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "kode": "BRAZIL GRADE B (2022)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 124.6,
+        "keluar": 0,
+        "saldo": 124.6,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261028-kasturi-be1",
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "kode": "KASTURI 2024 (BE) - 1",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 324.5,
+        "keluar": 0,
+        "saldo": 324.5,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261028-janturan-boyolali",
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "kode": "JANTURAN BOYOLALI 2024 (VJI)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 110.3,
+        "keluar": 0,
+        "saldo": 110.3,
+        "cek": true
+      },
+      {
         "id": "tembakau---krosok--rajang-ii--20261027-maesan",
         "tanggal": "2026-10-27T00:00:00.000Z",
         "kode": "MAESAN 2024 (HS)",

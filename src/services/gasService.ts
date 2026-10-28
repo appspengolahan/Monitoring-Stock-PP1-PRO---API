@@ -1745,6 +1745,50 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 28 OKTOBER 2026 (Live Worksheet DHP Krosok & DHP Tembakau - Kolom I Hasil Proses) ===
+    {
+      tanggal: '2026-10-28T00:00:00.000Z',
+      nama: 'Madura 2024 (BAT) R',
+      nettoKg: 3642.0,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-10-28T00:00:00.000Z',
+      nama: 'Brazil Grade B (2022)',
+      nettoKg: 124.6,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-28T00:00:00.000Z',
+      nama: 'Zimbabwe 2025 (L2OF/P)',
+      nettoKg: 225.4,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-28T00:00:00.000Z',
+      nama: 'Kasturi 2024 (BE) - 1',
+      nettoKg: 324.5,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-28T00:00:00.000Z',
+      nama: 'Janturan Boyolali 2024 (VJI)',
+      nettoKg: 110.3,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-28T00:00:00.000Z',
+      nama: 'Zambia M1L (2023)',
+      nettoKg: 198.5,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+
     // === DATA 27 OKTOBER 2026 (Live Worksheet DHP Krosok & DHP Tembakau - Kolom I Hasil Proses) ===
     {
       tanggal: '2026-10-27T00:00:00.000Z',
@@ -2143,28 +2187,23 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Pastikan cache memiliki entri baseline sah 13, 14, 15, & 27 Oktober (Diet Trial / Hang Madura / Maesan / Amerika / dll)
-          const hasOct13 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-13'));
-          const hasOct14 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-14'));
-          const hasOct15 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-15'));
-          const hasOct27 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-27'));
-          if (hasOct13 && hasOct14 && hasOct15 && hasOct27) {
-            return this.cleanDHPEntries(parsed);
-          } else {
-            const missingEntries = this.DEFAULT_DHP_ENTRIES.filter(d => {
-              const dStr = String(d.tanggal || '');
-              if (!hasOct13 && dStr.startsWith('2026-10-13')) return true;
-              if (!hasOct14 && dStr.startsWith('2026-10-14')) return true;
-              if (!hasOct15 && dStr.startsWith('2026-10-15')) return true;
-              if (!hasOct27 && dStr.startsWith('2026-10-27')) return true;
-              return false;
-            });
-            const merged = [...parsed, ...missingEntries];
+          // Pastikan cache memiliki seluruh entri baseline sah dari DEFAULT_DHP_ENTRIES
+          // Termasuk entri mutakhir 28 Oktober 2026 & baseline historis sebelumnya
+          const existingKeys = new Set(
+            parsed.map((p: any) => `${getTanggalKey(p.tanggal)}_${String(p.nama || '').trim().toUpperCase()}`)
+          );
+          const missingDefaults = this.DEFAULT_DHP_ENTRIES.filter(d => {
+            const k = `${getTanggalKey(d.tanggal)}_${String(d.nama || '').trim().toUpperCase()}`;
+            return !existingKeys.has(k);
+          });
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
             try {
               localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(merged));
             } catch {}
             return this.cleanDHPEntries(merged);
           }
+          return this.cleanDHPEntries(parsed);
         }
       } catch (e) {}
     }
@@ -2208,17 +2247,18 @@ export class GasService {
   }
 
   /**
-   * Pembaruan cepat rekonsiliasi menyeluruh (DHP SKT, Blend, Setoran, Pengiriman, & Dryer) langsung dari Google Sheets (~300ms)
+   * Pembaruan cepat rekonsiliasi menyeluruh (DHP SKT, Blend, Setoran, Pengiriman, Cengkeh Dryer, & Setoran Cengkeh) langsung dari Google Sheets (~300ms)
    * Menyimpan ke cache lokal dan otomatis memicu penataan ulang badge auto-check di Mutasi
    */
   public static async refreshDHPReconciliation(): Promise<DHPEntry[]> {
     try {
-      const [sktItems, blendItems, setoranItems, pengirimanItems, dryerItems] = await Promise.all([
+      const [sktItems, blendItems, setoranItems, pengirimanItems, dryerItems, setoranCengkehItems] = await Promise.all([
         this.fetchDHPSKTDirectFromSheet().catch(e => { console.warn('Refresh DHP SKT error:', e); return []; }),
         this.fetchDHPBlendDirectFromSheet().catch(e => { console.warn('Refresh DHP Blend error:', e); return []; }),
         this.fetchSetoranDirectFromSheet().catch(e => { console.warn('Refresh Setoran error:', e); return []; }),
         this.fetchPengirimanBlendDirectFromSheet().catch(e => { console.warn('Refresh Pengiriman Blend error:', e); return []; }),
-        this.fetchCengkehDryerDirectFromSheet().catch(e => { console.warn('Refresh Cengkeh Dryer error:', e); return []; })
+        this.fetchCengkehDryerDirectFromSheet().catch(e => { console.warn('Refresh Cengkeh Dryer error:', e); return []; }),
+        this.fetchSetoranCengkehDirectFromSheet().catch(e => { console.warn('Refresh Setoran Cengkeh error:', e); return []; })
       ]);
       if (blendItems && blendItems.length > 0) {
         this.saveCachedDHPBlend(blendItems, true);
@@ -2231,6 +2271,9 @@ export class GasService {
       }
       if (dryerItems && dryerItems.length > 0) {
         this.saveCachedCengkehDryer(dryerItems, true);
+      }
+      if (setoranCengkehItems && setoranCengkehItems.length > 0) {
+        this.saveCachedSetoranCengkeh(setoranCengkehItems, true);
       }
       if (sktItems && sktItems.length > 0) {
         this.saveCachedDHP(sktItems, false);
