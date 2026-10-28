@@ -2750,19 +2750,35 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
 
                         <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-1.5">
                           <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">
-                            2. BSPP SETORAN (Kolom H)
+                            2. {m.setoranMatch.sumber || 'BSPP SETORAN'}
                           </span>
-                          <p className="text-slate-500 text-[11px] leading-tight truncate" title="Kertas Kerja BSPP SETORAN">
-                            Tab: BSPP SETORAN
+                          <p className="text-slate-500 text-[11px] leading-tight truncate" title={m.setoranMatch.sumber || 'Kertas Kerja BSPP SETORAN'}>
+                            Tab: {m.setoranMatch.sumber || 'BSPP SETORAN'}
                           </p>
                           <div className="pt-2 border-t border-slate-100">
-                            <span className="text-[10px] text-slate-400 block">Label Netto (Kolom H)</span>
+                            <span className="text-[10px] text-slate-400 block">Total Netto Setoran</span>
                             <span className="text-lg font-bold font-mono text-blue-700">
                               {formatNumber(m.setoranMatch.labelNetto)} <span className="text-xs font-normal text-slate-500">Kg</span>
                             </span>
                           </div>
                         </div>
                       </div>
+
+                      {m.setoranMatch.detailBlend && Object.keys(m.setoranMatch.detailBlend).length > 0 && (
+                        <div className="p-3 rounded-xl border border-blue-100 bg-blue-50/50 space-y-1.5">
+                          <span className="text-[10.5px] font-bold text-blue-900 block">
+                            Alokasi Setoran ke Varian Blend:
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(m.setoranMatch.detailBlend).map(([blendKey, val]) => (
+                              <span key={blendKey} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-blue-200 text-blue-900 text-[11px] font-medium shadow-2xs">
+                                <span>{blendKey}:</span>
+                                <strong className="font-mono font-bold">{formatNumber(val)} Kg</strong>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
                         m.setoranMatch.selisih === 0
@@ -2777,8 +2793,8 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                           </span>
                           <p className="text-[11px] mt-0.5 opacity-90">
                             {m.setoranMatch.selisih === 0
-                              ? 'Data pengeluaran fisik di persediaan cocok sempurna dengan label penimbangan kertas kerja BSPP SETORAN (Kolom H).'
-                              : 'Terdapat selisih antara data fisik gudang dan bobot label di lembar kerja BSPP SETORAN.'}
+                              ? `Data pengeluaran fisik di persediaan cocok sempurna dengan lembar kerja ${m.setoranMatch.sumber}.`
+                              : `Terdapat selisih antara data fisik gudang dan bobot lembar kerja ${m.setoranMatch.sumber}.`}
                           </p>
                         </div>
                         <div className="text-right shrink-0 pl-3">
@@ -2792,8 +2808,14 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
 
                       <div className="text-[10.5px] text-slate-400 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
                         <span className="font-medium text-slate-600 block mb-0.5">Spreadsheet Acuan Kertas Kerja:</span>
-                        <span className="font-mono text-[10px] text-slate-500 break-all">ID: 1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA</span>
-                        <span className="block text-slate-500 mt-0.5">Kolom Acuan: <strong>Kolom H</strong> (Bobot Label Netto Setoran Kg)</span>
+                        <span className="font-mono text-[10px] text-slate-500 break-all">
+                          ID: {m.setoranMatch.sumber === 'INTEGRASI DATA SETORAN CENGKEH' ? '1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A' : '1bnrs6Mqx2zU4TZhlJ61JF-VyhKFoajEWDwgn_o9B3EA'}
+                        </span>
+                        <span className="block text-slate-500 mt-0.5">
+                          {m.setoranMatch.sumber === 'INTEGRASI DATA SETORAN CENGKEH'
+                            ? 'Sumber: Rentang B12:H17 (Total Pengeluaran Setoran)'
+                            : 'Kolom Acuan: Kolom H (Bobot Label Netto Setoran Kg)'}
+                        </span>
                       </div>
                     </>
                   )}

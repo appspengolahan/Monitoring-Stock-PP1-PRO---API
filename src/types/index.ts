@@ -71,6 +71,8 @@ export interface MutasiItem {
     labelNetto: number;
     selisih: number;
     sumber: string;
+    detailBlend?: { [key: string]: number };
+    tujuan?: string;
   };
   bsppMatch?: {
     matched: boolean;
@@ -104,6 +106,14 @@ export interface SetoranEntry {
   sumber: string;
 }
 
+export interface SetoranCengkehEntry {
+  tanggal: string | null;
+  nama: string;
+  totalKg: number;
+  detailBlend?: { [key: string]: number };
+  sumber: string;
+}
+
 export interface PengirimanBlendEntry {
   tanggal: string | null;
   nama: string;
@@ -129,6 +139,7 @@ export interface ReconciliationDisplayConfig {
   showDhpBlendSummary?: boolean;
   showPengirimanBlendSummary?: boolean;
   showCengkehDryerSummary?: boolean;
+  showSetoranCengkehSummary?: boolean;
 }
 
 export interface KomoditasData {

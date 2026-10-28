@@ -468,7 +468,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
   {
     "komoditas": "Cengkeh",
     "satuan": "Kg",
-    "saldoTotal": 50641.3,
+    "saldoTotal": 22655.0,
     "masukTotal": 721968.6,
     "keluarTotal": 676157.1,
     "entriTotal": 1599,
@@ -491,12 +491,12 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
         "tanggalTerakhir": "2025-06-14T00:00:00.000Z"
       },
       {
-        "nama": "MANADO A 2021",
+        "nama": "MANADO GRADE A (2021)",
         "saldo": 0,
         "tanggalTerakhir": "2026-02-19T00:00:00.000Z"
       },
       {
-        "nama": "MANADO A 2023",
+        "nama": "MANADO GRADE A (2023)",
         "saldo": 0,
         "tanggalTerakhir": "2026-09-17T00:00:00.000Z"
       },
@@ -512,20 +512,60 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "MANADO GRADE A (2024)",
-        "saldo": 49782,
+        "saldo": 21880.4,
         "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
       },
       {
         "nama": "MANADO KODE B",
-        "saldo": 84.7,
+        "saldo": 0,
         "tanggalTerakhir": "2026-04-06T00:00:00.000Z"
       }
     ],
     "mutasiTerbaru": [
       {
+        "id": "cengkeh-setoran-MANADOGRADEA2024-2026-10-27",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "MANADO GRADE A (2024)",
+        "jenisMutasi": "Pengeluaran Setoran",
+        "masuk": 0,
+        "keluar": 432.0,
+        "saldo": 21880.4,
+        "cek": true,
+        "setoranMatch": {
+          "matched": true,
+          "labelNetto": 432.0,
+          "selisih": 0,
+          "sumber": "INTEGRASI DATA SETORAN CENGKEH",
+          "detailBlend": {
+            "KARANG - BK": 432.0
+          },
+          "tujuan": "KARANG - BK (432,0 Kg)"
+        }
+      },
+      {
+        "id": "cengkeh-setoran-MANADOKODEB-2026-10-27",
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "kode": "MANADO KODE B",
+        "jenisMutasi": "Pengeluaran Setoran",
+        "masuk": 0,
+        "keluar": 22.0,
+        "saldo": 0,
+        "cek": true,
+        "setoranMatch": {
+          "matched": true,
+          "labelNetto": 22.0,
+          "selisih": 0,
+          "sumber": "INTEGRASI DATA SETORAN CENGKEH",
+          "detailBlend": {
+            "153 - BK": 22.0
+          },
+          "tujuan": "153 - BK (22,0 Kg)"
+        }
+      },
+      {
         "id": "cengkeh-0",
         "tanggal": "2026-01-10T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "BSPP Lebih",
         "masuk": 1.9,
         "keluar": 0,
@@ -535,7 +575,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-1",
         "tanggal": "2026-01-10T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 190,
@@ -545,7 +585,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-2",
         "tanggal": "2026-01-13T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "BSPP Lebih",
         "masuk": 2.4,
         "keluar": 0,
@@ -555,7 +595,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-3",
         "tanggal": "2026-01-13T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Selisih Lebih Penyiapan",
         "masuk": 0.1,
         "keluar": 0,
@@ -565,7 +605,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-4",
         "tanggal": "2026-01-13T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 190,
@@ -575,7 +615,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-5",
         "tanggal": "2026-01-22T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "BSPP Lebih",
         "masuk": 2.2,
         "keluar": 0,
@@ -585,7 +625,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-6",
         "tanggal": "2026-01-22T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Selisih Lebih Penyiapan",
         "masuk": 0.2,
         "keluar": 0,
@@ -595,7 +635,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-7",
         "tanggal": "2026-01-22T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 380,
@@ -605,7 +645,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-8",
         "tanggal": "2026-01-24T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "BSPP Lebih",
         "masuk": 1.1,
         "keluar": 0,
@@ -615,7 +655,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-9",
         "tanggal": "2026-01-24T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 190,
@@ -625,7 +665,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-10",
         "tanggal": "2026-01-24T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "BSPP Lebih",
         "masuk": 0.8,
         "keluar": 0,
@@ -635,7 +675,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-11",
         "tanggal": "2026-01-24T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 190,
@@ -645,7 +685,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-12",
         "tanggal": "2026-01-29T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "BSPP Lebih",
         "masuk": 1.7,
         "keluar": 0,
@@ -655,7 +695,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-13",
         "tanggal": "2026-01-29T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Selisih Kurang Penyiapan",
         "masuk": 0,
         "keluar": 0.1,
@@ -665,7 +705,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-14",
         "tanggal": "2026-01-29T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 190,
@@ -675,7 +715,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-15",
         "tanggal": "2026-02-05T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "BSPP Lebih",
         "masuk": 4.4,
         "keluar": 0,
@@ -685,7 +725,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-16",
         "tanggal": "2026-02-05T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Selisih Kurang Penyiapan",
         "masuk": 0,
         "keluar": 0.1,
@@ -695,7 +735,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-17",
         "tanggal": "2026-02-05T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 380,
@@ -705,7 +745,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-18",
         "tanggal": "2026-02-19T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Selisih Lebih Penyiapan",
         "masuk": 1.1,
         "keluar": 0,
@@ -715,7 +755,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-19",
         "tanggal": "2026-02-19T00:00:00.000Z",
-        "kode": "MANADO A 2021",
+        "kode": "MANADO GRADE A (2021)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 132.7,
@@ -725,7 +765,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-20",
         "tanggal": "2026-08-15T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "Selisih Kurang Penyiapan",
         "masuk": 0.1,
         "keluar": 0,
@@ -735,7 +775,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-21",
         "tanggal": "2026-08-15T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 556.4,
@@ -745,7 +785,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-22",
         "tanggal": "2026-08-18T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "BSPP Kurang",
         "masuk": 0,
         "keluar": 0.1,
@@ -755,7 +795,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-23",
         "tanggal": "2026-08-18T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 352.3,
@@ -765,7 +805,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-24",
         "tanggal": "2026-08-20T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "Pengeluaran Pruf",
         "masuk": 0,
         "keluar": 3.6,
@@ -775,7 +815,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-25",
         "tanggal": "2026-08-21T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "BSPP Kurang",
         "masuk": 0,
         "keluar": 0.1,
@@ -785,7 +825,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-26",
         "tanggal": "2026-08-22T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 50.4,
@@ -795,7 +835,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-27",
         "tanggal": "2026-08-29T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "BSPP Kurang",
         "masuk": 0,
         "keluar": 0.3,
@@ -805,7 +845,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-28",
         "tanggal": "2026-08-29T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "Selisih Kurang Penyiapan",
         "masuk": 0,
         "keluar": 0.2,
@@ -815,7 +855,7 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "id": "cengkeh-29",
         "tanggal": "2026-08-29T00:00:00.000Z",
-        "kode": "MANADO A 2023",
+        "kode": "MANADO GRADE A (2023)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
         "keluar": 216,
