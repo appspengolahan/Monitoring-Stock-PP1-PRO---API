@@ -2293,6 +2293,29 @@ export class GasService {
 
   // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---
   public static readonly DEFAULT_DHP_BLEND_ENTRIES: DHPEntry[] = [
+    // === DATA 29 OKTOBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi) ===
+    {
+      tanggal: '2026-10-29T00:00:00.000Z',
+      nama: '153 - BK',
+      nettoKg: 879.2,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: '153 - BK 10', nettoKg: 879.2 }
+      ]
+    },
+    {
+      tanggal: '2026-10-29T00:00:00.000Z',
+      nama: 'KARANG - BK',
+      nettoKg: 1751.2,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: 'KARANG - BK 01', nettoKg: 875.9 },
+        { no: 2, namaMolen: 'KARANG - BK 02', nettoKg: 875.3 }
+      ]
+    },
+
     // === DATA 27 OKTOBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi) ===
     {
       tanggal: '2026-10-27T00:00:00.000Z',
@@ -2419,24 +2442,23 @@ export class GasService {
             } catch {}
             return this.DEFAULT_DHP_BLEND_ENTRIES;
           }
-          // Pastikan data 15 Oktober & 27 Oktober ada di cache
-          const hasOct15 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-15'));
-          const hasOct27 = parsed.some((p: any) => p.tanggal && String(p.tanggal).startsWith('2026-10-27'));
-          if (hasOct15 && hasOct27) {
-            return this.cleanDHPBlendEntries(parsed);
-          } else {
-            const missingEntries = this.DEFAULT_DHP_BLEND_ENTRIES.filter(d => {
-              const dStr = String(d.tanggal || '');
-              if (!hasOct15 && dStr.startsWith('2026-10-15')) return true;
-              if (!hasOct27 && dStr.startsWith('2026-10-27')) return true;
-              return false;
-            });
-            const merged = [...parsed, ...missingEntries];
+          // Pastikan cache memiliki seluruh entri baseline sah dari DEFAULT_DHP_BLEND_ENTRIES
+          // Termasuk entri mutakhir 29 Oktober 2026 & baseline historis sebelumnya
+          const existingKeys = new Set(
+            parsed.map((p: any) => `${getTanggalKey(p.tanggal)}_${this.normalizeBlendKodeAlias(p.nama || '')}`)
+          );
+          const missingDefaults = this.DEFAULT_DHP_BLEND_ENTRIES.filter(d => {
+            const k = `${getTanggalKey(d.tanggal)}_${this.normalizeBlendKodeAlias(d.nama || '')}`;
+            return !existingKeys.has(k);
+          });
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
             try {
               localStorage.setItem(STORAGE_KEYS.DHP_BLEND_RECONCILIATION, JSON.stringify(merged));
             } catch {}
             return this.cleanDHPBlendEntries(merged);
           }
+          return this.cleanDHPBlendEntries(parsed);
         }
       } catch (e) {}
     }
@@ -3292,18 +3314,18 @@ export class GasService {
         const itemTanggal = rawTanggal ? normalizeDateToIso(rawTanggal, lastKnownTanggal) : lastKnownTanggal;
         const mapKey = `${getTanggalKey(itemTanggal)}_${this.normalizeBlendKodeAlias(targetMerk)}`;
 
+        if (!molenMap[mapKey]) {
+          molenMap[mapKey] = {
+            tanggal: itemTanggal,
+            nama: targetMerk,
+            nettoKg: 0,
+            jalur: 'Wagir',
+            sumber: 'DHP Blend (Kolom I)',
+            molenList: []
+          };
+        }
+
         if (startProcessingMolen) {
-          if (!molenMap[mapKey]) {
-            molenMap[mapKey] = {
-              tanggal: itemTanggal,
-              nama: targetMerk,
-              nettoKg: 0,
-              jalur: 'Wagir',
-              sumber: 'DHP Blend (Kolom I)',
-              molenList: []
-            };
-          }
-          molenMap[mapKey].nettoKg = Math.round((molenMap[mapKey].nettoKg + nettoVal) * 10) / 10;
           if (rawMolen && rawMolen !== '-' && rawMolen.toUpperCase() !== 'MOLEN') {
             molenMap[mapKey].molenList.push({
               no: molenMap[mapKey].molenList.length + 1,
@@ -3313,18 +3335,19 @@ export class GasService {
           }
         } else {
           // Baris rekapitulasi ringkasan atas (misal idx 1 & 2 sebelum rincian molen)
-          if (!molenMap[mapKey]) {
-            molenMap[mapKey] = {
-              tanggal: itemTanggal,
-              nama: targetMerk,
-              nettoKg: Math.round(nettoVal * 10) / 10,
-              jalur: 'Wagir',
-              sumber: 'DHP Blend (Kolom I)',
-              molenList: []
-            };
-          }
+          molenMap[mapKey].nettoKg = Math.round(nettoVal * 10) / 10;
         }
       }
+
+      // Hitung total nettoKg akhir:
+      // Jika memiliki rincian molen, total nettoKg adalah jumlah dari rincian molen (mencegah penambahan ganda dengan tabel rekap).
+      // Jika tidak ada rincian molen, gunakan nilai dari tabel rekapitulasi atas.
+      Object.values(molenMap).forEach(item => {
+        if (item.molenList && item.molenList.length > 0) {
+          const sumMolen = item.molenList.reduce((acc, m) => acc + (Number(m.nettoKg) || 0), 0);
+          item.nettoKg = Math.round(sumMolen * 10) / 10;
+        }
+      });
 
       const liveEntries = Object.values(molenMap);
       const existing = this.getCachedDHPBlend();
