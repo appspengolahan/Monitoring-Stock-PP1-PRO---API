@@ -13,7 +13,9 @@ import {
   Sparkles,
   AlertCircle,
   RotateCcw,
-  KeyRound
+  KeyRound,
+  Plus,
+  Tag
 } from 'lucide-react';
 import { UserAccessConfig, UserRole } from '../../types';
 import { GasService } from '../../services/gasService';
@@ -36,6 +38,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formEmail, setFormEmail] = useState<string>('');
   const [formNama, setFormNama] = useState<string>('');
   const [formRole, setFormRole] = useState<UserRole>('Staff Operasional');
+  const [availableRoles, setAvailableRoles] = useState<string[]>(() => GasService.getAvailableRoles());
+  const [isCustomRoleMode, setIsCustomRoleMode] = useState<boolean>(false);
+  const [customRoleInput, setCustomRoleInput] = useState<string>('');
   const [formHasDevAccess, setFormHasDevAccess] = useState<boolean>(false);
   const [formAllowedKomoditas, setFormAllowedKomoditas] = useState<string[]>([]);
   const [formCanExport, setFormCanExport] = useState<boolean>(true);
@@ -45,12 +50,27 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
   if (!isOpen) return null;
 
-  const roleList: UserRole[] = [
-    'Web Developer',
-    'Site Engineer / PM',
-    'Admin Produksi',
-    'Staff Operasional'
-  ];
+  const defaultRoles = GasService.DEFAULT_ROLES;
+  const customRoles = availableRoles.filter(r => !defaultRoles.includes(r));
+
+  const getRoleBadgeStyle = (role: string) => {
+    switch (role) {
+      case 'Web Developer':
+        return 'bg-purple-100 text-purple-700 border border-purple-200';
+      case 'Site Engineer / PM':
+      case 'Project Manager':
+        return 'bg-blue-100 text-blue-700 border border-blue-200';
+      case 'Admin Produksi':
+        return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+      case 'Staff Operasional':
+        return 'bg-amber-100 text-amber-800 border border-amber-200';
+      default:
+        if (role.toLowerCase().includes('accounting')) {
+          return 'bg-cyan-100 text-cyan-800 border border-cyan-200';
+        }
+        return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
+    }
+  };
 
   const handleStartAdd = () => {
     setIsAddingNew(true);
@@ -58,6 +78,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setFormEmail('');
     setFormNama('');
     setFormRole('Staff Operasional');
+    setIsCustomRoleMode(false);
+    setCustomRoleInput('');
     setFormDefaultPin('123456');
     setFormHasDevAccess(false);
     setFormAllowedKomoditas([availableKomoditas[0] || 'Cengkeh']);
@@ -70,6 +92,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setFormEmail(user.email);
     setFormNama(user.nama);
     setFormRole(user.role);
+    setIsCustomRoleMode(false);
+    setCustomRoleInput('');
     setFormDefaultPin(user.defaultPin || '123456');
     setFormHasDevAccess(user.hasDevAccess);
     setFormAllowedKomoditas(user.allowedKomoditas);
@@ -106,27 +130,43 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
       return;
     }
 
+    const rawRole = isCustomRoleMode ? customRoleInput.trim() : formRole.trim();
+    if (isCustomRoleMode && !rawRole) {
+      alert('Silakan ketik nama peran baru yang ingin ditambahkan (misal: Accounting).');
+      return;
+    }
+    const finalRole: UserRole = rawRole || 'Staff Operasional';
+
+    // Register custom role if new
+    if (finalRole && !defaultRoles.includes(finalRole)) {
+      GasService.addCustomRole(finalRole);
+      setAvailableRoles(GasService.getAvailableRoles());
+    }
+
     const pinToUse = formDefaultPin.trim() || '123456';
     const existing = users.find(u => u.email.toLowerCase() === formEmail.trim().toLowerCase());
+    const isDevRole = finalRole === 'Web Developer' || finalRole === 'Site Engineer / PM';
 
     const config: UserAccessConfig = {
       email: formEmail.trim().toLowerCase(),
       nama: formNama.trim(),
-      role: formRole,
+      role: finalRole,
       password: isAddingNew ? pinToUse : (existing?.password || pinToUse),
       defaultPin: pinToUse,
       isDefaultPassword: isAddingNew ? true : (existing?.isDefaultPassword ?? true),
-      hasDevAccess: formRole === 'Web Developer' || formRole === 'Site Engineer / PM' ? formHasDevAccess : false,
+      hasDevAccess: isDevRole ? formHasDevAccess : false,
       allowedKomoditas: formAllowedKomoditas.length === 0 ? ['*'] : formAllowedKomoditas,
       canExportPdf: formCanExport,
-      canManageUsers: formRole === 'Web Developer' || formRole === 'Site Engineer / PM'
+      canManageUsers: isDevRole || finalRole === 'Admin Produksi'
     };
 
     const updated = GasService.upsertUserConfig(config);
     setUsers(updated);
     setIsAddingNew(false);
     setEditingEmail(null);
-    setStatusMessage(`Hak akses untuk ${config.email} berhasil disimpan!`);
+    setIsCustomRoleMode(false);
+    setCustomRoleInput('');
+    setStatusMessage(`Hak akses untuk ${config.email} dengan peran "${finalRole}" berhasil disimpan!`);
     setTimeout(() => setStatusMessage(null), 3500);
   };
 
@@ -242,26 +282,102 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                    Peran Pengguna (Role)
-                  </label>
-                  <select
-                    value={formRole}
-                    onChange={e => {
-                      const r = e.target.value as UserRole;
-                      setFormRole(r);
-                      if (r === 'Web Developer' || r === 'Site Engineer / PM') {
-                        setFormHasDevAccess(true);
-                      } else {
-                        setFormHasDevAccess(false);
-                      }
-                    }}
-                    className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-                  >
-                    {roleList.map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-600">
+                      Peran Pengguna (Role)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextMode = !isCustomRoleMode;
+                        setIsCustomRoleMode(nextMode);
+                        if (nextMode) {
+                          setCustomRoleInput('');
+                        } else {
+                          setFormRole('Staff Operasional');
+                        }
+                      }}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 cursor-pointer"
+                      title={isCustomRoleMode ? 'Pilih peran dari daftar' : 'Tambah peran kustom baru'}
+                    >
+                      {isCustomRoleMode ? (
+                        <span>Pilih Daftar</span>
+                      ) : (
+                        <>
+                          <Plus className="w-3 h-3" />
+                          <span>+ Peran Baru</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {isCustomRoleMode ? (
+                    <div className="space-y-1">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={customRoleInput}
+                          onChange={e => {
+                            setCustomRoleInput(e.target.value);
+                            setFormRole(e.target.value);
+                          }}
+                          placeholder="Ketik peran baru (e.g. Accounting)..."
+                          autoFocus
+                          required={isCustomRoleMode}
+                          className="w-full text-xs px-2.5 py-2 bg-white border border-blue-400 rounded-lg text-slate-900 font-semibold focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-xs"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-blue-600 font-medium">Contoh: Accounting, QC, Mandor</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCustomRoleMode(false);
+                            setFormRole('Staff Operasional');
+                          }}
+                          className="text-slate-400 hover:text-slate-600 underline"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <select
+                      value={formRole}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === '__ADD_NEW__') {
+                          setIsCustomRoleMode(true);
+                          setCustomRoleInput('');
+                          setFormRole('');
+                        } else {
+                          setFormRole(val);
+                          if (val === 'Web Developer' || val === 'Site Engineer / PM') {
+                            setFormHasDevAccess(true);
+                          } else {
+                            setFormHasDevAccess(false);
+                          }
+                        }
+                      }}
+                      className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500 font-medium"
+                    >
+                      <optgroup label="Peran Bawaan Standar">
+                        {defaultRoles.map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </optgroup>
+                      {customRoles.length > 0 && (
+                        <optgroup label="Peran Kustom Tambahan">
+                          {customRoles.map(r => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      <option value="__ADD_NEW__" className="text-blue-600 font-bold">
+                        + Tambah Peran Baru (Kustom)...
+                      </option>
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -370,15 +486,51 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
             </form>
           )}
 
-          {/* User Table Header Bar */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700">
-              Daftar Staf &amp; Pengguna Terdaftar ({users.length} Akun)
-            </span>
+          {/* User Table Header Bar & Roles Pill Summary */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div>
+              <span className="text-xs font-bold text-slate-800">
+                Daftar Staf &amp; Pengguna Terdaftar ({users.length} Akun)
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                  <Tag className="w-2.5 h-2.5" />
+                  Peran:
+                </span>
+                {availableRoles.map(r => {
+                  const isCustom = !defaultRoles.includes(r);
+                  const count = users.filter(u => u.role === r).length;
+                  return (
+                    <span 
+                      key={r} 
+                      className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${getRoleBadgeStyle(r)}`}
+                    >
+                      <span>{r}</span>
+                      <span className="opacity-70 text-[9px]">({count})</span>
+                      {isCustom && count === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`Hapus peran kustom "${r}" yang tidak terpakai ini?`)) {
+                              GasService.deleteCustomRole(r);
+                              setAvailableRoles(GasService.getAvailableRoles());
+                            }
+                          }}
+                          className="hover:text-rose-600 ml-0.5"
+                          title="Hapus peran kustom"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
             {!isAddingNew && !editingEmail && (
               <button
                 onClick={handleStartAdd}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors shrink-0 self-start sm:self-auto"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>Tambah Staf / User</span>
@@ -406,12 +558,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                       <span className="text-xs text-slate-400 font-mono">
                         ({u.email})
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        u.role === 'Web Developer' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                        u.role === 'Site Engineer / PM' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                        u.role === 'Admin Produksi' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                        'bg-amber-100 text-amber-800 border border-amber-200'
-                      }`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getRoleBadgeStyle(u.role)}`}>
                         {u.role}
                       </span>
                     </div>

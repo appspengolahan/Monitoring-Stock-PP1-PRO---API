@@ -506,9 +506,16 @@ export default function App() {
                 <Lock className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className="text-[10px] text-slate-400">
-              All Rights Reserved · Arsitektur Hybrid Headless GAS · Developed by Lalu Mahendra
-            </p>
+            <div className="flex items-center justify-center flex-wrap gap-2 text-[10px]">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                v2.4.0 · Golden Baseline (Locked)
+              </span>
+              <span className="text-slate-400">·</span>
+              <span className="text-slate-500">
+                All Rights Reserved · Arsitektur Hybrid Headless GAS · Developed by Lalu Mahendra
+              </span>
+            </div>
           </footer>
         </main>
       </div>

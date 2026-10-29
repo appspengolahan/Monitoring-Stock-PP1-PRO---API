@@ -20,6 +20,7 @@ import {
   FileCheck2
 } from 'lucide-react';
 import { UserSession, UserRole } from '../../types';
+import { GasService } from '../../services/gasService';
 
 interface NavbarProps {
   session: UserSession;
@@ -83,12 +84,15 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
   const toolsRef = useRef<HTMLDivElement>(null);
   const roleRef = useRef<HTMLDivElement>(null);
 
-  const roles: UserRole[] = [
-    'Web Developer',
-    'Site Engineer / PM',
-    'Admin Produksi',
-    'Staff Operasional'
-  ];
+  const [availableRoles, setAvailableRoles] = useState<UserRole[]>(() => GasService.getAvailableRoles());
+
+  useEffect(() => {
+    const handleRolesUpdated = () => {
+      setAvailableRoles(GasService.getAvailableRoles());
+    };
+    window.addEventListener('stockpp1_roles_updated', handleRolesUpdated);
+    return () => window.removeEventListener('stockpp1_roles_updated', handleRolesUpdated);
+  }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -475,7 +479,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
                   PILIH PERAN PENGGUNA (RBAC)
                 </div>
                 <div className="py-1 space-y-0.5">
-                  {roles.map(r => (
+                  {availableRoles.map(r => (
                     <button
                       key={r}
                       type="button"

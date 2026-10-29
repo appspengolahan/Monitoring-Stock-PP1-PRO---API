@@ -293,6 +293,88 @@ export class GasService {
   }
 
   // --- User Access Configs Management (Opsi B: Local/Client Cache) ---
+  public static readonly DEFAULT_ROLES: string[] = [
+    'Web Developer',
+    'Site Engineer / PM',
+    'Admin Produksi',
+    'Staff Operasional'
+  ];
+
+  public static getAvailableRoles(): string[] {
+    const roles = [...this.DEFAULT_ROLES];
+    const customRoles: string[] = [];
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('stockpp1_custom_roles_v1');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            customRoles.push(...parsed);
+          }
+        }
+      } catch {}
+    }
+    // Gabungkan dengan role yang sudah terpakai pada userConfigs
+    try {
+      const users = this.getUserConfigs();
+      users.forEach(u => {
+        if (u.role && !roles.includes(u.role) && !customRoles.includes(u.role)) {
+          customRoles.push(u.role);
+        }
+      });
+    } catch {}
+
+    customRoles.forEach(r => {
+      const clean = r.trim();
+      if (clean && !roles.includes(clean)) {
+        roles.push(clean);
+      }
+    });
+    return roles;
+  }
+
+  public static addCustomRole(newRole: string): string[] {
+    const clean = newRole.trim();
+    if (!clean) return this.getAvailableRoles();
+    const currentCustom: string[] = [];
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('stockpp1_custom_roles_v1');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) currentCustom.push(...parsed);
+        }
+      } catch {}
+    }
+    if (!this.DEFAULT_ROLES.includes(clean) && !currentCustom.includes(clean)) {
+      currentCustom.push(clean);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('stockpp1_custom_roles_v1', JSON.stringify(currentCustom));
+        window.dispatchEvent(new CustomEvent('stockpp1_roles_updated', { detail: this.getAvailableRoles() }));
+      }
+    }
+    return this.getAvailableRoles();
+  }
+
+  public static deleteCustomRole(roleToDelete: string): string[] {
+    const clean = roleToDelete.trim();
+    if (!clean || this.DEFAULT_ROLES.includes(clean)) return this.getAvailableRoles();
+    let currentCustom: string[] = [];
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('stockpp1_custom_roles_v1');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) currentCustom = parsed;
+        }
+      } catch {}
+      currentCustom = currentCustom.filter(r => r.toLowerCase() !== clean.toLowerCase());
+      localStorage.setItem('stockpp1_custom_roles_v1', JSON.stringify(currentCustom));
+      window.dispatchEvent(new CustomEvent('stockpp1_roles_updated', { detail: this.getAvailableRoles() }));
+    }
+    return this.getAvailableRoles();
+  }
+
   public static getUserConfigs(): UserAccessConfig[] {
     const stored = localStorage.getItem(STORAGE_KEYS.USER_CONFIGS);
     if (stored) {
@@ -322,6 +404,9 @@ export class GasService {
   public static upsertUserConfig(config: UserAccessConfig): UserAccessConfig[] {
     const configs = this.getUserConfigs();
     const cleanEmail = config.email.toLowerCase().trim();
+    if (config.role) {
+      this.addCustomRole(config.role);
+    }
     const index = configs.findIndex(c => c.email.toLowerCase().trim() === cleanEmail);
     if (index >= 0) {
       configs[index] = { ...configs[index], ...config, email: cleanEmail };

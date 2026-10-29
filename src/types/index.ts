@@ -3,7 +3,8 @@ export type UserRole =
   | 'Site Engineer / PM'
   | 'Project Manager'
   | 'Admin Produksi'
-  | 'Staff Operasional';
+  | 'Staff Operasional'
+  | (string & {});
 
 export interface UserAccessConfig {
   email: string;
