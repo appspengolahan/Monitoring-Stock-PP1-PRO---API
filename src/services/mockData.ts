@@ -955,6 +955,11 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
         "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
       },
       {
+        "nama": "DIET TRIAL - 3 PLUS (2026)",
+        "saldo": 121.0,
+        "tanggalTerakhir": "2026-10-29T00:00:00.000Z"
+      },
+      {
         "nama": "EXPANDED STEM - 1B GRADE B (2023)",
         "saldo": 37,
         "tanggalTerakhir": "2026-09-26T00:00:00.000Z"
@@ -1206,6 +1211,46 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       }
     ],
     "mutasiTerbaru": [
+      {
+        "id": "tembakau---krosok--rajang-ii--20261029-hang-madura",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "HANG MADURA 2024 (BAT)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 35.4,
+        "keluar": 0,
+        "saldo": 147.0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261029-diet-trial-3-plus",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "DIET TRIAL - 3 PLUS (2026)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 121.0,
+        "keluar": 0,
+        "saldo": 121.0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261029-krs-garut-2025",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "KRS. GARUT 2025 (MYN)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 165.0,
+        "keluar": 0,
+        "saldo": 503.9,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--20261029-krs-garut-2024",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "KRS. GARUT 2024 (MYN)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 196.6,
+        "keluar": 0,
+        "saldo": 371.5,
+        "cek": true
+      },
       {
         "id": "tembakau---krosok--rajang-ii--20261028-madura",
         "tanggal": "2026-10-28T00:00:00.000Z",

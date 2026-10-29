@@ -788,17 +788,30 @@ export class GasService {
         const enrichedMutasi = normalizedMutasi.map(m => {
           if (!isHasilProses(m.jenisMutasi) || dhpList.length === 0) return m;
           const mKode = (m.kode || '').trim().toUpperCase();
+          const mDateKey = getTanggalKey(m.tanggal);
 
-          const matchedDHP = dhpList.find(d => {
+          // 1. Prioritaskan kecocokan tanggal persis (exact date)
+          let matchedDHP = dhpList.find(d => {
             const rawD = (d.nama || '').trim();
             if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
-            const dateMatch = this.isDateMatchingReconciliation(m.tanggal, d.tanggal);
-            const kodeMatch = this.isRajangMaterialMatch(rawD, mKode);
-            return dateMatch && kodeMatch;
+            const dDateKey = getTanggalKey(d.tanggal);
+            return mDateKey && dDateKey && mDateKey === dDateKey && this.isRajangMaterialMatch(rawD, mKode);
           });
 
+          // 2. Jika belum cocok exact date, gunakan toleransi shift malam/weekend
+          if (!matchedDHP) {
+            matchedDHP = dhpList.find(d => {
+              const rawD = (d.nama || '').trim();
+              if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
+              const dateMatch = this.isDateMatchingReconciliation(m.tanggal, d.tanggal);
+              const kodeMatch = this.isRajangMaterialMatch(rawD, mKode);
+              return dateMatch && kodeMatch;
+            });
+          }
+
           if (matchedDHP) {
-            matchedDhpSet.add((matchedDHP.nama || '').trim().toUpperCase());
+            const dKey = `${getTanggalKey(matchedDHP.tanggal)}_${(matchedDHP.nama || '').trim().toUpperCase()}`;
+            matchedDhpSet.add(dKey);
             let masukVal = Number(m.masuk) || 0;
             const dhpVal = Number(matchedDHP.nettoKg) || 0;
             // Jika masukVal bernilai 0 (karena formatting koma di spreadsheet atau belum terisi), sesuaikan dengan data DHP terverifikasi
@@ -829,7 +842,8 @@ export class GasService {
         // (mencegah bahan hilang jika pemanggilan spreadsheet dibatasi kuota baris)
         dhpList.forEach(dhpItem => {
           const rawD = (dhpItem.nama || '').trim().toUpperCase();
-          if (matchedDhpSet.has(rawD)) return;
+          const dKey = `${getTanggalKey(dhpItem.tanggal)}_${rawD}`;
+          if (matchedDhpSet.has(dKey)) return;
           const cleanD = rawD.replace(/[^A-Z0-9]/g, '');
           const matchedKode = (enrichedKodeList || []).find(kd => {
             return this.isRajangMaterialMatch(dhpItem.nama, kd.nama);
@@ -843,7 +857,7 @@ export class GasService {
           });
 
           if (!alreadyExists) {
-            matchedDhpSet.add(rawD);
+            matchedDhpSet.add(dKey);
             const val = Number(dhpItem.nettoKg) || 0;
             enrichedMutasi.unshift({
               id: `tembakau---krosok--rajang-ii--dhp-${cleanD}-${getTanggalKey(dhpItem.tanggal) || '2026-10-15'}`,
@@ -1034,19 +1048,33 @@ export class GasService {
           if (!isHasilBlend(m.jenisMutasi) || dhpBlendList.length === 0) return m;
           const mKode = (m.kode || '').trim().toUpperCase();
 
-          const matchedDHP = dhpBlendList.find(d => {
+          const mDateKey = getTanggalKey(m.tanggal);
+
+          // 1. Prioritaskan kecocokan tanggal persis (exact date)
+          let matchedDHP = dhpBlendList.find(d => {
             const rawD = (d.nama || '').trim();
-            if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 3) return false;
-            const dateMatch = this.isDateMatchingReconciliation(m.tanggal, d.tanggal);
-            const kodeMatch = this.isBlendMaterialMatch(rawD, mKode);
-            return dateMatch && kodeMatch;
+            if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 2) return false;
+            const dDateKey = getTanggalKey(d.tanggal);
+            return mDateKey && dDateKey && mDateKey === dDateKey && this.isBlendMaterialMatch(rawD, mKode);
           });
 
+          // 2. Jika belum cocok exact date, gunakan toleransi shift malam/weekend
+          if (!matchedDHP) {
+            matchedDHP = dhpBlendList.find(d => {
+              const rawD = (d.nama || '').trim();
+              if (/^\d+$/.test(rawD) || rawD.includes(':') || rawD.length < 2) return false;
+              const dateMatch = this.isDateMatchingReconciliation(m.tanggal, d.tanggal);
+              const kodeMatch = this.isBlendMaterialMatch(rawD, mKode);
+              return dateMatch && kodeMatch;
+            });
+          }
+
           if (matchedDHP) {
-            matchedDhpBlendSet.add((matchedDHP.nama || '').trim().toUpperCase());
-            matchedDhpBlendSet.add(this.normalizeBlendKodeAlias(matchedDHP.nama || ''));
-            matchedDhpBlendSet.add(mKode);
-            matchedDhpBlendSet.add(this.normalizeBlendKodeAlias(mKode));
+            const dDateKey = getTanggalKey(matchedDHP.tanggal);
+            const bKey1 = `${dDateKey}_${(matchedDHP.nama || '').trim().toUpperCase()}`;
+            const bKey2 = `${dDateKey}_${this.normalizeBlendKodeAlias(matchedDHP.nama || '')}`;
+            matchedDhpBlendSet.add(bKey1);
+            matchedDhpBlendSet.add(bKey2);
 
             let masukVal = Number(m.masuk) || 0;
             const dhpTotalVal = Number(matchedDHP.nettoKg) || 0;
@@ -1090,7 +1118,10 @@ export class GasService {
         dhpBlendList.forEach(dhpItem => {
           const rawD = (dhpItem.nama || '').trim().toUpperCase();
           const cleanD = this.normalizeBlendKodeAlias(rawD);
-          if (matchedDhpBlendSet.has(rawD) || matchedDhpBlendSet.has(cleanD)) return;
+          const dDateKey = getTanggalKey(dhpItem.tanggal);
+          const bKey1 = `${dDateKey}_${rawD}`;
+          const bKey2 = `${dDateKey}_${cleanD}`;
+          if (matchedDhpBlendSet.has(bKey1) || matchedDhpBlendSet.has(bKey2)) return;
 
           const matchedKode = (k.kodeList || []).find(kd => {
             return this.isBlendMaterialMatch(dhpItem.nama, kd.nama);
@@ -1104,8 +1135,8 @@ export class GasService {
           });
 
           if (!alreadyExists) {
-            matchedDhpBlendSet.add(rawD);
-            matchedDhpBlendSet.add(cleanD);
+            matchedDhpBlendSet.add(bKey1);
+            matchedDhpBlendSet.add(bKey2);
             const val = Number(dhpItem.nettoKg) || 0;
             enrichedMutasi.unshift({
               id: `tembakau-blend-dhp-${cleanD}-${getTanggalKey(dhpItem.tanggal) || '2026-10-15'}`,
@@ -1745,6 +1776,36 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 29 OKTOBER 2026 (Live Worksheet DHP Krosok - Kolom I Hasil Proses) ===
+    {
+      tanggal: '2026-10-29T00:00:00.000Z',
+      nama: 'Diet Trial - 3 Plus (2026)',
+      nettoKg: 121.0,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-29T00:00:00.000Z',
+      nama: 'Krs. Garut 2024 (MYN)',
+      nettoKg: 196.6,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-29T00:00:00.000Z',
+      nama: 'Hang Madura 2024 (BAT)',
+      nettoKg: 35.4,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-10-29T00:00:00.000Z',
+      nama: 'Krs. Garut 2025 (MYN)',
+      nettoKg: 165.0,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+
     // === DATA 28 OKTOBER 2026 (Live Worksheet DHP Krosok & DHP Tembakau - Kolom I Hasil Proses) ===
     {
       tanggal: '2026-10-28T00:00:00.000Z',
@@ -3117,7 +3178,7 @@ export class GasService {
    */
   public static async fetchDHPKrosokDirectFromSheet(): Promise<DHPEntry[]> {
     try {
-      const csvUrl = 'https://docs.google.com/spreadsheets/d/1tyE6QWZOPhjLCsjvesU82QePF5RqEBToJsp1m0qQY_w/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA';
+      const csvUrl = `https://docs.google.com/spreadsheets/d/1tyE6QWZOPhjLCsjvesU82QePF5RqEBToJsp1m0qQY_w/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA&_t=${Date.now()}`;
       const text = await this.fetchWithTimeout(csvUrl, 12000);
       let rawText = '';
       if (typeof text === 'string') {
@@ -3179,7 +3240,7 @@ export class GasService {
    */
   public static async fetchDHPTembakauDirectFromSheet(): Promise<DHPEntry[]> {
     try {
-      const csvUrl = 'https://docs.google.com/spreadsheets/d/1NDS55VchAgNAeJJbY12ANA8HyJDeNNhAZ33zbojpH5I/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA';
+      const csvUrl = `https://docs.google.com/spreadsheets/d/1NDS55VchAgNAeJJbY12ANA8HyJDeNNhAZ33zbojpH5I/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA&_t=${Date.now()}`;
       const text = await this.fetchWithTimeout(csvUrl, 12000);
       let rawText = '';
       if (typeof text === 'string') {
@@ -3265,7 +3326,7 @@ export class GasService {
 
   public static async fetchDHPBlendDirectFromSheet(): Promise<DHPEntry[]> {
     try {
-      const csvUrl = 'https://docs.google.com/spreadsheets/d/1Fg3aNLsdkwXthNGxIsFJ9gbHy6Va6DokNV8IVpTnXDA/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA%20DHP%20BLEND';
+      const csvUrl = `https://docs.google.com/spreadsheets/d/1Fg3aNLsdkwXthNGxIsFJ9gbHy6Va6DokNV8IVpTnXDA/gviz/tq?tqx=out:csv&sheet=INTEGRASI%20DATA%20DHP%20BLEND&_t=${Date.now()}`;
       const text = await this.fetchWithTimeout(csvUrl, 12000);
       let rawText = '';
       if (typeof text === 'string') {
