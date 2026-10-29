@@ -488,11 +488,11 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
   {
     "komoditas": "Cengkeh",
     "satuan": "Kg",
-    "saldoTotal": 22655.0,
-    "masukTotal": 721968.6,
-    "keluarTotal": 676157.1,
-    "entriTotal": 1599,
-    "entriTervalidasi": 54.4,
+    "saldoTotal": 22438.9,
+    "masukTotal": 721968.7,
+    "keluarTotal": 676373.3,
+    "entriTotal": 1602,
+    "entriTervalidasi": 55.0,
     "jumlahKode": 9,
     "kodeList": [
       {
@@ -532,8 +532,8 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "MANADO GRADE A (2024)",
-        "saldo": 21880.4,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 21664.3,
+        "tanggalTerakhir": "2026-10-29T00:00:00.000Z"
       },
       {
         "nama": "MANADO KODE B",
@@ -543,8 +543,48 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     ],
     "mutasiTerbaru": [
       {
-        "id": "cengkeh-setoran-MANADOGRADEA2024-2026-10-27",
-        "tanggal": "2026-10-27T00:00:00.000Z",
+        "id": "cengkeh-setoran-MANADOGRADEA2024-2026-10-29",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "MANADO GRADE A (2024)",
+        "jenisMutasi": "Pengeluaran Setoran",
+        "masuk": 0,
+        "keluar": 216.0,
+        "saldo": 21664.3,
+        "cek": true,
+        "setoranMatch": {
+          "matched": true,
+          "labelNetto": 216.0,
+          "selisih": 0,
+          "sumber": "MUTASI STOCK PERSEDIAAN",
+          "detailBlend": {
+            "KARANG - BK": 216.0
+          },
+          "tujuan": "KARANG - BK (216,0 Kg)"
+        }
+      },
+      {
+        "id": "cengkeh-penyiapan-MANADOGRADEA2024-2026-10-29",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "MANADO GRADE A (2024)",
+        "jenisMutasi": "Selisih Lebih Penyiapan",
+        "masuk": 0.1,
+        "keluar": 0,
+        "saldo": 21880.3,
+        "cek": true
+      },
+      {
+        "id": "cengkeh-bspp-MANADOGRADEA2024-2026-10-29",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "MANADO GRADE A (2024)",
+        "jenisMutasi": "BSPP Kurang",
+        "masuk": 0,
+        "keluar": 0.2,
+        "saldo": 21880.2,
+        "cek": true
+      },
+      {
+        "id": "cengkeh-setoran-MANADOGRADEA2024-2026-10-28",
+        "tanggal": "2026-10-28T00:00:00.000Z",
         "kode": "MANADO GRADE A (2024)",
         "jenisMutasi": "Pengeluaran Setoran",
         "masuk": 0,
@@ -561,6 +601,16 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
           },
           "tujuan": "KARANG - BK (432,0 Kg)"
         }
+      },
+      {
+        "id": "cengkeh-bspp-MANADOGRADEA2024-2026-10-28",
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "kode": "MANADO GRADE A (2024)",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 0.7,
+        "keluar": 0,
+        "saldo": 22312.4,
+        "cek": true
       },
       {
         "id": "cengkeh-setoran-MANADOKODEB-2026-10-27",

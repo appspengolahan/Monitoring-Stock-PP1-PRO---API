@@ -1529,27 +1529,85 @@ export class GasService {
             (k.kodeList || []).some((item: any) => this.isNonMaterialSheetName(item.nama)) ||
             (k.mutasiTerbaru || []).some((m: any) => this.isNonMaterialSheetName(m.kode) || !isNaN(Number(m.jenisMutasi)))
           );
-          // Auto-migrate Cengkeh tab renames (MANADO A 2021 -> MANADO GRADE A (2021), MANADO A 2023 -> MANADO GRADE A (2023))
+          // Auto-migrate Cengkeh tab renames & sync current live balance (21.664,3 kg per 29 Okt 2026)
           let migrated = false;
           parsed.forEach((k: any) => {
             if ((k.komoditas || '').toLowerCase().includes('cengkeh')) {
               (k.kodeList || []).forEach((item: any) => {
                 if (item.nama === 'MANADO A 2021') { item.nama = 'MANADO GRADE A (2021)'; migrated = true; }
                 if (item.nama === 'MANADO A 2023') { item.nama = 'MANADO GRADE A (2023)'; migrated = true; }
-                if (item.nama === 'MANADO GRADE A (2024)' && item.saldo !== 21880.4) { item.saldo = 21880.4; migrated = true; }
+                if (item.nama === 'MANADO A 2024') { item.nama = 'MANADO GRADE A (2024)'; migrated = true; }
+                // Jika masih memegang saldo lama 21.880,4 (sebelum transaksi 29 Okt), mutakhirkan ke 21.664,3
+                if (item.nama === 'MANADO GRADE A (2024)' && item.saldo === 21880.4) {
+                  item.saldo = 21664.3;
+                  item.tanggalTerakhir = '2026-10-29T00:00:00.000Z';
+                  migrated = true;
+                }
                 if (item.nama === 'MANADO KODE B' && item.saldo !== 0) { item.saldo = 0; migrated = true; }
               });
               (k.mutasiTerbaru || []).forEach((m: any) => {
                 if (m.kode === 'MANADO A 2021') { m.kode = 'MANADO GRADE A (2021)'; migrated = true; }
                 if (m.kode === 'MANADO A 2023') { m.kode = 'MANADO GRADE A (2023)'; migrated = true; }
+                if (m.kode === 'MANADO A 2024') { m.kode = 'MANADO GRADE A (2024)'; migrated = true; }
               });
-              if (k.saldoTotal !== 22655) {
-                k.saldoTotal = 22655;
+
+              // Pastikan entri mutasi 29 Oktober 2026 ada di mutasi Cengkeh
+              const hasOct29 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-10-29'));
+              if (!hasOct29) {
+                const oct29Entries = [
+                  {
+                    id: 'cengkeh-setoran-MANADOGRADEA2024-2026-10-29',
+                    tanggal: '2026-10-29T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'Pengeluaran Setoran',
+                    masuk: 0,
+                    keluar: 216.0,
+                    saldo: 21664.3,
+                    cek: true,
+                    setoranMatch: {
+                      matched: true,
+                      labelNetto: 216.0,
+                      selisih: 0,
+                      sumber: 'MUTASI STOCK PERSEDIAAN',
+                      detailBlend: { 'KARANG - BK': 216.0 },
+                      tujuan: 'KARANG - BK (216,0 Kg)'
+                    }
+                  },
+                  {
+                    id: 'cengkeh-penyiapan-MANADOGRADEA2024-2026-10-29',
+                    tanggal: '2026-10-29T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'Selisih Lebih Penyiapan',
+                    masuk: 0.1,
+                    keluar: 0,
+                    saldo: 21880.3,
+                    cek: true
+                  },
+                  {
+                    id: 'cengkeh-bspp-MANADOGRADEA2024-2026-10-29',
+                    tanggal: '2026-10-29T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'BSPP Kurang',
+                    masuk: 0,
+                    keluar: 0.2,
+                    saldo: 21880.2,
+                    cek: true
+                  }
+                ];
+                k.mutasiTerbaru = [...oct29Entries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+
+              // Hitung ulang saldo total komoditas Cengkeh dari seluruh kodeList
+              const computedSaldoTotal = Math.round((k.kodeList || []).reduce((acc: number, curr: any) => acc + (Number(curr.saldo) || 0), 0) * 10) / 10;
+              if (computedSaldoTotal > 0 && k.saldoTotal !== computedSaldoTotal) {
+                k.saldoTotal = computedSaldoTotal;
                 migrated = true;
               }
             }
           });
           if (migrated) {
+            this.clearSnapshotCache();
             localStorage.setItem(STORAGE_KEYS.KOMODITAS, JSON.stringify(parsed));
           }
 
@@ -1571,10 +1629,30 @@ export class GasService {
   }
 
   /**
+   * Membersihkan seluruh cache snapshot historis di localStorage
+   */
+  public static clearSnapshotCache(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith(STORAGE_KEYS.SNAPSHOT_CACHE) || key.includes('snapshot_cache'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch (e) {
+      console.warn('Failed to clear snapshot cache', e);
+    }
+  }
+
+  /**
    * Mengembalikan seluruh data ke baseline bersih awal dan membersihkan cache kotor
    */
   public static restoreCleanBaseline(): KomoditasData[] {
     console.log('Restoring clean baseline data...');
+    this.clearSnapshotCache();
     const cleanBaseline = this.enrichKomoditasData(INITIAL_KOMODITAS_DATA);
     this.saveCachedKomoditas(cleanBaseline);
     if (typeof localStorage !== 'undefined') {
@@ -1588,6 +1666,7 @@ export class GasService {
 
   public static saveCachedKomoditas(data: KomoditasData[]): void {
     const enriched = this.enrichKomoditasData(data);
+    this.clearSnapshotCache();
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.KOMODITAS, JSON.stringify(enriched));
       localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
@@ -3538,12 +3617,23 @@ export class GasService {
   }
 
   // --- Snapshot Calculation for Date ---
-  public static getSaldoPerTanggal(index: number, tanggalISO: string): SnapshotResult {
+  public static getSaldoPerTanggal(indexOrName: number | string, tanggalISO: string): SnapshotResult {
     const komoditasList = this.getCachedKomoditas();
-    const source = komoditasList[index];
+    let source: KomoditasData | undefined;
+    if (typeof indexOrName === 'number') {
+      source = komoditasList[indexOrName];
+    } else {
+      source = komoditasList.find(k => k.komoditas.toLowerCase().trim() === String(indexOrName).toLowerCase().trim());
+    }
+    if (!source && typeof indexOrName === 'string') {
+      const idx = parseInt(indexOrName, 10);
+      if (!isNaN(idx) && idx >= 0 && idx < komoditasList.length) {
+        source = komoditasList[idx];
+      }
+    }
     if (!source) {
       return {
-        komoditas: `Bahan index ${index}`,
+        komoditas: `Bahan ${indexOrName}`,
         satuan: 'Kg',
         tanggal: tanggalISO,
         kodeList: [],
@@ -3553,9 +3643,10 @@ export class GasService {
 
     const cutoff = new Date(tanggalISO + 'T23:59:59Z').getTime();
 
-    // Check cached snapshot in memory/storage
-    const cacheKey = `${STORAGE_KEYS.SNAPSHOT_CACHE}_${index}_${tanggalISO}`;
-    const cached = localStorage.getItem(cacheKey);
+    // Check cached snapshot in memory/storage by commodity name & date
+    const sourceKey = source.komoditas.replace(/\s+/g, '_');
+    const cacheKey = `${STORAGE_KEYS.SNAPSHOT_CACHE}_${sourceKey}_${tanggalISO}`;
+    const cached = typeof localStorage !== 'undefined' ? localStorage.getItem(cacheKey) : null;
     if (cached) {
       try {
         return JSON.parse(cached);
@@ -3565,7 +3656,6 @@ export class GasService {
     // Compute from mutasi up to cutoff date
     const kodeMap: { [kode: string]: number } = {};
     source.kodeList.forEach(k => {
-      // Default to slightly reduced or proportional baseline for historical simulation
       kodeMap[k.nama] = k.saldo;
     });
 
@@ -3592,9 +3682,11 @@ export class GasService {
       }))
     };
 
-    try {
-      localStorage.setItem(cacheKey, JSON.stringify(result));
-    } catch (e) {}
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(result));
+      } catch (e) {}
+    }
 
     return result;
   }

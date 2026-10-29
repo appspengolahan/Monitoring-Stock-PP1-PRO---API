@@ -84,7 +84,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 
       if (isSnapshotMode && snapshotDate) {
         // Compute date snapshot via GasService
-        const snapshot = GasService.getSaldoPerTanggal(index, snapshotDate);
+        const snapshot = GasService.getSaldoPerTanggal(k.komoditas, snapshotDate);
         snapshot.kodeList.forEach(item => {
           list.push({
             komoditas: k.komoditas,
