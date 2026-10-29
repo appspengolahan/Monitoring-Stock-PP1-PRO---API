@@ -176,6 +176,8 @@ export default function App() {
     GasService.refreshDHPReconciliation().then(() => {
       setKomoditasList(GasService.getCachedKomoditas());
     });
+    // Sync users & custom roles from server across all devices
+    GasService.syncUsersWithServer();
 
     // 5b. Attempt silent background synchronization with GAS
     const initialSync = async () => {

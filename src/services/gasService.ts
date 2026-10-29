@@ -375,6 +375,41 @@ export class GasService {
     return this.getAvailableRoles();
   }
 
+  public static async syncUsersWithServer(): Promise<UserAccessConfig[]> {
+    try {
+      const res = await fetch('/api/user-configs');
+      if (res.ok) {
+        const json = await res.json();
+        if (json && Array.isArray(json.users) && json.users.length > 0) {
+          const current = this.getUserConfigs();
+          const emailMap = new Map<string, UserAccessConfig>();
+          current.forEach(u => emailMap.set(u.email.toLowerCase().trim(), u));
+          json.users.forEach((u: any) => {
+            if (u && u.email) {
+              const clean = u.email.toLowerCase().trim();
+              const existing = emailMap.get(clean);
+              emailMap.set(clean, {
+                ...existing,
+                ...u,
+                email: clean
+              });
+            }
+          });
+          const merged = Array.from(emailMap.values());
+          this.saveUserConfigs(merged);
+
+          if (Array.isArray(json.customRoles)) {
+            json.customRoles.forEach((r: string) => this.addCustomRole(r));
+          }
+          return merged;
+        }
+      }
+    } catch (e) {
+      console.warn('syncUsersWithServer error:', e);
+    }
+    return this.getUserConfigs();
+  }
+
   public static getUserConfigs(): UserAccessConfig[] {
     const stored = localStorage.getItem(STORAGE_KEYS.USER_CONFIGS);
     if (stored) {
@@ -414,6 +449,16 @@ export class GasService {
       configs.push({ ...config, email: cleanEmail });
     }
     this.saveUserConfigs(configs);
+
+    // Sync with server across devices
+    if (typeof window !== 'undefined') {
+      fetch('/api/user-configs/upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      }).catch(e => console.warn('Failed to sync user with server:', e));
+    }
+
     return configs;
   }
 
@@ -516,13 +561,22 @@ export class GasService {
 
   public static async login(emailInput: string, passwordInput: string): Promise<{ ok: boolean; session?: UserSession; message?: string }> {
     const cleanEmail = emailInput.toLowerCase().trim();
-    const configs = this.getUserConfigs();
+    let configs = this.getUserConfigs();
 
     // 1. Strict Whitelist Check
-    const found = configs.find(c => 
+    let found = configs.find(c => 
       c.email.toLowerCase() === cleanEmail || 
       c.nama.toLowerCase() === cleanEmail
     );
+
+    // If not found in local browser cache (e.g. user added on another device/PC), sync with server
+    if (!found) {
+      const refreshed = await this.syncUsersWithServer();
+      found = refreshed.find(c => 
+        c.email.toLowerCase() === cleanEmail || 
+        c.nama.toLowerCase() === cleanEmail
+      );
+    }
 
     if (!found) {
       return { 

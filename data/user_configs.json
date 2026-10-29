@@ -1,0 +1,98 @@
+[
+  {
+    "email": "obeetools@gmail.com",
+    "nama": "Web Developer (ObeeTools)",
+    "role": "Web Developer",
+    "password": "123",
+    "defaultPin": "123456",
+    "isDefaultPassword": false,
+    "hasDevAccess": true,
+    "allowedKomoditas": ["*"],
+    "canExportPdf": true,
+    "canManageUsers": true
+  },
+  {
+    "email": "loehendra@gmail.com",
+    "nama": "Lalu Mahendra (Site Enginer/PM)",
+    "role": "Site Engineer / PM",
+    "password": "123",
+    "defaultPin": "123456",
+    "isDefaultPassword": false,
+    "hasDevAccess": true,
+    "allowedKomoditas": ["*"],
+    "canExportPdf": true,
+    "canManageUsers": true
+  },
+  {
+    "email": "appspengolahan@gmail.com",
+    "nama": "Admin Pengolahan PP1",
+    "role": "Admin Produksi",
+    "password": "123",
+    "defaultPin": "123456",
+    "isDefaultPassword": true,
+    "hasDevAccess": false,
+    "allowedKomoditas": ["*"],
+    "canExportPdf": true,
+    "canManageUsers": false
+  },
+  {
+    "email": "divisi1.bkr@gmail.com",
+    "nama": "Admin Divisi I (BKR)",
+    "role": "Admin Produksi",
+    "password": "123",
+    "defaultPin": "123456",
+    "isDefaultPassword": true,
+    "hasDevAccess": false,
+    "allowedKomoditas": ["*"],
+    "canExportPdf": true,
+    "canManageUsers": false
+  },
+  {
+    "email": "feedkreatif@gmail.com",
+    "nama": "Staff Accounting",
+    "role": "Accounting",
+    "password": "123",
+    "defaultPin": "123456",
+    "isDefaultPassword": true,
+    "hasDevAccess": false,
+    "allowedKomoditas": ["*"],
+    "canExportPdf": true,
+    "canManageUsers": false
+  },
+  {
+    "email": "mandor.cengkeh@batukarang.com",
+    "nama": "Mandor Gudang Cengkeh",
+    "role": "Staff Operasional",
+    "password": "123",
+    "defaultPin": "123456",
+    "isDefaultPassword": true,
+    "hasDevAccess": false,
+    "allowedKomoditas": ["Cengkeh"],
+    "canExportPdf": false,
+    "canManageUsers": false
+  },
+  {
+    "email": "mandor.blend@batukarang.com",
+    "nama": "Mandor Tembakau Blend",
+    "role": "Staff Operasional",
+    "password": "123",
+    "defaultPin": "123456",
+    "isDefaultPassword": true,
+    "hasDevAccess": false,
+    "allowedKomoditas": ["Tembakau Blend"],
+    "canExportPdf": false,
+    "canManageUsers": false
+  },
+  {
+    "email": "assmanajer.pp1@gmail.com",
+    "nama": "Asisten Developer",
+    "role": "Staff Operasional",
+    "password": "123",
+    "defaultPin": "123456",
+    "isDefaultPassword": true,
+    "hasDevAccess": false,
+    "allowedKomoditas": ["Tembakau Blend"],
+    "canExportPdf": false,
+    "canManageUsers": false
+  }
+]

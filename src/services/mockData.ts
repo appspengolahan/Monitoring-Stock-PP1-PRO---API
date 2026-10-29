@@ -34770,6 +34770,18 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     allowedKomoditas: ['Tembakau Blend'],
     canExportPdf: false,
     canManageUsers: false
+  },
+  {
+    email: 'feedkreatif@gmail.com',
+    nama: 'Staff Accounting',
+    role: 'Accounting',
+    password: '123',
+    defaultPin: '123456',
+    isDefaultPassword: true,
+    hasDevAccess: false,
+    allowedKomoditas: ['*'],
+    canExportPdf: true,
+    canManageUsers: false
   }
 ];
 

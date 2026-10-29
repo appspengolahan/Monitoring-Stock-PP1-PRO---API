@@ -685,6 +685,127 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     }
   });
 
+  // --- Persistent Storage for RBAC User Configs & Custom Roles across all devices ---
+  const DATA_DIR = path.join(__dirname, 'data');
+  const USERS_FILE = path.join(DATA_DIR, 'user_configs.json');
+  const ROLES_FILE = path.join(DATA_DIR, 'custom_roles.json');
+
+  if (!fs.existsSync(DATA_DIR)) {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    } catch {}
+  }
+
+  const readUserConfigsFromFile = (): any[] => {
+    try {
+      if (fs.existsSync(USERS_FILE)) {
+        const raw = fs.readFileSync(USERS_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  };
+
+  const writeUserConfigsToFile = (configs: any[]) => {
+    try {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(configs, null, 2), 'utf-8');
+    } catch (e) {
+      console.error('Failed to write user configs to file:', e);
+    }
+  };
+
+  const readCustomRolesFromFile = (): string[] => {
+    try {
+      if (fs.existsSync(ROLES_FILE)) {
+        const raw = fs.readFileSync(ROLES_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return ['Accounting'];
+  };
+
+  const writeCustomRolesToFile = (roles: string[]) => {
+    try {
+      fs.writeFileSync(ROLES_FILE, JSON.stringify(roles, null, 2), 'utf-8');
+    } catch (e) {
+      console.error('Failed to write custom roles to file:', e);
+    }
+  };
+
+  app.get('/api/user-configs', (_req, res) => {
+    const fileConfigs = readUserConfigsFromFile();
+    const customRoles = readCustomRolesFromFile();
+    return res.json({ ok: true, users: fileConfigs, customRoles });
+  });
+
+  app.post('/api/user-configs/upsert', (req, res) => {
+    try {
+      const config = req.body;
+      if (!config || !config.email) {
+        return res.status(400).json({ ok: false, error: 'Email is required' });
+      }
+      const cleanEmail = String(config.email).toLowerCase().trim();
+      let configs = readUserConfigsFromFile();
+      const idx = configs.findIndex((c: any) => c.email.toLowerCase().trim() === cleanEmail);
+      if (idx >= 0) {
+        configs[idx] = { ...configs[idx], ...config, email: cleanEmail };
+      } else {
+        configs.push({ ...config, email: cleanEmail });
+      }
+      writeUserConfigsToFile(configs);
+
+      // Save role if custom
+      if (config.role) {
+        let roles = readCustomRolesFromFile();
+        if (!roles.includes(config.role)) {
+          roles.push(config.role);
+          writeCustomRolesToFile(roles);
+        }
+      }
+      return res.json({ ok: true, users: configs });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/user-configs/delete', (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ ok: false, error: 'Email required' });
+      const cleanEmail = String(email).toLowerCase().trim();
+      let configs = readUserConfigsFromFile();
+      configs = configs.filter((c: any) => c.email.toLowerCase().trim() !== cleanEmail);
+      writeUserConfigsToFile(configs);
+      return res.json({ ok: true, users: configs });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/custom-roles', (_req, res) => {
+    return res.json({ ok: true, roles: readCustomRolesFromFile() });
+  });
+
+  app.post('/api/custom-roles', (req, res) => {
+    try {
+      const { role } = req.body;
+      if (role && typeof role === 'string') {
+        const cleanRole = role.trim();
+        let roles = readCustomRolesFromFile();
+        if (!roles.includes(cleanRole)) {
+          roles.push(cleanRole);
+          writeCustomRolesToFile(roles);
+        }
+        return res.json({ ok: true, roles });
+      }
+      return res.json({ ok: true, roles: readCustomRolesFromFile() });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   // In-memory micro-cache for GAS proxy to accelerate repeat calls and reduce latency to < 5ms
   const proxyMemoryCache = new Map<string, { data: any; expiry: number }>();
   const PROXY_CACHE_TTL_MS = 60000; // 60 seconds cache for rapid repeat queries
