@@ -34697,7 +34697,9 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     hasDevAccess: true,
     allowedKomoditas: ['*'],
     canExportPdf: true,
-    canManageUsers: true
+    canManageUsers: true,
+    canAccessAI: true,
+    canAccessReconciliation: true
   },
   {
     email: 'loehendra@gmail.com',
@@ -34709,7 +34711,9 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     hasDevAccess: true,
     allowedKomoditas: ['*'],
     canExportPdf: true,
-    canManageUsers: true
+    canManageUsers: true,
+    canAccessAI: true,
+    canAccessReconciliation: true
   },
   {
     email: 'appspengolahan@gmail.com',
@@ -34721,7 +34725,9 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     hasDevAccess: false,
     allowedKomoditas: ['*'],
     canExportPdf: true,
-    canManageUsers: false
+    canManageUsers: true,
+    canAccessAI: true,
+    canAccessReconciliation: true
   },
   {
     email: 'divisi1.bkr@gmail.com',
@@ -34733,7 +34739,9 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     hasDevAccess: false,
     allowedKomoditas: ['*'],
     canExportPdf: true,
-    canManageUsers: false
+    canManageUsers: true,
+    canAccessAI: true,
+    canAccessReconciliation: true
   },
   {
     email: 'mandor.cengkeh@batukarang.com',
@@ -34745,7 +34753,9 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     hasDevAccess: false,
     allowedKomoditas: ['Cengkeh'],
     canExportPdf: false,
-    canManageUsers: false
+    canManageUsers: false,
+    canAccessAI: false,
+    canAccessReconciliation: true
   },
   {
     email: 'mandor.blend@batukarang.com',
@@ -34757,7 +34767,9 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     hasDevAccess: false,
     allowedKomoditas: ['Tembakau Blend'],
     canExportPdf: false,
-    canManageUsers: false
+    canManageUsers: false,
+    canAccessAI: false,
+    canAccessReconciliation: true
   },
   {
     email: 'assmanajer.pp1@gmail.com',
@@ -34769,7 +34781,9 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     hasDevAccess: false,
     allowedKomoditas: ['Tembakau Blend'],
     canExportPdf: false,
-    canManageUsers: false
+    canManageUsers: false,
+    canAccessAI: false,
+    canAccessReconciliation: true
   },
   {
     email: 'feedkreatif@gmail.com',
@@ -34781,7 +34795,9 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     hasDevAccess: false,
     allowedKomoditas: ['*'],
     canExportPdf: true,
-    canManageUsers: false
+    canManageUsers: false,
+    canAccessAI: false,
+    canAccessReconciliation: false
   }
 ];
 

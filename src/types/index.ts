@@ -17,6 +17,8 @@ export interface UserAccessConfig {
   allowedKomoditas: string[]; // List nama komoditas yang diizinkan, atau ['*'] / ['all'] untuk full akses
   canExportPdf: boolean;
   canManageUsers?: boolean;
+  canAccessAI?: boolean; // Izin Asisten Cerdas AI (AI Logistik & AI Stock Bot)
+  canAccessReconciliation?: boolean; // Izin Menu Rekonsiliasi & Switch Board Susut
 }
 
 export interface UserSession {
@@ -28,6 +30,8 @@ export interface UserSession {
   allowedKomoditas: string[]; // ['*'] means full access to all
   canExportPdf: boolean;
   canManageUsers?: boolean;
+  canAccessAI?: boolean;
+  canAccessReconciliation?: boolean;
   token?: string;
   isLoggedIn: boolean;
   loginTime?: string;

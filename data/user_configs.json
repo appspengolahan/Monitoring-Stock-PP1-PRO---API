@@ -9,7 +9,9 @@
     "hasDevAccess": true,
     "allowedKomoditas": ["*"],
     "canExportPdf": true,
-    "canManageUsers": true
+    "canManageUsers": true,
+    "canAccessAI": true,
+    "canAccessReconciliation": true
   },
   {
     "email": "loehendra@gmail.com",
@@ -21,7 +23,9 @@
     "hasDevAccess": true,
     "allowedKomoditas": ["*"],
     "canExportPdf": true,
-    "canManageUsers": true
+    "canManageUsers": true,
+    "canAccessAI": true,
+    "canAccessReconciliation": true
   },
   {
     "email": "appspengolahan@gmail.com",
@@ -33,7 +37,9 @@
     "hasDevAccess": false,
     "allowedKomoditas": ["*"],
     "canExportPdf": true,
-    "canManageUsers": false
+    "canManageUsers": true,
+    "canAccessAI": true,
+    "canAccessReconciliation": true
   },
   {
     "email": "divisi1.bkr@gmail.com",
@@ -45,7 +51,9 @@
     "hasDevAccess": false,
     "allowedKomoditas": ["*"],
     "canExportPdf": true,
-    "canManageUsers": false
+    "canManageUsers": true,
+    "canAccessAI": true,
+    "canAccessReconciliation": true
   },
   {
     "email": "feedkreatif@gmail.com",
@@ -57,7 +65,9 @@
     "hasDevAccess": false,
     "allowedKomoditas": ["*"],
     "canExportPdf": true,
-    "canManageUsers": false
+    "canManageUsers": false,
+    "canAccessAI": false,
+    "canAccessReconciliation": false
   },
   {
     "email": "mandor.cengkeh@batukarang.com",
@@ -69,7 +79,9 @@
     "hasDevAccess": false,
     "allowedKomoditas": ["Cengkeh"],
     "canExportPdf": false,
-    "canManageUsers": false
+    "canManageUsers": false,
+    "canAccessAI": false,
+    "canAccessReconciliation": true
   },
   {
     "email": "mandor.blend@batukarang.com",
@@ -81,7 +93,9 @@
     "hasDevAccess": false,
     "allowedKomoditas": ["Tembakau Blend"],
     "canExportPdf": false,
-    "canManageUsers": false
+    "canManageUsers": false,
+    "canAccessAI": false,
+    "canAccessReconciliation": true
   },
   {
     "email": "assmanajer.pp1@gmail.com",
@@ -93,6 +107,8 @@
     "hasDevAccess": false,
     "allowedKomoditas": ["Tembakau Blend"],
     "canExportPdf": false,
-    "canManageUsers": false
+    "canManageUsers": false,
+    "canAccessAI": false,
+    "canAccessReconciliation": true
   }
 ]

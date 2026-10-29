@@ -159,12 +159,13 @@ export default function App() {
     });
   }, [session.allowedKomoditas]);
 
-  // AI Feature access: Hidden for Staff Operasional
+  // AI Feature access: Determined by user configuration (canAccessAI) or fallback
   const hasAIAccess = React.useMemo(() => {
     if (!session || !session.role) return false;
+    if (session.canAccessAI !== undefined) return session.canAccessAI;
     const roleLower = session.role.toLowerCase();
-    return !roleLower.includes('staff');
-  }, [session?.role]);
+    return !roleLower.includes('staff') && !roleLower.includes('accounting');
+  }, [session?.role, session?.canAccessAI]);
 
   const allAvailableCommodityNames = React.useMemo(() => {
     return komoditasList.map(k => k.komoditas);

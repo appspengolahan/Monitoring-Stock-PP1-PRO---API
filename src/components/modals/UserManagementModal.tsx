@@ -15,7 +15,11 @@ import {
   RotateCcw,
   KeyRound,
   Plus,
-  Tag
+  Tag,
+  Sliders,
+  Database,
+  FileCheck2,
+  Layers
 } from 'lucide-react';
 import { UserAccessConfig, UserRole } from '../../types';
 import { GasService } from '../../services/gasService';
@@ -44,6 +48,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formHasDevAccess, setFormHasDevAccess] = useState<boolean>(false);
   const [formAllowedKomoditas, setFormAllowedKomoditas] = useState<string[]>([]);
   const [formCanExport, setFormCanExport] = useState<boolean>(true);
+  const [formCanAccessAI, setFormCanAccessAI] = useState<boolean>(false);
+  const [formCanManageUsers, setFormCanManageUsers] = useState<boolean>(false);
+  const [formCanAccessReconciliation, setFormCanAccessReconciliation] = useState<boolean>(true);
   const [formDefaultPin, setFormDefaultPin] = useState<string>('123456');
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -52,6 +59,35 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
   const defaultRoles = GasService.DEFAULT_ROLES;
   const customRoles = availableRoles.filter(r => !defaultRoles.includes(r));
+
+  const applyRoleDefaultPermissions = (roleName: string) => {
+    const lower = roleName.toLowerCase().trim();
+    if (lower === 'web developer' || lower === 'site engineer / pm' || lower === 'project manager') {
+      setFormHasDevAccess(true);
+      setFormCanExport(true);
+      setFormCanAccessAI(true);
+      setFormCanManageUsers(true);
+      setFormCanAccessReconciliation(true);
+    } else if (lower === 'admin produksi') {
+      setFormHasDevAccess(false);
+      setFormCanExport(true);
+      setFormCanAccessAI(true);
+      setFormCanManageUsers(true);
+      setFormCanAccessReconciliation(true);
+    } else if (lower.includes('accounting')) {
+      setFormHasDevAccess(false);
+      setFormCanExport(true);
+      setFormCanAccessAI(false); // Sesuai arahan: Accounting tidak diberi akses AI & Dev
+      setFormCanManageUsers(false);
+      setFormCanAccessReconciliation(false);
+    } else { // Staff Operasional & kustom umum
+      setFormHasDevAccess(false);
+      setFormCanExport(false);
+      setFormCanAccessAI(false);
+      setFormCanManageUsers(false);
+      setFormCanAccessReconciliation(true);
+    }
+  };
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role) {
@@ -81,9 +117,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setIsCustomRoleMode(false);
     setCustomRoleInput('');
     setFormDefaultPin('123456');
-    setFormHasDevAccess(false);
+    applyRoleDefaultPermissions('Staff Operasional');
     setFormAllowedKomoditas([availableKomoditas[0] || 'Cengkeh']);
-    setFormCanExport(false);
   };
 
   const handleStartEdit = (user: UserAccessConfig) => {
@@ -95,9 +130,12 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setIsCustomRoleMode(false);
     setCustomRoleInput('');
     setFormDefaultPin(user.defaultPin || '123456');
-    setFormHasDevAccess(user.hasDevAccess);
+    setFormHasDevAccess(!!user.hasDevAccess);
     setFormAllowedKomoditas(user.allowedKomoditas);
-    setFormCanExport(user.canExportPdf);
+    setFormCanExport(user.canExportPdf ?? true);
+    setFormCanAccessAI(user.canAccessAI ?? (user.role === 'Web Developer' || user.role === 'Site Engineer / PM' || user.role === 'Admin Produksi'));
+    setFormCanManageUsers(user.canManageUsers ?? (user.role === 'Web Developer' || user.role === 'Site Engineer / PM' || user.role === 'Admin Produksi'));
+    setFormCanAccessReconciliation(user.canAccessReconciliation ?? true);
   };
 
   const handleToggleKomoditas = (item: string) => {
@@ -154,10 +192,12 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
       password: isAddingNew ? pinToUse : (existing?.password || pinToUse),
       defaultPin: pinToUse,
       isDefaultPassword: isAddingNew ? true : (existing?.isDefaultPassword ?? true),
-      hasDevAccess: isDevRole ? formHasDevAccess : false,
+      hasDevAccess: formHasDevAccess,
       allowedKomoditas: formAllowedKomoditas.length === 0 ? ['*'] : formAllowedKomoditas,
       canExportPdf: formCanExport,
-      canManageUsers: isDevRole || finalRole === 'Admin Produksi'
+      canManageUsers: formCanManageUsers,
+      canAccessAI: formCanAccessAI,
+      canAccessReconciliation: formCanAccessReconciliation
     };
 
     const updated = GasService.upsertUserConfig(config);
@@ -280,7 +320,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-bold text-slate-600">
@@ -295,6 +335,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                           setCustomRoleInput('');
                         } else {
                           setFormRole('Staff Operasional');
+                          applyRoleDefaultPermissions('Staff Operasional');
                         }
                       }}
                       className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 cursor-pointer"
@@ -318,8 +359,10 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                           type="text"
                           value={customRoleInput}
                           onChange={e => {
-                            setCustomRoleInput(e.target.value);
-                            setFormRole(e.target.value);
+                            const val = e.target.value;
+                            setCustomRoleInput(val);
+                            setFormRole(val);
+                            applyRoleDefaultPermissions(val);
                           }}
                           placeholder="Ketik peran baru (e.g. Accounting)..."
                           autoFocus
@@ -334,6 +377,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                           onClick={() => {
                             setIsCustomRoleMode(false);
                             setFormRole('Staff Operasional');
+                            applyRoleDefaultPermissions('Staff Operasional');
                           }}
                           className="text-slate-400 hover:text-slate-600 underline"
                         >
@@ -352,11 +396,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                           setFormRole('');
                         } else {
                           setFormRole(val);
-                          if (val === 'Web Developer' || val === 'Site Engineer / PM') {
-                            setFormHasDevAccess(true);
-                          } else {
-                            setFormHasDevAccess(false);
-                          }
+                          applyRoleDefaultPermissions(val);
                         }
                       }}
                       className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500 font-medium"
@@ -396,26 +436,136 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                   </div>
                   <span className="text-[10px] text-slate-400">PIN default pabrik: 123456</span>
                 </div>
+              </div>
 
-                <div className="flex flex-col justify-end space-y-1.5 pb-1">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+              {/* Granular Feature Access Checkboxes (Hak Akses Fitur Aplikasi) */}
+              <div className="bg-white p-3.5 rounded-xl border border-blue-200/90 shadow-2xs space-y-2.5">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 flex-wrap gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-blue-600" />
+                    <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
+                      Hak Akses Fitur Aplikasi (Centang Fitur yang Diizinkan)
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">
+                    Preset otomatis aktif sesuai peran, dapat disesuaikan manual
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                  {/* 1. Fitur AI Cerdas (AI Logistik & Bot Asisten) */}
+                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
+                    formCanAccessAI 
+                      ? 'bg-purple-50/70 border-purple-200 text-purple-950' 
+                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={formCanAccessAI}
+                      onChange={e => setFormCanAccessAI(e.target.checked)}
+                      className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                        <span>Fitur AI Cerdas</span>
+                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-purple-100 text-purple-700 font-semibold font-mono">Gemini</span>
+                      </span>
+                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                        AI Logistik, rekomendasi persediaan, dan AI Stock Bot
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* 2. Mode Dev & Headless GAS API */}
+                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
+                    formHasDevAccess 
+                      ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950' 
+                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                  }`}>
                     <input
                       type="checkbox"
                       checked={formHasDevAccess}
-                      disabled={formRole !== 'Web Developer' && formRole !== 'Site Engineer / PM'}
                       onChange={e => setFormHasDevAccess(e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                     />
-                    <span>Mode Dev (Headless GAS)</span>
+                    <div className="text-xs">
+                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                        <span>Mode Dev (Headless GAS)</span>
+                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-indigo-100 text-indigo-700 font-semibold font-mono">API</span>
+                      </span>
+                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                        Akses payload JSON, switchboard pengembang &amp; parameter GAS
+                      </span>
+                    </div>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+
+                  {/* 3. Export PDF & Cetak Kartu */}
+                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
+                    formCanExport 
+                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' 
+                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                  }`}>
                     <input
                       type="checkbox"
                       checked={formCanExport}
                       onChange={e => setFormCanExport(e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                     />
-                    <span>Izin Export PDF Laporan</span>
+                    <div className="text-xs">
+                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                        <span>Izin Export PDF Laporan</span>
+                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-700 font-semibold font-mono">PDF</span>
+                      </span>
+                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                        Cetak dan unduh laporan persediaan &amp; kartu stok format PDF
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* 4. Audit Rekonsiliasi & Switch Board Susut */}
+                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
+                    formCanAccessReconciliation 
+                      ? 'bg-amber-50/70 border-amber-200 text-amber-950' 
+                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={formCanAccessReconciliation}
+                      onChange={e => setFormCanAccessReconciliation(e.target.checked)}
+                      className="mt-0.5 rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                        <span>Audit Rekonsiliasi Susut</span>
+                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-semibold font-mono">Audit</span>
+                      </span>
+                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                        Panel verifikasi cutoff, selisih timbangan &amp; status susut
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* 5. Kelola Hak Akses Staf (Admin RBAC) */}
+                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
+                    formCanManageUsers 
+                      ? 'bg-rose-50/70 border-rose-200 text-rose-950' 
+                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={formCanManageUsers}
+                      onChange={e => setFormCanManageUsers(e.target.checked)}
+                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                        <span>Kelola Hak Akses Staf</span>
+                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-rose-100 text-rose-700 font-semibold font-mono">Admin</span>
+                      </span>
+                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                        Membuka whitelist user, atur izin fitur &amp; reset PIN staf lain
+                      </span>
+                    </div>
                   </label>
                 </div>
               </div>
@@ -563,38 +713,74 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-[11px] text-slate-600 flex-wrap">
-                      <span className="flex items-center gap-1 font-medium">
-                        {isDevHidden ? (
-                          <span className="text-slate-500 bg-slate-200/80 px-1.5 py-0.5 rounded text-[10px]">
-                            Mode Dev: Ditutup
-                          </span>
-                        ) : (
-                          <span className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded text-[10px] font-semibold">
-                            Mode Dev: Aktif (Headless GAS)
-                          </span>
-                        )}
-                      </span>
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-600 flex-wrap pt-0.5">
+                      {/* AI Feature Badge */}
+                      {u.canAccessAI ? (
+                        <span className="text-purple-700 bg-purple-50 border border-purple-200/80 px-1.5 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1">
+                          <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+                          <span>AI Cerdas Aktif</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 bg-slate-100 border border-slate-200/60 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                          AI: Nonaktif
+                        </span>
+                      )}
+
+                      {/* Dev Mode Badge */}
+                      {u.hasDevAccess ? (
+                        <span className="text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                          Mode Dev (GAS)
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 bg-slate-100 border border-slate-200/60 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                          Dev: Tutup
+                        </span>
+                      )}
+
+                      {/* PDF Export Badge */}
+                      {u.canExportPdf ? (
+                        <span className="text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                          PDF: Diizinkan
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 bg-slate-100 border border-slate-200/60 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                          PDF: Tutup
+                        </span>
+                      )}
+
+                      {/* Audit Rekonsiliasi Badge */}
+                      {u.canAccessReconciliation ? (
+                        <span className="text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                          Audit Susut
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 bg-slate-100 border border-slate-200/60 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                          Audit: Tutup
+                        </span>
+                      )}
+
+                      {/* PIN Status */}
                       <span>·</span>
                       <span className="flex items-center gap-1 font-medium">
                         {u.isDefaultPassword ? (
                           <span className="text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1">
                             <KeyRound className="w-3 h-3 text-amber-600" />
-                            <span>Bawaan Dev (PIN: {u.defaultPin || '123456'})</span>
+                            <span>PIN: {u.defaultPin || '123456'}</span>
                           </span>
                         ) : (
                           <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1">
                             <Check className="w-3 h-3 text-emerald-600" />
-                            <span>Telah Diubah Mandiri</span>
+                            <span>PIN Mandiri</span>
                           </span>
                         )}
                       </span>
+
                       <span>·</span>
                       <span className="font-medium text-slate-700">
-                        Akses: {hasAllBahan ? (
-                          <strong className="text-blue-700">Semua Bahan</strong>
+                        Bahan: {hasAllBahan ? (
+                          <strong className="text-blue-700">Semua</strong>
                         ) : (
-                          <span className="text-slate-800 bg-white border border-slate-200 px-1.5 py-0.5 rounded font-mono text-[10.5px]">
+                          <span className="text-slate-800 bg-white border border-slate-200 px-1.5 py-0.5 rounded font-mono text-[10px]">
                             {u.allowedKomoditas.join(', ')}
                           </span>
                         )}

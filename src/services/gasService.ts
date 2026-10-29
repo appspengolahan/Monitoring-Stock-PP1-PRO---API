@@ -571,11 +571,14 @@ export class GasService {
 
   public static switchRole(newRole: UserRole): UserSession {
     const current = this.getCurrentSession();
+    const isDev = newRole === 'Web Developer' || newRole === 'Site Engineer / PM';
     const updated: UserSession = {
       ...current,
       role: newRole,
-      hasDevAccess: newRole === 'Web Developer' || newRole === 'Site Engineer / PM',
-      canManageUsers: newRole === 'Web Developer' || newRole === 'Site Engineer / PM'
+      hasDevAccess: isDev,
+      canManageUsers: isDev || newRole === 'Admin Produksi',
+      canAccessAI: isDev || newRole === 'Admin Produksi',
+      canAccessReconciliation: isDev || newRole === 'Admin Produksi'
     };
     this.saveSession(updated);
     return updated;
@@ -634,6 +637,8 @@ export class GasService {
       allowedKomoditas: found.allowedKomoditas,
       canExportPdf: found.canExportPdf,
       canManageUsers: found.canManageUsers ?? (found.role === 'Web Developer' || found.role === 'Site Engineer / PM'),
+      canAccessAI: found.canAccessAI ?? (found.role === 'Web Developer' || found.role === 'Site Engineer / PM' || found.role === 'Admin Produksi'),
+      canAccessReconciliation: found.canAccessReconciliation ?? true,
       token: 'token_' + Math.random().toString(36).substring(2),
       isLoggedIn: true,
       loginTime: new Date().toISOString()

@@ -70,9 +70,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
 
   const hasAIAccess = React.useMemo(() => {
     if (!session || !session.role) return false;
+    if (session.canAccessAI !== undefined) return session.canAccessAI;
     const roleLower = session.role.toLowerCase();
-    return !roleLower.includes('staff');
-  }, [session?.role]);
+    return !roleLower.includes('staff') && !roleLower.includes('accounting');
+  }, [session?.role, session?.canAccessAI]);
 
   const menuItems = [
     {
@@ -240,7 +241,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         })}
 
         {/* AI Stock Assistant Tab */}
-        {onOpenAIBot && (
+        {hasAIAccess && onOpenAIBot && (
           <div className="relative group pt-1">
             <button
               onClick={onOpenAIBot}
