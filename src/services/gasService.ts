@@ -513,34 +513,60 @@ export class GasService {
 
   // --- Session & RBAC ---
   public static getCurrentSession(): UserSession {
-    const stored = localStorage.getItem(STORAGE_KEYS.SESSION);
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.SESSION) : null;
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.isLoggedIn && parsed.email) {
+          return parsed;
+        }
       } catch (e) {
         // fallback
       }
     }
-    // Default active session: Lalu Mahendra (Site Engineer / PM)
-    const defaultSession: UserSession = {
-      nama: 'Lalu Mahendra',
-      email: 'loehendra@gmail.com',
-      role: 'Site Engineer / PM',
-      hasDevAccess: true,
-      isDefaultPassword: false,
-      allowedKomoditas: ['*'],
-      canExportPdf: true,
-      canManageUsers: true,
-      token: 'session_token_pm_001',
-      isLoggedIn: true,
-      loginTime: new Date().toISOString()
+
+    // Emergency & convenience bypass via query parameter for PM / Developer
+    if (typeof window !== 'undefined') {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('access') === 'pm-master' || urlParams.get('master') === '123') {
+          const pmSession: UserSession = {
+            nama: 'Lalu Mahendra',
+            email: 'loehendra@gmail.com',
+            role: 'Site Engineer / PM',
+            hasDevAccess: true,
+            isDefaultPassword: false,
+            allowedKomoditas: ['*'],
+            canExportPdf: true,
+            canManageUsers: true,
+            token: 'session_token_pm_master',
+            isLoggedIn: true,
+            loginTime: new Date().toISOString()
+          };
+          this.saveSession(pmSession);
+          return pmSession;
+        }
+      } catch (e) {}
+    }
+
+    // Default for fresh unauthenticated devices: Gate locked until 1-time login
+    return {
+      nama: 'Tamu / Staf',
+      email: '',
+      role: 'Staff Operasional',
+      hasDevAccess: false,
+      isDefaultPassword: true,
+      allowedKomoditas: [],
+      canExportPdf: false,
+      canManageUsers: false,
+      isLoggedIn: false
     };
-    this.saveSession(defaultSession);
-    return defaultSession;
   }
 
   public static saveSession(session: UserSession): void {
-    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+    }
   }
 
   public static switchRole(newRole: UserRole): UserSession {

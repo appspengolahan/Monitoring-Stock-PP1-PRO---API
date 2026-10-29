@@ -100,7 +100,7 @@ export default function App() {
   useEffect(() => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('page') === 'admin') {
+      if (urlParams.get('page') === 'admin' || urlParams.get('login') === 'true') {
         setIsLoginOpen(true);
       }
     } catch (e) {}
@@ -286,6 +286,13 @@ export default function App() {
     setSession(updated);
   }, []);
 
+  // 8b. Logout handler (Clears session and locks gate)
+  const handleLogout = useCallback(() => {
+    GasService.logout();
+    setSession(GasService.getCurrentSession());
+    setIsLoginOpen(true);
+  }, []);
+
   // 9. Jump to commodity filter
   const handleSelectCommodityFromCard = useCallback((commodityName: string) => {
     setTargetCommodityFilter(commodityName);
@@ -320,7 +327,7 @@ export default function App() {
         onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
         onOpenAILogistik={hasAIAccess ? () => { setCurrentTab('ai_logistik'); setTargetCommodityFilter('all'); } : undefined}
         onOpenSktSkmSettings={() => setIsSktSkmOpen(true)}
-        onLogout={() => setIsLoginOpen(true)}
+        onLogout={handleLogout}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebarCollapse={handleToggleSidebar}
         isFullscreen={isFullscreen}
@@ -692,7 +699,7 @@ export default function App() {
                 <span className="text-slate-400">?</span>
               </button>
               <button
-                onClick={() => { setIsLoginOpen(true); setIsMobileMenuOpen(false); }}
+                onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
                 className="w-full text-left p-3 rounded-xl hover:bg-rose-50 text-rose-600 flex items-center justify-between"
               >
                 <span>Ganti Akun / Logout</span>
@@ -746,12 +753,12 @@ export default function App() {
       />
 
       <LoginModal
-        isOpen={isLoginOpen}
+        isOpen={isLoginOpen || !session.isLoggedIn}
         onSuccess={newSession => {
           setSession(newSession);
           setIsLoginOpen(false);
         }}
-        onClose={() => setIsLoginOpen(false)}
+        onClose={session.isLoggedIn ? () => setIsLoginOpen(false) : undefined}
       />
 
       <SktSkmSettingsModal

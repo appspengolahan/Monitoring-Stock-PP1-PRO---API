@@ -47,6 +47,11 @@ Versi ini secara resmi dikunci sebagai **Baseline Emas (Golden Baseline)**. Selu
 - Penambahan peran pengguna kustom (misal: *Accounting*, *QC / Lab*, *Supervisor Gudang*, dsb.) secara modular dan dinamis.
 - Peran baru otomatis tersimpan di whitelist RBAC dan muncul di dropdown switcher peran tanpa menyentuh modul inti lainnya.
 
+### 7. Keamanan Akses Perangkat & Sesi Permanen (Persistent Authentication Gate)
+- Perangkat baru yang belum diautentikasi otomatis terkunci pada layar login dan wajib memasukkan email & PIN yang terdaftar di whitelist server.
+- Setelah 1x login berhasil, sesi disimpan permanen di perangkat tersebut (*Remember Me*) sehingga staf tidak perlu login berulang kali setiap hari.
+- Tersedia jalur pintas cepat (*emergency bypass*) untuk Site Engineer / PM via parameter `?access=pm-master`.
+
 ---
 
 ## 🔒 Kebijakan Perubahan di Masa Mendatang (Change Management Protocol)
