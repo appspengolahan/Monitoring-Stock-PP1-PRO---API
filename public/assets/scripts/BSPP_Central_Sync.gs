@@ -22,7 +22,7 @@
 
 // MASUKKAN ID SPREADSHEET TUJUAN DI BAWAH INI (OPSIONAL).
 // Jika dikosongkan (""), script akan OTOMATIS membaca dari Script Properties atau membuat baru!
-var TARGET_SPREADSHEET_ID = "1Qm3dLQaKpnwCRUiAGxR2UmVxV1MdxbTFvTVnnrRwoK8";
+var TARGET_SPREADSHEET_ID = "1Qm3dLQaKpnwCRuIaGxR2UmVxV1MdxbTFvTVnnrRwoK8";
 
 var SINKRONISASI_CONFIG = {
   // 1. BSPP CENGKEH
@@ -547,21 +547,43 @@ function fetchCengkehSourceData_(cfg) {
     var items = [];
     for (var i = 2; i < vals.length; i++) {
       var r = vals[i];
-      var tgl = r[0];
-      var jenis = r[3];
-      var netto = Number(r[4]) || 0;
-      var timbang = Number(r[5]) || 0;
-      if (!tgl || !jenis || netto <= 0) continue;
+      var rawTgl = r[0];
+      var rawJenis = r[3];
+      var rawNetto = r[4];
+      var rawTimbang = r[5];
+      if (!rawTgl && !rawJenis) continue;
 
-      var iso = (tgl instanceof Date) ? Utilities.formatDate(tgl, "Asia/Jakarta", "yyyy-MM-dd") : String(tgl);
+      var netto = parseIndonesianNumber_(rawNetto, 0);
+      var timbang = parseIndonesianNumber_(rawTimbang, 0);
+      if (netto <= 0 && timbang <= 0) continue;
+
+      var iso = parseIndonesianDateStringToIso_(rawTgl);
+      if (!iso) continue;
+
+      var selisihKg = (r[6] !== "" && r[6] !== null && r[6] !== undefined)
+        ? parseIndonesianNumber_(r[6], timbang - netto)
+        : Math.round((timbang - netto) * 10) / 10;
+
+      var selisihPersen = (r[7] !== "" && r[7] !== null && r[7] !== undefined)
+        ? parseIndonesianNumber_(r[7], netto > 0 ? (selisihKg / netto) : 0)
+        : (netto > 0 ? (selisihKg / netto) : 0);
+      if (selisihPersen > 1) selisihPersen = selisihPersen / 100;
+
+      var status = String(r[8] || "").trim();
+      if (!status) {
+        if (timbang < netto) status = "Selisih Kurang";
+        else if (timbang > netto) status = "Selisih Lebih";
+        else status = "Tanpa Selisih";
+      }
+
       items.push({
         tanggal: iso,
-        jenis: String(jenis).trim(),
+        jenis: String(rawJenis).trim(),
         labelNetto: netto,
         timbangUlang: timbang,
-        selisihKg: Number(r[6]) || (netto - timbang),
-        selisihPersen: Number(r[7]) || (netto > 0 ? (netto - timbang) / netto : 0),
-        status: String(r[8] || "").trim(),
+        selisihKg: selisihKg,
+        selisihPersen: selisihPersen,
+        status: status,
         suhu: "-" // Cengkeh belum ada sensor fisik
       });
     }
@@ -576,30 +598,79 @@ function fetchRajangIISourceData_(cfg) {
   try {
     var ss = SpreadsheetApp.openById(cfg.sourceSpreadsheetId);
     var sh = ss.getSheetByName(cfg.sourceSheetName);
-    if (!sh) return [];
-    var vals = sh.getRange(cfg.sourceRange).getValues();
+    var allSheets = ss.getSheets();
+    var sheetsToScan = [];
+    if (sh) sheetsToScan.push(sh);
+
+    // Scan tab lain jika ada tab bulanan seperti OKTOBER, OKTOBER 2026, BSPP OKTOBER, dll.
+    for (var s = 0; s < allSheets.length; s++) {
+      var sName = allSheets[s].getName().trim();
+      if (sh && sName.toLowerCase() === cfg.sourceSheetName.toLowerCase()) continue;
+      if (/okt|oct|rekap.*bspp|bspp.*rajang|mutasi.*2026/i.test(sName)) {
+        sheetsToScan.push(allSheets[s]);
+      }
+    }
 
     var items = [];
-    for (var i = 2; i < vals.length; i++) {
-      var r = vals[i];
-      var tgl = r[0];
-      var jenis = r[3];
-      var netto = Number(r[4]) || 0;
-      var timbang = Number(r[5]) || 0;
-      if (!tgl || !jenis || netto <= 0) continue;
+    var seenKeys = {};
 
-      var iso = (tgl instanceof Date) ? Utilities.formatDate(tgl, "Asia/Jakarta", "yyyy-MM-dd") : String(tgl);
-      items.push({
-        tanggal: iso,
-        jenis: String(jenis).trim(),
-        labelNetto: netto,
-        timbangUlang: timbang,
-        selisihKg: Number(r[6]) || (netto - timbang),
-        selisihPersen: Number(r[7]) || (netto > 0 ? (netto - timbang) / netto : 0),
-        status: String(r[8] || "").trim(),
-        suhu: cfg.suhuDefault || 31.7 // Suhu Lantai 2 Mecah Cell L8
-      });
-    }
+    sheetsToScan.forEach(function(targetSheet) {
+      try {
+        var vals = targetSheet.getRange(cfg.sourceRange).getValues();
+        for (var i = 2; i < vals.length; i++) {
+          var r = vals[i];
+          var rawTgl = r[0];
+          var rawJenis = r[3];
+          var rawNetto = r[4];
+          var rawTimbang = r[5];
+          if (!rawTgl && !rawJenis) continue;
+
+          var netto = parseIndonesianNumber_(rawNetto, 0);
+          var timbang = parseIndonesianNumber_(rawTimbang, 0);
+          if (netto <= 0 && timbang <= 0) continue;
+
+          var iso = parseIndonesianDateStringToIso_(rawTgl);
+          if (!iso) continue;
+
+          var jenisStr = String(rawJenis || "").trim();
+          if (!jenisStr || jenisStr.toUpperCase() === "FALSE") continue;
+
+          var itemKey = iso + "_" + jenisStr.toUpperCase() + "_" + netto;
+          if (seenKeys[itemKey]) continue;
+          seenKeys[itemKey] = true;
+
+          var selisihKg = (r[6] !== "" && r[6] !== null && r[6] !== undefined)
+            ? parseIndonesianNumber_(r[6], timbang - netto)
+            : Math.round((timbang - netto) * 10) / 10;
+
+          var selisihPersen = (r[7] !== "" && r[7] !== null && r[7] !== undefined)
+            ? parseIndonesianNumber_(r[7], netto > 0 ? (selisihKg / netto) : 0)
+            : (netto > 0 ? (selisihKg / netto) : 0);
+          if (selisihPersen > 1) selisihPersen = selisihPersen / 100;
+
+          var status = String(r[8] || "").trim();
+          if (!status) {
+            if (timbang < netto) status = "Selisih Kurang";
+            else if (timbang > netto) status = "Selisih Lebih";
+            else status = "Tanpa Selisih";
+          }
+
+          items.push({
+            tanggal: iso,
+            jenis: jenisStr,
+            labelNetto: netto,
+            timbangUlang: timbang,
+            selisihKg: selisihKg,
+            selisihPersen: selisihPersen,
+            status: status,
+            suhu: cfg.suhuDefault || 31.7 // Suhu Lantai 2 Mecah Cell L8
+          });
+        }
+      } catch (errSheet) {
+        Logger.log("Error scan tab " + targetSheet.getName() + ": " + errSheet.message);
+      }
+    });
+
     return items;
   } catch (e) {
     Logger.log("Error fetch Rajang II: " + e.message);

@@ -4293,9 +4293,9 @@ export class GasService {
         }
       });
 
-      // 2. Tarik 2 Datasheet BSPP secara paralel
-      if (onProgress) onProgress('Menarik 2 Datasheet Rekap BSPP...', 55);
-      const bsppPromises = [0, 1].map(async (b) => {
+      // 2. Tarik 4 Datasheet Rekap BSPP secara paralel
+      if (onProgress) onProgress('Menarik 4 Datasheet Rekap BSPP...', 55);
+      const bsppPromises = [0, 1, 2, 3].map(async (b) => {
         try {
           const bUrl = `${this.gasUrl}?action=getBSPPData&index=${b}&force=true&nocache=1&_t=${bustTimestamp}`;
           const bRes = await this.fetchWithTimeout(bUrl, 20000);
@@ -4689,6 +4689,16 @@ const BSPP_SOURCES = [
     nama: 'Tembakau & Krosok (Rajang II)',
     spreadsheetId: '1SQO6MMyCX9WRlT8Nk-cpu1in7UbkY90uPPVX2P5F_IA',
     sheetName: 'REKAP BSPP'
+  },
+  {
+    nama: 'Tembakau Blend',
+    spreadsheetId: '1Y12uuiys2hV76dUK84fx1LMAWevGA3vcCIoAqDdwbAE',
+    sheetName: 'codeIA'
+  },
+  {
+    nama: 'Tembakau & Krosok (Rajang I)',
+    spreadsheetId: '1YH-M8q_56MINQ1Lu9MqoWZQIcYe8KK1-6ZCpMbpxfWo',
+    sheetName: 'BSPP TEMBAKAU KROSOK-RAJANG 1'
   }
 ];
 
@@ -5956,14 +5966,34 @@ function buildBSPPSummary_(index) {
 
     if (!tanggal || !jenis) continue;
 
+    var nettoVal = cleanNumber_(row[4]);
+    var timbangVal = cleanNumber_(row[5]);
+    if (nettoVal <= 0 && timbangVal <= 0) continue;
+
+    var selisihVal = (row[6] !== '' && row[6] !== null && row[6] !== undefined)
+      ? cleanNumber_(row[6])
+      : Math.round((timbangVal - nettoVal) * 10) / 10;
+
+    var selisihPersenVal = (row[7] !== '' && row[7] !== null && row[7] !== undefined)
+      ? cleanNumber_(row[7])
+      : (nettoVal > 0 ? (selisihVal / nettoVal) : 0);
+    if (selisihPersenVal > 1) selisihPersenVal = selisihPersenVal / 100;
+
+    var statusVal = String(row[8] || '').trim();
+    if (!statusVal) {
+      if (timbangVal < nettoVal) statusVal = 'Selisih Kurang';
+      else if (timbangVal > nettoVal) statusVal = 'Selisih Lebih';
+      else statusVal = 'Tanpa Selisih';
+    }
+
     entries.push({
       tanggal: tanggal,
       jenis: jenis,
-      labelNetto: Number(row[4]) || 0,
-      timbangUlang: Number(row[5]) || 0,
-      selisihKg: Number(row[6]) || 0,
-      selisihPersen: Number(row[7]) || 0,
-      status: String(row[8] || '').trim()
+      labelNetto: nettoVal,
+      timbangUlang: timbangVal,
+      selisihKg: selisihVal,
+      selisihPersen: selisihPersenVal,
+      status: statusVal
     });
   }
 

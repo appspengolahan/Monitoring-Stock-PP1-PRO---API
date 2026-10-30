@@ -34681,6 +34681,401 @@ export const INITIAL_BSPP_DATA: BSPPData[] = [
         "selisihKg": -0.19999999999998863,
         "selisihPersen": 0.06410256410256046,
         "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-26T00:00:00.000Z",
+        "jenis": "Amerika 2025 (BO1)",
+        "labelNetto": 285.4,
+        "timbangUlang": 285.3,
+        "selisihKg": -0.1,
+        "selisihPersen": 0.035,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-26T00:00:00.000Z",
+        "jenis": "Besuki 2024 (ZN)",
+        "labelNetto": 32.5,
+        "timbangUlang": 31.9,
+        "selisihKg": -0.6,
+        "selisihPersen": 1.85,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-26T00:00:00.000Z",
+        "jenis": "Brazil 2025 (BOA)",
+        "labelNetto": 235.0,
+        "timbangUlang": 235.3,
+        "selisihKg": 0.3,
+        "selisihPersen": 0.128,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-26T00:00:00.000Z",
+        "jenis": "Brazil Grade B (2022)",
+        "labelNetto": 58.2,
+        "timbangUlang": 57.6,
+        "selisihKg": -0.6,
+        "selisihPersen": 1.03,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-26T00:00:00.000Z",
+        "jenis": "Janturan Boyolali 2024 (VJI)",
+        "labelNetto": 92.4,
+        "timbangUlang": 92.0,
+        "selisihKg": -0.4,
+        "selisihPersen": 0.43,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "jenis": "Lombok 2024 (FS) - 1",
+        "labelNetto": 62.0,
+        "timbangUlang": 62.3,
+        "selisihKg": 0.3,
+        "selisihPersen": 0.484,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "jenis": "Maesan 2024 (HS)",
+        "labelNetto": 55.4,
+        "timbangUlang": 55.3,
+        "selisihKg": -0.1,
+        "selisihPersen": 0.18,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "jenis": "Paiton 2024 (BWN)",
+        "labelNetto": 290.0,
+        "timbangUlang": 289.7,
+        "selisihKg": -0.3,
+        "selisihPersen": 0.103,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "jenis": "Ploso 2024 (MYN)",
+        "labelNetto": 265.5,
+        "timbangUlang": 265.9,
+        "selisihKg": 0.4,
+        "selisihPersen": 0.151,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "jenis": "Weleri 2024 (HK)",
+        "labelNetto": 326.0,
+        "timbangUlang": 326.1,
+        "selisihKg": 0.1,
+        "selisihPersen": 0.031,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "jenis": "Zambia M1L (2023)",
+        "labelNetto": 110.0,
+        "timbangUlang": 109.8,
+        "selisihKg": -0.2,
+        "selisihPersen": 0.182,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "jenis": "Zimbabwe 2025 (L2OF/P)",
+        "labelNetto": 105.0,
+        "timbangUlang": 104.9,
+        "selisihKg": -0.1,
+        "selisihPersen": 0.095,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "jenis": "Zimbabwe B1L (2023)",
+        "labelNetto": 315.0,
+        "timbangUlang": 314.8,
+        "selisihKg": -0.2,
+        "selisihPersen": 0.063,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "jenis": "Kasturi 2023 (SN)",
+        "labelNetto": 170.2,
+        "timbangUlang": 170.1,
+        "selisihKg": -0.1,
+        "selisihPersen": 0.059,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Amerika 2025 (BO1)",
+        "labelNetto": 283.4,
+        "timbangUlang": 283.3,
+        "selisihKg": -0.1,
+        "selisihPersen": 0.04,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Besuki 2024 (ZN)",
+        "labelNetto": 30.4,
+        "timbangUlang": 29.8,
+        "selisihKg": -0.6,
+        "selisihPersen": 1.97,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Brazil 2025 (BOA)",
+        "labelNetto": 233.8,
+        "timbangUlang": 234.1,
+        "selisihKg": 0.3,
+        "selisihPersen": 0.13,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Brazil Grade B (2022)",
+        "labelNetto": 56.0,
+        "timbangUlang": 55.4,
+        "selisihKg": -0.6,
+        "selisihPersen": 1.07,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Janturan Boyolali 2024 (VJI)",
+        "labelNetto": 91.1,
+        "timbangUlang": 90.7,
+        "selisihKg": -0.4,
+        "selisihPersen": 0.44,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Lombok 2024 (FS) - 1",
+        "labelNetto": 60.0,
+        "timbangUlang": 60.3,
+        "selisihKg": 0.3,
+        "selisihPersen": 0.50,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Maesan 2024 (HS)",
+        "labelNetto": 54.0,
+        "timbangUlang": 53.9,
+        "selisihKg": -0.1,
+        "selisihPersen": 0.19,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Paiton 2024 (BWN)",
+        "labelNetto": 288.0,
+        "timbangUlang": 287.7,
+        "selisihKg": -0.3,
+        "selisihPersen": 0.10,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Ploso 2024 (MYN)",
+        "labelNetto": 263.1,
+        "timbangUlang": 263.5,
+        "selisihKg": 0.4,
+        "selisihPersen": 0.15,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Weleri 2024 (HK)",
+        "labelNetto": 324.0,
+        "timbangUlang": 324.1,
+        "selisihKg": 0.1,
+        "selisihPersen": 0.03,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Zambia M1L (2023)",
+        "labelNetto": 108.0,
+        "timbangUlang": 107.8,
+        "selisihKg": -0.2,
+        "selisihPersen": 0.19,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Zimbabwe 2025 (L2OF/P)",
+        "labelNetto": 102.0,
+        "timbangUlang": 101.9,
+        "selisihKg": -0.1,
+        "selisihPersen": 0.10,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Zimbabwe B1L (2023)",
+        "labelNetto": 312.0,
+        "timbangUlang": 311.8,
+        "selisihKg": -0.2,
+        "selisihPersen": 0.06,
+        "status": "Selisih Kurang"
+      }
+    ]
+  },
+  {
+    "nama": "Tembakau Blend",
+    "jumlahEntri": 7,
+    "jenisList": [
+      "Blend A-101",
+      "Blend B-202",
+      "Blend Special 55",
+      "Blend Mild 21",
+      "Blend Export Red",
+      "Blend Premium 99",
+      "Blend Kretek Gold"
+    ],
+    "totalLebih": 3,
+    "totalKurang": 4,
+    "totalTanpa": 0,
+    "rataRataAbsSelisihPersen": 0.18,
+    "entries": [
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Blend Special 55",
+        "labelNetto": 450.0,
+        "timbangUlang": 449.6,
+        "selisihKg": -0.4,
+        "selisihPersen": 0.09,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Blend Export Red",
+        "labelNetto": 520.0,
+        "timbangUlang": 520.5,
+        "selisihKg": 0.5,
+        "selisihPersen": 0.10,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "jenis": "Blend Premium 99",
+        "labelNetto": 380.0,
+        "timbangUlang": 379.4,
+        "selisihKg": -0.6,
+        "selisihPersen": 0.16,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "jenis": "Blend Mild 21",
+        "labelNetto": 410.0,
+        "timbangUlang": 410.3,
+        "selisihKg": 0.3,
+        "selisihPersen": 0.07,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "jenis": "Blend Kretek Gold",
+        "labelNetto": 480.0,
+        "timbangUlang": 479.2,
+        "selisihKg": -0.8,
+        "selisihPersen": 0.17,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-26T00:00:00.000Z",
+        "jenis": "Blend A-101",
+        "labelNetto": 500.0,
+        "timbangUlang": 500.4,
+        "selisihKg": 0.4,
+        "selisihPersen": 0.08,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-26T00:00:00.000Z",
+        "jenis": "Blend B-202",
+        "labelNetto": 350.0,
+        "timbangUlang": 349.3,
+        "selisihKg": -0.7,
+        "selisihPersen": 0.20,
+        "status": "Selisih Kurang"
+      }
+    ]
+  },
+  {
+    "nama": "Tembakau & Krosok (Rajang I)",
+    "jumlahEntri": 6,
+    "jenisList": [
+      "Krosok Rajang Madura 2024",
+      "Krosok Rajang Bojonegoro 2024",
+      "Krosok Rajang Paiton 2024",
+      "Krosok Rajang Garut 2024"
+    ],
+    "totalLebih": 2,
+    "totalKurang": 4,
+    "totalTanpa": 0,
+    "rataRataAbsSelisihPersen": 0.22,
+    "entries": [
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Krosok Rajang Madura 2024",
+        "labelNetto": 260.0,
+        "timbangUlang": 259.4,
+        "selisihKg": -0.6,
+        "selisihPersen": 0.23,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "Krosok Rajang Bojonegoro 2024",
+        "labelNetto": 310.0,
+        "timbangUlang": 310.4,
+        "selisihKg": 0.4,
+        "selisihPersen": 0.13,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "jenis": "Krosok Rajang Paiton 2024",
+        "labelNetto": 195.0,
+        "timbangUlang": 194.5,
+        "selisihKg": -0.5,
+        "selisihPersen": 0.26,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "jenis": "Krosok Rajang Garut 2024",
+        "labelNetto": 180.0,
+        "timbangUlang": 179.6,
+        "selisihKg": -0.4,
+        "selisihPersen": 0.22,
+        "status": "Selisih Kurang"
+      },
+      {
+        "tanggal": "2026-10-26T00:00:00.000Z",
+        "jenis": "Krosok Rajang Madura 2024",
+        "labelNetto": 250.0,
+        "timbangUlang": 250.3,
+        "selisihKg": 0.3,
+        "selisihPersen": 0.12,
+        "status": "Selisih Lebih"
+      },
+      {
+        "tanggal": "2026-10-26T00:00:00.000Z",
+        "jenis": "Krosok Rajang Bojonegoro 2024",
+        "labelNetto": 280.0,
+        "timbangUlang": 279.3,
+        "selisihKg": -0.7,
+        "selisihPersen": 0.25,
+        "status": "Selisih Kurang"
       }
     ]
   }
