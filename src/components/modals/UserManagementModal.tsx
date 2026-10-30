@@ -688,6 +688,8 @@ Buka tautan di atas dan masukkan PIN ${pin} untuk masuk ke aplikasi.`;
                             if (window.confirm(`Hapus peran kustom "${r}" yang tidak terpakai ini?`)) {
                               GasService.deleteCustomRole(r);
                               setAvailableRoles(GasService.getAvailableRoles());
+                              setStatusMessage(`🗑️ Peran kustom "${r}" berhasil dihapus.`);
+                              setTimeout(() => setStatusMessage(null), 3000);
                             }
                           }}
                           className="hover:text-rose-600 ml-0.5"

@@ -7,7 +7,9 @@
     "defaultPin": "123456",
     "isDefaultPassword": false,
     "hasDevAccess": true,
-    "allowedKomoditas": ["*"],
+    "allowedKomoditas": [
+      "*"
+    ],
     "canExportPdf": true,
     "canManageUsers": true,
     "canAccessAI": true,
@@ -21,24 +23,31 @@
     "defaultPin": "123456",
     "isDefaultPassword": false,
     "hasDevAccess": true,
-    "allowedKomoditas": ["*"],
+    "allowedKomoditas": [
+      "*"
+    ],
     "canExportPdf": true,
     "canManageUsers": true,
     "canAccessAI": true,
     "canAccessReconciliation": true
   },
   {
-    "email": "pengolahan.pp1@gmail.com",
-    "nama": "Admin Pengolahan PP1",
-    "role": "Admin Produksi",
+    "email": "staffacc1bkr@gmail.com",
+    "nama": "Tri Andini",
+    "role": "Accounting",
     "password": "123",
     "defaultPin": "123456",
     "isDefaultPassword": true,
     "hasDevAccess": false,
-    "allowedKomoditas": ["*"],
+    "allowedKomoditas": [
+      "Tembakau Blend",
+      "Tembakau & Krosok (Rajang II)",
+      "Cengkeh",
+      "Tembakau & Krosok (Rajang I)"
+    ],
     "canExportPdf": true,
-    "canManageUsers": true,
-    "canAccessAI": true,
+    "canManageUsers": false,
+    "canAccessAI": false,
     "canAccessReconciliation": true
   },
   {
@@ -49,7 +58,9 @@
     "defaultPin": "123456",
     "isDefaultPassword": true,
     "hasDevAccess": false,
-    "allowedKomoditas": ["*"],
+    "allowedKomoditas": [
+      "*"
+    ],
     "canExportPdf": true,
     "canManageUsers": true,
     "canAccessAI": true,
@@ -63,25 +74,13 @@
     "defaultPin": "123456",
     "isDefaultPassword": true,
     "hasDevAccess": false,
-    "allowedKomoditas": ["*"],
+    "allowedKomoditas": [
+      "*"
+    ],
     "canExportPdf": true,
     "canManageUsers": true,
     "canAccessAI": true,
     "canAccessReconciliation": true
-  },
-  {
-    "email": "feedkreatif@gmail.com",
-    "nama": "Staff Accounting",
-    "role": "Accounting",
-    "password": "123",
-    "defaultPin": "123456",
-    "isDefaultPassword": true,
-    "hasDevAccess": false,
-    "allowedKomoditas": ["*"],
-    "canExportPdf": true,
-    "canManageUsers": false,
-    "canAccessAI": false,
-    "canAccessReconciliation": false
   },
   {
     "email": "mandor.cengkeh@batukarang.com",
@@ -91,7 +90,9 @@
     "defaultPin": "123456",
     "isDefaultPassword": true,
     "hasDevAccess": false,
-    "allowedKomoditas": ["Cengkeh"],
+    "allowedKomoditas": [
+      "Cengkeh"
+    ],
     "canExportPdf": false,
     "canManageUsers": false,
     "canAccessAI": false,
@@ -105,7 +106,9 @@
     "defaultPin": "123456",
     "isDefaultPassword": true,
     "hasDevAccess": false,
-    "allowedKomoditas": ["Tembakau Blend"],
+    "allowedKomoditas": [
+      "Tembakau Blend"
+    ],
     "canExportPdf": false,
     "canManageUsers": false,
     "canAccessAI": false,
@@ -119,7 +122,9 @@
     "defaultPin": "123456",
     "isDefaultPassword": true,
     "hasDevAccess": false,
-    "allowedKomoditas": ["Tembakau Blend"],
+    "allowedKomoditas": [
+      "Tembakau Blend"
+    ],
     "canExportPdf": false,
     "canManageUsers": false,
     "canAccessAI": false,

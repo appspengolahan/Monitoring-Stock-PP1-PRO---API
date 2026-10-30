@@ -21,7 +21,8 @@ const STORAGE_KEYS = {
   SETORAN_CENGKEH_RECONCILIATION: 'stockpp1_setoran_cengkeh_reconciliation_v1',
   CENGKEH_DRYER_RECONCILIATION: 'stockpp1_cengkeh_dryer_reconciliation_v1',
   RECONCILIATION_DISPLAY: 'stockpp1_reconciliation_display_config_v1',
-  DELETED_USERS: 'stockpp1_deleted_users_v1'
+  DELETED_USERS: 'stockpp1_deleted_users_v1',
+  DELETED_ROLES: 'stockpp1_deleted_roles_v1'
 };
 
 export class GasService {
@@ -301,16 +302,53 @@ export class GasService {
     'Staff Operasional'
   ];
 
+  public static getDeletedRoles(): string[] {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.DELETED_ROLES);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed.map(r => String(r).trim().toLowerCase());
+      }
+    } catch {}
+    return [];
+  }
+
+  public static addDeletedRole(role: string): void {
+    if (typeof localStorage === 'undefined') return;
+    const clean = role.trim().toLowerCase();
+    if (!clean) return;
+    const current = this.getDeletedRoles();
+    if (!current.includes(clean)) {
+      current.push(clean);
+      localStorage.setItem(STORAGE_KEYS.DELETED_ROLES, JSON.stringify(current));
+    }
+  }
+
+  public static removeDeletedRole(role: string): void {
+    if (typeof localStorage === 'undefined') return;
+    const clean = role.trim().toLowerCase();
+    const current = this.getDeletedRoles().filter(r => r !== clean);
+    localStorage.setItem(STORAGE_KEYS.DELETED_ROLES, JSON.stringify(current));
+  }
+
   public static getAvailableRoles(): string[] {
     const roles = [...this.DEFAULT_ROLES];
     const customRoles: string[] = [];
+    const deletedRoles = new Set(this.getDeletedRoles());
+
     if (typeof localStorage !== 'undefined') {
       try {
         const stored = localStorage.getItem('stockpp1_custom_roles_v1');
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed)) {
-            customRoles.push(...parsed);
+            parsed.forEach((r: string) => {
+              const clean = String(r).trim();
+              if (clean && !deletedRoles.has(clean.toLowerCase())) {
+                customRoles.push(clean);
+              }
+            });
           }
         }
       } catch {}
@@ -319,7 +357,7 @@ export class GasService {
     try {
       const users = this.getUserConfigs();
       users.forEach(u => {
-        if (u.role && !roles.includes(u.role) && !customRoles.includes(u.role)) {
+        if (u.role && !roles.includes(u.role) && !customRoles.includes(u.role) && !deletedRoles.has(u.role.trim().toLowerCase())) {
           customRoles.push(u.role);
         }
       });
@@ -327,7 +365,7 @@ export class GasService {
 
     customRoles.forEach(r => {
       const clean = r.trim();
-      if (clean && !roles.includes(clean)) {
+      if (clean && !roles.includes(clean) && !deletedRoles.has(clean.toLowerCase())) {
         roles.push(clean);
       }
     });
@@ -337,6 +375,8 @@ export class GasService {
   public static addCustomRole(newRole: string): string[] {
     const clean = newRole.trim();
     if (!clean) return this.getAvailableRoles();
+    this.removeDeletedRole(clean);
+
     const currentCustom: string[] = [];
     if (typeof localStorage !== 'undefined') {
       try {
@@ -352,6 +392,13 @@ export class GasService {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('stockpp1_custom_roles_v1', JSON.stringify(currentCustom));
         window.dispatchEvent(new CustomEvent('stockpp1_roles_updated', { detail: this.getAvailableRoles() }));
+
+        // Sync with server
+        fetch('/api/custom-roles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: clean })
+        }).catch(e => console.warn('Failed to sync new role to server:', e));
       }
     }
     return this.getAvailableRoles();
@@ -360,6 +407,11 @@ export class GasService {
   public static deleteCustomRole(roleToDelete: string): string[] {
     const clean = roleToDelete.trim();
     if (!clean || this.DEFAULT_ROLES.includes(clean)) return this.getAvailableRoles();
+    
+    // 1. Mark as deleted in tombstone
+    this.addDeletedRole(clean);
+
+    // 2. Remove from local custom roles
     let currentCustom: string[] = [];
     if (typeof localStorage !== 'undefined') {
       try {
@@ -372,20 +424,31 @@ export class GasService {
       currentCustom = currentCustom.filter(r => r.toLowerCase() !== clean.toLowerCase());
       localStorage.setItem('stockpp1_custom_roles_v1', JSON.stringify(currentCustom));
       window.dispatchEvent(new CustomEvent('stockpp1_roles_updated', { detail: this.getAvailableRoles() }));
+
+      // 3. Sync deletion to server so refresh never revives it
+      fetch('/api/custom-roles/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: clean, action: 'delete-role' })
+      }).catch(e => console.warn('Failed to delete role on server:', e));
     }
     return this.getAvailableRoles();
   }
 
   public static getDeletedUsers(): string[] {
-    if (typeof localStorage === 'undefined') return [];
+    const defaultDeleted = ['feedkreatif@gmail.com', 'pengolahan.pp1@gmail.com'];
+    if (typeof localStorage === 'undefined') return defaultDeleted;
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.DELETED_USERS);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed.map(e => String(e).toLowerCase().trim());
+        if (Array.isArray(parsed)) {
+          const mergedSet = new Set([...defaultDeleted, ...parsed.map(e => String(e).toLowerCase().trim())]);
+          return Array.from(mergedSet);
+        }
       }
     } catch {}
-    return [];
+    return defaultDeleted;
   }
 
   public static addDeletedUser(email: string): void {
@@ -438,7 +501,12 @@ export class GasService {
           this.saveUserConfigs(merged);
 
           if (Array.isArray(json.customRoles)) {
-            json.customRoles.forEach((r: string) => this.addCustomRole(r));
+            const deletedRoles = new Set(this.getDeletedRoles());
+            json.customRoles.forEach((r: string) => {
+              if (!deletedRoles.has(r.trim().toLowerCase())) {
+                this.addCustomRole(r);
+              }
+            });
           }
           return merged;
         }

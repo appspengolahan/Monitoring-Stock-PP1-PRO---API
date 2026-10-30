@@ -37,20 +37,6 @@ const DEFAULT_USERS = [
     canAccessReconciliation: true
   },
   {
-    email: 'pengolahan.pp1@gmail.com',
-    nama: 'Admin Pengolahan PP1',
-    role: 'Admin Produksi',
-    password: '123',
-    defaultPin: '123456',
-    isDefaultPassword: true,
-    hasDevAccess: false,
-    allowedKomoditas: ['*'],
-    canExportPdf: true,
-    canManageUsers: true,
-    canAccessAI: true,
-    canAccessReconciliation: true
-  },
-  {
     email: 'appspengolahan@gmail.com',
     nama: 'Admin Pengolahan PP1 (Alt)',
     role: 'Admin Produksi',
@@ -79,8 +65,8 @@ const DEFAULT_USERS = [
     canAccessReconciliation: true
   },
   {
-    email: 'feedkreatif@gmail.com',
-    nama: 'Staff Accounting',
+    email: 'staffacc1bkr@gmail.com',
+    nama: 'Tri Andini',
     role: 'Accounting',
     password: '123',
     defaultPin: '123456',
@@ -90,7 +76,7 @@ const DEFAULT_USERS = [
     canExportPdf: true,
     canManageUsers: false,
     canAccessAI: false,
-    canAccessReconciliation: false
+    canAccessReconciliation: true
   },
   {
     email: 'mandor.cengkeh@batukarang.com',
@@ -167,6 +153,15 @@ function readRoles(): string[] {
   return ['Accounting'];
 }
 
+function writeRoles(roles: string[]) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(ROLES_FILE, JSON.stringify(roles, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('Failed to write custom roles:', e);
+  }
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
@@ -176,6 +171,23 @@ export default async function handler(req: any, res: any) {
     return res.status(200).end();
   }
 
+  // Handle custom role deletion
+  if (req.body?.action === 'delete-role' || req.query?.action === 'delete-role' || req.body?.deleteRole) {
+    try {
+      const roleToDelete = String(req.body?.role || req.body?.deleteRole || req.query?.role || '').trim();
+      if (!roleToDelete) {
+        return res.status(400).json({ ok: false, error: 'Role is required' });
+      }
+      let roles = readRoles();
+      roles = roles.filter(r => r.toLowerCase().trim() !== roleToDelete.toLowerCase());
+      writeRoles(roles);
+      return res.status(200).json({ ok: true, roles, customRoles: roles });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  }
+
+  // Handle user deletion
   if (req.method === 'DELETE' || (req.method === 'POST' && req.body?.action === 'delete')) {
     try {
       const email = req.query?.email || req.body?.email;
@@ -186,14 +198,26 @@ export default async function handler(req: any, res: any) {
       let users = readUsers();
       users = users.filter((u: any) => u.email.toLowerCase().trim() !== cleanEmail);
       writeUsers(users);
-      return res.status(200).json({ ok: true, users });
+      return res.status(200).json({ ok: true, users, customRoles: readRoles() });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err.message });
     }
   }
 
+  // Handle user upsert or custom role add
   if (req.method === 'POST') {
     try {
+      // Role add
+      if (req.body?.action === 'add-role' || (req.body?.role && !req.body?.email)) {
+        const newRole = String(req.body?.role).trim();
+        let roles = readRoles();
+        if (newRole && !roles.includes(newRole)) {
+          roles.push(newRole);
+          writeRoles(roles);
+        }
+        return res.status(200).json({ ok: true, roles, customRoles: roles });
+      }
+
       const config = req.body || {};
       if (!config.email) {
         return res.status(400).json({ ok: false, error: 'Email is required' });
@@ -208,7 +232,17 @@ export default async function handler(req: any, res: any) {
         users.push({ ...config, email: cleanEmail });
       }
       writeUsers(users);
-      return res.status(200).json({ ok: true, users });
+
+      // Save role if custom
+      if (config.role) {
+        let roles = readRoles();
+        if (!roles.includes(config.role)) {
+          roles.push(config.role);
+          writeRoles(roles);
+        }
+      }
+
+      return res.status(200).json({ ok: true, users, customRoles: readRoles() });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err.message });
     }

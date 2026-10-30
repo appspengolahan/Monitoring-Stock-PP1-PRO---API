@@ -806,6 +806,20 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     }
   });
 
+  app.all(['/api/custom-roles/delete', '/api/custom-roles-delete'], (req, res) => {
+    try {
+      const role = req.body?.role || req.query?.role;
+      if (!role) return res.status(400).json({ ok: false, error: 'Role required' });
+      const cleanRole = String(role).trim().toLowerCase();
+      let roles = readCustomRolesFromFile();
+      roles = roles.filter(r => r.trim().toLowerCase() !== cleanRole);
+      writeCustomRolesToFile(roles);
+      return res.json({ ok: true, roles });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   // In-memory micro-cache for GAS proxy to accelerate repeat calls and reduce latency to < 5ms
   const proxyMemoryCache = new Map<string, { data: any; expiry: number }>();
   const PROXY_CACHE_TTL_MS = 60000; // 60 seconds cache for rapid repeat queries

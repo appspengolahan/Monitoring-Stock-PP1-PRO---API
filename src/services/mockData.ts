@@ -35131,20 +35131,6 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     canAccessReconciliation: true
   },
   {
-    email: 'pengolahan.pp1@gmail.com',
-    nama: 'Admin Pengolahan PP1',
-    role: 'Admin Produksi',
-    password: '123',
-    defaultPin: '123456',
-    isDefaultPassword: true,
-    hasDevAccess: false,
-    allowedKomoditas: ['*'],
-    canExportPdf: true,
-    canManageUsers: true,
-    canAccessAI: true,
-    canAccessReconciliation: true
-  },
-  {
     email: 'appspengolahan@gmail.com',
     nama: 'Admin Pengolahan PP1 (Alt)',
     role: 'Admin Produksi',
@@ -35215,8 +35201,8 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     canAccessReconciliation: true
   },
   {
-    email: 'feedkreatif@gmail.com',
-    nama: 'Staff Accounting',
+    email: 'staffacc1bkr@gmail.com',
+    nama: 'Tri Andini',
     role: 'Accounting',
     password: '123',
     defaultPin: '123456',
