@@ -166,15 +166,15 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
             </div>
             <div className="min-w-0">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span>Switch Board Susut</span>
+                <span>Switch Board Data Proses</span>
                 <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-full border border-emerald-200/80">
                   {visibleBoards.length} Board
                 </span>
               </h2>
               <p className="text-xs text-slate-500 truncate">
                 {canManage 
-                  ? 'Akses & kelola ekosistem monitoring susut Divisi Produksi I' 
-                  : 'Akses ekosistem monitoring susut Divisi Produksi I'}
+                  ? 'Akses & kelola ekosistem monitoring data proses Divisi Produksi I' 
+                  : 'Akses ekosistem monitoring data proses Divisi Produksi I'}
               </p>
             </div>
           </div>

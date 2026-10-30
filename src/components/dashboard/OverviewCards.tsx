@@ -54,7 +54,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
               <span>Ringkasan Eksekutif Divisi Produksi I</span>
             </div>
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white leading-tight">
-              Total Akumulasi Persediaan Bahan Baku
+              Total Akumulasi Persediaan Bahan
             </h2>
             <p className="text-xs text-slate-300 mt-0.5">
               Tembakau Blend · Cengkeh · Tembakau &amp; Krosok Rajang I &amp; II

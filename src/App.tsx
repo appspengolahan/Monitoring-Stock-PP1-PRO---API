@@ -686,7 +686,7 @@ export default function App() {
                 <div className="flex items-center gap-2.5">
                   <Layers className="w-4 h-4 text-emerald-600" />
                   <div>
-                    <div className="text-xs font-semibold text-slate-800">Switch Board Susut</div>
+                    <div className="text-xs font-semibold text-slate-800">Switch Board Data Proses</div>
                     <div className="text-[10.5px] text-slate-500">Blend, Krosok, Tembakau, Cengkeh</div>
                   </div>
                 </div>

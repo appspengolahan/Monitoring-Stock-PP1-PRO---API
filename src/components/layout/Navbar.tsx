@@ -288,7 +288,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-slate-900 flex items-center justify-between">
-                          <span>Switch Board Susut</span>
+                          <span>Switch Board Data Proses</span>
                         </div>
                         <div className="text-[11px] text-slate-500 truncate">Blend, Krosok, Tembakau, Cengkeh</div>
                       </div>

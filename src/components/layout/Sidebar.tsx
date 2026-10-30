@@ -411,20 +411,20 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
           </div>
         )}
 
-        {/* Switch Board Susut */}
+        {/* Switch Board Data Proses */}
         <div className="relative group">
           <button
             onClick={onOpenSwitchApp}
             className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
               isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
             } text-slate-300 hover:text-white hover:bg-slate-800/80 group-hover:border-slate-700`}
-            title={isCollapsed ? "Switch Board Susut (Blend, Krosok, Tembakau, Cengkeh)" : undefined}
+            title={isCollapsed ? "Switch Board Data Proses (Blend, Krosok, Tembakau, Cengkeh)" : undefined}
           >
             <Layers className="w-5 h-5 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform" />
             {!isCollapsed && (
               <div className="min-w-0">
                 <div className="text-xs font-semibold truncate leading-tight text-emerald-300 flex items-center gap-1.5">
-                  <span>Switch Board Susut</span>
+                  <span>Switch Board Data Proses</span>
                 </div>
                 <div className="text-[10.5px] text-slate-400 truncate mt-0.5">
                   Blend, Krosok, Tembakau, Cengkeh
@@ -434,7 +434,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
           </button>
           {isCollapsed && (
             <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
-              <div className="font-semibold text-emerald-300">Switch Board Susut</div>
+              <div className="font-semibold text-emerald-300">Switch Board Data Proses</div>
               <div className="text-[10px] text-slate-400">Blend, Krosok, Tembakau, Cengkeh</div>
             </div>
           )}
