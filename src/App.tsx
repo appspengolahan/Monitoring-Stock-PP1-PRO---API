@@ -732,6 +732,7 @@ export default function App() {
         isOpen={isSwitchAppOpen}
         onClose={() => setIsSwitchAppOpen(false)}
         allowedKomoditas={session.allowedKomoditas}
+        canManage={session.hasDevAccess || session.role === 'Web Developer' || session.role === 'Site Engineer / PM'}
       />
 
       <UserManagementModal

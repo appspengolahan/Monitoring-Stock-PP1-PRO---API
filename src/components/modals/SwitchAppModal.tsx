@@ -19,12 +19,14 @@ interface SwitchAppModalProps {
   isOpen: boolean;
   onClose: () => void;
   allowedKomoditas?: string[];
+  canManage?: boolean;
 }
 
 export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({ 
   isOpen, 
   onClose, 
-  allowedKomoditas = ['*'] 
+  allowedKomoditas = ['*'],
+  canManage = false
 }) => {
   const { boards, updateBoards, resetBoards } = useSwitchBoards();
   
@@ -170,28 +172,32 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-slate-500 truncate">
-                Akses &amp; kelola ekosistem monitoring susut Divisi Produksi I
+                {canManage 
+                  ? 'Akses & kelola ekosistem monitoring susut Divisi Produksi I' 
+                  : 'Akses ekosistem monitoring susut Divisi Produksi I'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => {
-                setIsManageMode(!isManageMode);
-                handleCancelForm();
-                setShowResetConfirm(false);
-              }}
-              className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
-                isManageMode 
-                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-              title={isManageMode ? "Kembali ke mode pilih board" : "Kelola nama modul & tautan URL"}
-            >
-              <Edit3 className="w-4 h-4" />
-              <span className="hidden sm:inline">{isManageMode ? 'Selesai Kelola' : 'Kelola / Edit'}</span>
-            </button>
+            {canManage && (
+              <button
+                onClick={() => {
+                  setIsManageMode(!isManageMode);
+                  handleCancelForm();
+                  setShowResetConfirm(false);
+                }}
+                className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+                  isManageMode 
+                    ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title={isManageMode ? "Kembali ke mode pilih board" : "Kelola nama modul & tautan URL"}
+              >
+                <Edit3 className="w-4 h-4" />
+                <span className="hidden sm:inline">{isManageMode ? 'Selesai Kelola' : 'Kelola / Edit'}</span>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
@@ -234,7 +240,7 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
           )}
 
           {/* Form Tambah Baru atau Edit */}
-          {(isAddingNew || editingItem) ? (
+          {canManage && (isAddingNew || editingItem) ? (
             <form onSubmit={handleSaveForm} className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3.5 animate-in fade-in">
               <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
                 <div className="font-bold text-sm text-blue-900 flex items-center gap-2">
@@ -387,7 +393,7 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                      {isManageMode && !isCurrent && (
+                      {canManage && isManageMode && !isCurrent && (
                         <button
                           type="button"
                           onClick={() => handleStartEdit(b)}
@@ -425,7 +431,7 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
         {/* Modal Footer */}
         <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50/90 shrink-0">
           <div className="flex items-center gap-2">
-            {!isAddingNew && !editingItem && (
+            {canManage && !isAddingNew && !editingItem && (
               <button
                 type="button"
                 onClick={handleStartAddNew}
@@ -436,7 +442,7 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
               </button>
             )}
 
-            {isManageMode && !showResetConfirm && (
+            {canManage && isManageMode && !showResetConfirm && (
               <button
                 type="button"
                 onClick={() => setShowResetConfirm(true)}
