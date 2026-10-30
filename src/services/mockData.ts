@@ -35111,8 +35111,22 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     canAccessReconciliation: true
   },
   {
-    email: 'appspengolahan@gmail.com',
+    email: 'pengolahan.pp1@gmail.com',
     nama: 'Admin Pengolahan PP1',
+    role: 'Admin Produksi',
+    password: '123',
+    defaultPin: '123456',
+    isDefaultPassword: true,
+    hasDevAccess: false,
+    allowedKomoditas: ['*'],
+    canExportPdf: true,
+    canManageUsers: true,
+    canAccessAI: true,
+    canAccessReconciliation: true
+  },
+  {
+    email: 'appspengolahan@gmail.com',
+    nama: 'Admin Pengolahan PP1 (Alt)',
     role: 'Admin Produksi',
     password: '123',
     defaultPin: '123456',

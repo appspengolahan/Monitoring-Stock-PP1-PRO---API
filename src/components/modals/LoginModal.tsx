@@ -20,15 +20,30 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  React.useEffect(() => {
+    if (isOpen && typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const emailParam = params.get('email') || params.get('user');
+        const pinParam = params.get('pin') || params.get('pass');
+        if (emailParam) setEmailInput(emailParam.trim());
+        if (pinParam) setPasswordInput(pinParam.trim());
+      } catch (e) {}
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailInput.trim()) {
+    const cleanEmail = emailInput.trim();
+    const cleanPassword = passwordInput.trim();
+
+    if (!cleanEmail) {
       setErrorMessage('Alamat email admin / staf wajib diisi.');
       return;
     }
-    if (!passwordInput) {
+    if (!cleanPassword) {
       setErrorMessage('Password / PIN akun wajib diisi.');
       return;
     }
@@ -37,7 +52,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMessage('');
 
     try {
-      const res = await GasService.login(emailInput.trim(), passwordInput);
+      // Pastikan whitelist pengguna terbaru disinkronkan dari server sebelum verifikasi
+      await GasService.syncUsersWithServer();
+      const res = await GasService.login(cleanEmail, cleanPassword);
       if (res.ok && res.session) {
         onSuccess(res.session);
       } else {

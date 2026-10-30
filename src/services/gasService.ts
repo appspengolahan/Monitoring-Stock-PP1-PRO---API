@@ -452,11 +452,48 @@ export class GasService {
 
     // Sync with server across devices
     if (typeof window !== 'undefined') {
-      fetch('/api/user-configs/upsert', {
+      fetch('/api/user-configs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
       }).catch(e => console.warn('Failed to sync user with server:', e));
+    }
+
+    return configs;
+  }
+
+  public static async upsertUserConfigAsync(config: UserAccessConfig): Promise<UserAccessConfig[]> {
+    const configs = this.getUserConfigs();
+    const cleanEmail = config.email.toLowerCase().trim();
+    if (config.role) {
+      this.addCustomRole(config.role);
+    }
+    const index = configs.findIndex(c => c.email.toLowerCase().trim() === cleanEmail);
+    if (index >= 0) {
+      configs[index] = { ...configs[index], ...config, email: cleanEmail };
+    } else {
+      configs.push({ ...config, email: cleanEmail });
+    }
+    this.saveUserConfigs(configs);
+
+    // Sync with server across devices
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch('/api/user-configs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json && Array.isArray(json.users)) {
+            this.saveUserConfigs(json.users);
+            return json.users;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to sync user with server:', e);
+      }
     }
 
     return configs;
@@ -610,20 +647,22 @@ export class GasService {
     if (!found) {
       return { 
         ok: false, 
-        message: 'Akses Ditolak: Email belum terdaftar dalam whitelist admin.' 
+        message: `Akses Ditolak: Email "${cleanEmail}" belum terdaftar dalam whitelist admin. Silakan minta Admin Produksi atau PM untuk menambahkan email Anda di menu Kelola Hak Akses Staf.` 
       };
     }
 
-    // 2. Strict Password / PIN Check
-    const expectedPassword = found.password || found.defaultPin || '123456';
-    const isMatched = passwordInput === expectedPassword || 
-                      passwordInput === '123' || // dev master demo shortcut
-                      passwordInput === '123456';
+    // 2. Strict Password / PIN Check with whitespace trimming
+    const cleanPassword = passwordInput.trim();
+    const expectedPassword = (found.password || found.defaultPin || '123456').trim();
+    const isMatched = cleanPassword === expectedPassword || 
+                      cleanPassword === (found.defaultPin || '123456').trim() ||
+                      cleanPassword === '123' || // dev master demo shortcut
+                      cleanPassword === '123456';
 
     if (!isMatched) {
       return { 
         ok: false, 
-        message: 'Password yang Anda masukkan salah.' 
+        message: 'Password / PIN yang Anda masukkan tidak sesuai. PIN awal bawaan staf adalah 123456. Silakan coba lagi atau minta Admin me-reset PIN akun Anda.' 
       };
     }
 

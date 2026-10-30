@@ -740,7 +740,7 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     return res.json({ ok: true, users: fileConfigs, customRoles });
   });
 
-  app.post('/api/user-configs/upsert', (req, res) => {
+  app.post(['/api/user-configs', '/api/user-configs/upsert'], (req, res) => {
     try {
       const config = req.body;
       if (!config || !config.email) {

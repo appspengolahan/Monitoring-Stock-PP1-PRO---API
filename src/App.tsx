@@ -100,10 +100,15 @@ export default function App() {
   useEffect(() => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('page') === 'admin' || urlParams.get('login') === 'true') {
+      if (urlParams.get('page') === 'admin' || urlParams.get('login') === 'true' || urlParams.get('email')) {
         setIsLoginOpen(true);
       }
     } catch (e) {}
+
+    // Sinkronkan daftar staf terdaftar dari server ke penyimpanan lokal perangkat saat aplikasi dibuka
+    GasService.syncUsersWithServer().catch(err => {
+      console.warn('Initial user whitelist sync notice:', err);
+    });
   }, []);
 
   // Auto-refresh komoditasList when reconciliation data is fetched or updated (debounced to avoid freeze)

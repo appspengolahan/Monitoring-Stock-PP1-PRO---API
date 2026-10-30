@@ -19,7 +19,9 @@ import {
   Sliders,
   Database,
   FileCheck2,
-  Layers
+  Layers,
+  Copy,
+  Share2
 } from 'lucide-react';
 import { UserAccessConfig, UserRole } from '../../types';
 import { GasService } from '../../services/gasService';
@@ -161,7 +163,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formEmail.trim() || !formNama.trim()) {
       alert('Email dan Nama staf wajib diisi.');
@@ -183,7 +185,6 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
     const pinToUse = formDefaultPin.trim() || '123456';
     const existing = users.find(u => u.email.toLowerCase() === formEmail.trim().toLowerCase());
-    const isDevRole = finalRole === 'Web Developer' || finalRole === 'Site Engineer / PM';
 
     const config: UserAccessConfig = {
       email: formEmail.trim().toLowerCase(),
@@ -200,14 +201,35 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
       canAccessReconciliation: formCanAccessReconciliation
     };
 
-    const updated = GasService.upsertUserConfig(config);
+    const updated = await GasService.upsertUserConfigAsync(config);
     setUsers(updated);
     setIsAddingNew(false);
     setEditingEmail(null);
     setIsCustomRoleMode(false);
     setCustomRoleInput('');
-    setStatusMessage(`Hak akses untuk ${config.email} dengan peran "${finalRole}" berhasil disimpan!`);
-    setTimeout(() => setStatusMessage(null), 3500);
+    setStatusMessage(`✅ Hak akses untuk ${config.email} (PIN: ${pinToUse}) berhasil disimpan dan disinkronkan ke server!`);
+    setTimeout(() => setStatusMessage(null), 5000);
+  };
+
+  const handleCopyCredentials = (u: UserAccessConfig) => {
+    const pin = u.password || u.defaultPin || '123456';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const loginUrl = `${origin}?login=true&email=${encodeURIComponent(u.email)}`;
+    const text = `🔐 AKSES MONITORING STOCK PP1 - PT BATU KARANG
+Halo ${u.nama},
+Akun Anda telah didaftarkan ke sistem dengan rincian:
+• Email: ${u.email}
+• Peran (Role): ${u.role}
+• PIN/Password Awal: ${pin}
+• Tautan Masuk: ${loginUrl}
+
+Buka tautan di atas dan masukkan PIN ${pin} untuk masuk ke aplikasi.`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setStatusMessage(`📋 Kredensial & tautan login untuk ${u.email} berhasil disalin! Kirimkan ke staf via WA/Telegram.`);
+      setTimeout(() => setStatusMessage(null), 5000);
+    }
   };
 
   const handleResetPin = (email: string) => {
@@ -789,6 +811,14 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    <button
+                      onClick={() => handleCopyCredentials(u)}
+                      className="px-2 py-1.5 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors flex items-center gap-1"
+                      title="Salin Kredensial & Tautan Login untuk dikirim ke Staf"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-blue-600" />
+                      <span className="text-[11px] font-bold">Salin Akses</span>
+                    </button>
                     <button
                       onClick={() => handleResetPin(u.email)}
                       className="px-2 py-1.5 text-xs text-amber-700 hover:text-amber-800 hover:bg-amber-50 rounded-lg border border-amber-200 transition-colors flex items-center gap-1"
