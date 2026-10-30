@@ -241,18 +241,20 @@ Buka tautan di atas dan masukkan PIN ${pin} untuk masuk ke aplikasi.`;
     }
   };
 
-  const handleDelete = (emailToDelete: string) => {
+  const handleDelete = async (emailToDelete: string) => {
     if (emailToDelete === 'obeetools@gmail.com' || emailToDelete === 'loehendra@gmail.com') {
       alert('Akun Developer & Site Engineer utama tidak boleh dihapus.');
       return;
     }
-    if (window.confirm(`Yakin ingin mencabut akses staf ${emailToDelete}?`)) {
-      const updated = GasService.deleteUserConfig(emailToDelete);
+    if (window.confirm(`Yakin ingin mencabut akses staf ${emailToDelete}? Akun akan dihapus permanen dari whitelist.`)) {
+      const updated = await GasService.deleteUserConfigAsync(emailToDelete);
       setUsers(updated);
       if (editingEmail === emailToDelete) {
         setEditingEmail(null);
         setIsAddingNew(false);
       }
+      setStatusMessage(`🗑️ Hak akses untuk ${emailToDelete} telah berhasil dihapus permanen dari sistem.`);
+      setTimeout(() => setStatusMessage(null), 4000);
     }
   };
 
@@ -849,13 +851,23 @@ Buka tautan di atas dan masukkan PIN ${pin} untuk masuk ke aplikasi.`;
             })}
           </div>
 
-          <div className="p-3 bg-slate-100 rounded-xl text-[11px] text-slate-600 space-y-1">
-            <p className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
-              <span>Penyimpanan Opsi B (Client-Side Cloud / Local Cache)</span>
-            </p>
-            <p>
-              Hak akses disimpan aman di memori lokal aplikasi. Ketika nanti sheet khusus <code>USER_ROLES</code> telah Anda buat di Google Spreadsheet, arsitektur ini dapat langsung disinkronkan ke cloud tanpa mengubah struktur antarmuka.
+          <div className="p-3.5 bg-slate-100/90 border border-slate-200/80 rounded-xl text-[11px] text-slate-600 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-slate-800 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Penyimpanan Terpusat & Sinkronisasi Permanen (Multi-Device)</span>
+              </p>
+              <a
+                href="https://docs.google.com/spreadsheets/d/1Qm3dLQaKpnwCRuIaGxR2UmVxV1MdxbTFvTVnnrRwoK8/edit"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+              >
+                <span>Buka Sheet HAK_AKSES_USER ↗</span>
+              </a>
+            </div>
+            <p className="leading-relaxed">
+              Penambahan, perubahan peran, dan penghapusan staf kini tersimpan permanen di cloud dan memori lokal (anti-kembali saat refresh). Anda juga dapat meninjau tab <strong>HAK_AKSES_USER</strong> pada Google Sheets <em>DATABASE_BSPP_PUSAT</em> untuk audit kepatuhan perusahaan.
             </p>
           </div>
         </div>

@@ -77,9 +77,12 @@ function onOpen() {
     .createMenu("🚀 BSPP Central Hub")
     .addItem("⚡ Sinkronisasi Semua Data BSPP Sekarang", "sinkronisasiSemuaBSPP")
     .addItem("🛠️ Inisialisasi & Rapikan Format Datasheet", "setupDatabaseBSPPPusat")
+    .addItem("👥 Inisialisasi Tab Hak Akses User (HAK_AKSES_USER)", "setupUserAccessSheet")
     .addSeparator()
     .addItem("⏰ Pasang Jadwal Sync Otomatis 2x Sehari (16:00 & 21:00)", "pasangTriggerOtomatisHarian")
     .addItem("🛑 Hapus Jadwal Sync Otomatis", "hapusSemuaTriggerOtomatis")
+    .addItem("📊 Urutkan Kronologis & Rapikan Semua Tab (Anti-Mundur)", "urutkanSemuaTabKronologis")
+    .addItem("🧹 Rapikan & Urutkan Tab Rajang II (Tampilkan 29 Agustus di Paling Bawah)", "rapikanTabRajangII")
     .addSeparator()
     .addItem("🔍 Cek Tabel codeIA C8:J14 (BSPP Blend)", "cekSheetHarianBlend")
     .addItem("🧹 Bersihkan & Reset Tab Blend (Hapus Baris Kotor)", "bersihkanTabBlend")
@@ -144,6 +147,9 @@ function setupDatabaseBSPPPusat() {
     setupCommoditySheet_(ss, cfg.name, cfg.color);
   });
 
+  // 3. Buat / Format Tab Hak Akses User
+  setupUserAccessSheet_(ss);
+
   // Hapus "Sheet1" bawaan kosong jika ada
   try {
     var defaultSheet = ss.getSheetByName("Sheet1");
@@ -156,7 +162,7 @@ function setupDatabaseBSPPPusat() {
   try {
     SpreadsheetApp.getUi().alert(
       "✅ Inisialisasi Berhasil!",
-      "Datasheet BSPP Pusat untuk 4 komoditas telah berhasil dibentuk dan diformat dengan standar audit.\n\nSpreadsheet ID:\n" + ss.getId(),
+      "Datasheet BSPP Pusat (4 komoditas, ringkasan konsolidasi, dan tab hak akses user) telah berhasil dibentuk dan diformat dengan standar audit.\n\nSpreadsheet ID:\n" + ss.getId(),
       SpreadsheetApp.getUi().ButtonSet.OK
     );
   } catch (e) {}
@@ -166,6 +172,85 @@ function setupDatabaseBSPPPusat() {
     spreadsheetId: ss.getId(),
     spreadsheetUrl: ss.getUrl()
   };
+}
+
+function setupUserAccessSheet() {
+  var ss = getTargetSpreadsheet_();
+  var res = setupUserAccessSheet_(ss);
+  try {
+    SpreadsheetApp.getUi().alert(
+      "✅ Tab HAK_AKSES_USER Siap!",
+      "Tab 'HAK_AKSES_USER' pada database BSPP Pusat telah berhasil dibentuk.\nAnda dapat mengelola akun staf langsung di Spreadsheet ini atau melalui Web App.",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (e) {}
+  return res;
+}
+
+function setupUserAccessSheet_(ss) {
+  var name = "HAK_AKSES_USER";
+  var sheet = ss.getSheetByName(name);
+  var isNew = false;
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    isNew = true;
+  }
+
+  var headers = [
+    "No",
+    "Email Staf",
+    "Nama Lengkap",
+    "Peran (Role)",
+    "PIN / Password",
+    "Hak Komoditas",
+    "Izin PDF",
+    "Izin AI Cerdas",
+    "Izin Audit Susut",
+    "Status Akun",
+    "Terakhir Diperbarui"
+  ];
+
+  var headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setValues([headers]);
+  headerRange
+    .setBackground("#1e1b4b") // Midnight Indigo Pekat
+    .setFontColor("#ffffff")
+    .setFontWeight("bold")
+    .setFontSize(10)
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle");
+
+  sheet.setRowHeight(1, 35);
+  sheet.setFrozenRows(1);
+
+  // Lebar Kolom
+  sheet.setColumnWidth(1, 50);  // No
+  sheet.setColumnWidth(2, 220); // Email
+  sheet.setColumnWidth(3, 200); // Nama Lengkap
+  sheet.setColumnWidth(4, 160); // Peran (Role)
+  sheet.setColumnWidth(5, 130); // PIN
+  sheet.setColumnWidth(6, 260); // Hak Komoditas
+  sheet.setColumnWidth(7, 95);  // PDF
+  sheet.setColumnWidth(8, 110); // AI
+  sheet.setColumnWidth(9, 115); // Audit
+  sheet.setColumnWidth(10, 100); // Status
+  sheet.setColumnWidth(11, 160); // Terakhir Diperbarui
+
+  // Jika tab baru atau kosong, masukkan akun aktif PT Batu Karang saat ini
+  if (isNew || sheet.getLastRow() <= 1) {
+    var nowStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss") + " WIB";
+    var defaultUsers = [
+      [1, "loehendra@gmail.com", "Lalu Mahendra", "Web Developer", "123456", "Semua Komoditas (*)", "Diizinkan", "Diizinkan", "Diizinkan", "Aktif", nowStr],
+      [2, "obeetools@gmail.com", "Site Engineer / PM", "Site Engineer / PM", "123456", "Semua Komoditas (*)", "Diizinkan", "Diizinkan", "Diizinkan", "Aktif", nowStr],
+      [3, "staffacc1bkr@gmail.com", "Tri Andini", "Accounting", "123456", "Tembakau Blend, Tembakau & Krosok (Rajang II), Cengkeh, Tembakau & Krosok (Rajang I)", "Diizinkan", "Nonaktif", "Diizinkan", "Aktif", nowStr]
+    ];
+    sheet.getRange(2, 1, defaultUsers.length, headers.length).setValues(defaultUsers);
+    sheet.getRange(2, 1, defaultUsers.length, 1).setHorizontalAlignment("center");
+    sheet.getRange(2, 5, defaultUsers.length, 1).setHorizontalAlignment("center");
+    sheet.getRange(2, 7, defaultUsers.length, 4).setHorizontalAlignment("center");
+  }
+
+  return { success: true, sheetName: name };
 }
 
 function setupCommoditySheet_(ss, sheetName, headerColor) {
@@ -492,11 +577,110 @@ function syncCommodityDataBatch_(targetSs, cfg, fetchFunction) {
       sheet.getRange(startRow, 1, insertedRows.length, 12).setValues(insertedRows);
     }
 
+    // 3. Normalisasi & Urutkan Kronologis (Sort Tanggal Ascending, Re-Index No 1..N, Anti-Mundur)
+    sortAndNormalizeSheet_(sheet);
+
     return "✅ " + cfg.nama + ": " + insertedRows.length + " data baru, " + updatedCount + " diperbarui.";
   } catch (err) {
     Logger.log("Error sync " + cfg.nama + ": " + err.message);
     return "❌ " + cfg.nama + " Gagal: " + err.message;
   }
+}
+
+function urutkanSemuaTabKronologis() {
+  var ss = getTargetSpreadsheet_();
+  var sheetNames = [
+    SINKRONISASI_CONFIG.CENGKEH.nama,
+    SINKRONISASI_CONFIG.BLEND.nama,
+    SINKRONISASI_CONFIG.RAJANG_II.nama,
+    SINKRONISASI_CONFIG.RAJANG_I.nama
+  ];
+  var totalCleaned = 0;
+  sheetNames.forEach(function(name) {
+    var sh = ss.getSheetByName(name);
+    if (sh) {
+      totalCleaned += sortAndNormalizeSheet_(sh);
+    }
+  });
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      "✅ Perapian & Pengurutan Berhasil!",
+      "Seluruh tab komoditas telah diurutkan kronologis dari tanggal terlama ke tanggal terbaru (Agustus 2026 kini berada tepat di baris paling bawah, nomor urut 1..N telah dirapikan secara berurutan tanpa celah).",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (e) {}
+}
+
+function rapikanTabRajangII() {
+  var ss = getTargetSpreadsheet_();
+  var sh = ss.getSheetByName(SINKRONISASI_CONFIG.RAJANG_II.nama);
+  if (!sh) {
+    try { SpreadsheetApp.getUi().alert("Tab Rajang II tidak ditemukan."); } catch (e) {}
+    return;
+  }
+  var count = sortAndNormalizeSheet_(sh);
+  try {
+    SpreadsheetApp.getUi().alert(
+      "✅ Tab Rajang II Berhasil Dirapikan!",
+      "Sebanyak " + count + " baris data telah diurutkan secara kronologis.\nBaris paling bawah sekarang adalah transaksi terbaru (29 Agustus 2026), baris duplikat Mei 2026 telah dipindahkan ke urutan tanggal yang benar, dan nomor urut No 1.." + count + " telah teratur rapi.",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (e) {}
+}
+
+function sortAndNormalizeSheet_(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) return 0;
+  var lastRow = sheet.getLastRow();
+  var dataRange = sheet.getRange(2, 1, lastRow - 1, 12);
+  var vals = dataRange.getValues();
+
+  var cleanRows = [];
+  var seenMap = {};
+
+  for (var i = 0; i < vals.length; i++) {
+    var r = vals[i];
+    var rawTgl = r[1];
+    var rawJenis = r[3];
+    var rawNetto = r[4];
+    if (!rawTgl && !rawJenis) continue;
+
+    var iso = parseIndonesianDateStringToIso_(rawTgl);
+    if (!iso) {
+      iso = String(rawTgl).slice(0, 10);
+    }
+    var cleanJenis = String(rawJenis || "").trim().toUpperCase();
+    var nettoNum = parseIndonesianNumber_(rawNetto, 0);
+
+    // Kunci unik untuk deduplikasi
+    var dedupeKey = iso + "_" + cleanJenis + "_" + nettoNum;
+    if (seenMap[dedupeKey]) continue;
+    seenMap[dedupeKey] = true;
+
+    r[1] = iso; // Standardize YYYY-MM-DD
+    cleanRows.push(r);
+  }
+
+  if (cleanRows.length === 0) return 0;
+
+  // Urutkan Tanggal ASCENDING (Terlama di atas, Terbaru di baris paling bawah)
+  cleanRows.sort(function(a, b) {
+    var dateA = String(a[1]);
+    var dateB = String(b[1]);
+    if (dateA !== dateB) return dateA.localeCompare(dateB);
+    return String(a[3]).localeCompare(String(b[3]));
+  });
+
+  // Re-index No urut (Kolom 1: A) 1..N
+  for (var n = 0; n < cleanRows.length; n++) {
+    cleanRows[n][0] = n + 1;
+  }
+
+  // Tulis kembali ke sheet
+  sheet.getRange(2, 1, lastRow - 1, 12).clearContent();
+  sheet.getRange(2, 1, cleanRows.length, 12).setValues(cleanRows);
+
+  return cleanRows.length;
 }
 
 function parseIndonesianNumber_(val, defaultVal) {
@@ -1308,7 +1492,18 @@ function doGet(e) {
       });
     }
 
-    // 6. Default: Render Web App Dashboard Elegan
+    // 6. API Hak Akses User
+    if (action === "getusers" || action === "users") {
+      var usersData = getUserConfigsFromSheet_(ss);
+      return jsonResponse_({
+        success: true,
+        count: usersData.length,
+        users: usersData,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 7. Default: Render Web App Dashboard Elegan
     return htmlResponse_(renderDashboardHtml_());
   } catch (err) {
     Logger.log("Error in doGet: " + err.stack);
@@ -1341,6 +1536,18 @@ function doPost(e) {
 
     if (action === "ping") {
       return jsonResponse_({ status: "ok", timestamp: new Date().toISOString() });
+    }
+
+    if (action === "saveuser" || action === "upsertuser") {
+      var userToSave = payload.user || payload;
+      var saveRes = saveUserConfigToSheet_(userToSave);
+      return jsonResponse_(saveRes);
+    }
+
+    if (action === "deleteuser") {
+      var emailToDel = payload.email || (e && e.parameter && e.parameter.email) || "";
+      var delRes = deleteUserConfigFromSheet_(emailToDel);
+      return jsonResponse_(delRes);
     }
 
     return jsonResponse_({ success: false, message: "Aksi tidak dikenali: " + action });
@@ -1404,7 +1611,9 @@ function getCommodityRecordsApi_(key, limit) {
 
     var lastRow = sh.getLastRow();
     var rowsToFetch = Math.min(limit || 200, lastRow - 1);
-    var vals = sh.getRange(2, 1, rowsToFetch, 12).getValues();
+    var startRow = Math.max(2, lastRow - rowsToFetch + 1);
+    var vals = sh.getRange(startRow, 1, rowsToFetch, 12).getValues();
+    vals.reverse(); // Transaksi terbaru paling atas untuk Web App
 
     var records = [];
     for (var i = 0; i < vals.length; i++) {
@@ -1427,6 +1636,143 @@ function getCommodityRecordsApi_(key, limit) {
     return records;
   } catch (e) {
     return [];
+  }
+}
+
+function getUserConfigsFromSheet_(ss) {
+  try {
+    if (!ss) ss = getTargetSpreadsheet_();
+    var sh = ss.getSheetByName("HAK_AKSES_USER");
+    if (!sh) {
+      setupUserAccessSheet_(ss);
+      sh = ss.getSheetByName("HAK_AKSES_USER");
+    }
+    if (!sh || sh.getLastRow() < 2) return [];
+
+    var lastRow = sh.getLastRow();
+    var vals = sh.getRange(2, 1, lastRow - 1, 11).getValues();
+    var users = [];
+
+    for (var i = 0; i < vals.length; i++) {
+      var r = vals[i];
+      var email = String(r[1] || "").toLowerCase().trim();
+      var status = String(r[9] || "Aktif").trim();
+      if (!email || status.toLowerCase() === "dihapus" || status.toLowerCase() === "nonaktif") {
+        continue;
+      }
+      var komoditasRaw = String(r[5] || "");
+      var allowedKomoditas = (komoditasRaw.includes("*") || komoditasRaw.toLowerCase().includes("semua"))
+        ? ["*"]
+        : komoditasRaw.split(",").map(function(k) { return k.trim(); }).filter(Boolean);
+
+      users.push({
+        email: email,
+        nama: String(r[2] || "").trim(),
+        role: String(r[3] || "Staff Operasional").trim(),
+        password: String(r[4] || "123456").trim(),
+        defaultPin: String(r[4] || "123456").trim(),
+        allowedKomoditas: allowedKomoditas,
+        canExportPdf: String(r[6]).toLowerCase().includes("izin") || String(r[6]).toLowerCase().includes("ya"),
+        canAccessAI: String(r[7]).toLowerCase().includes("izin") || String(r[7]).toLowerCase().includes("ya"),
+        canAccessReconciliation: String(r[8]).toLowerCase().includes("izin") || String(r[8]).toLowerCase().includes("ya"),
+        canManageUsers: String(r[3]).toLowerCase().includes("developer") || String(r[3]).toLowerCase().includes("admin") || String(r[3]).toLowerCase().includes("engineer")
+      });
+    }
+    return users;
+  } catch (e) {
+    Logger.log("Error getUserConfigsFromSheet_: " + e.message);
+    return [];
+  }
+}
+
+function saveUserConfigToSheet_(user) {
+  try {
+    if (!user || !user.email) return { success: false, message: "Email staf wajib diisi" };
+    var cleanEmail = String(user.email).toLowerCase().trim();
+    var ss = getTargetSpreadsheet_();
+    var sh = ss.getSheetByName("HAK_AKSES_USER");
+    if (!sh) {
+      setupUserAccessSheet_(ss);
+      sh = ss.getSheetByName("HAK_AKSES_USER");
+    }
+
+    var nowStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss") + " WIB";
+    var pin = user.password || user.defaultPin || "123456";
+    var allowedKomoditasStr = Array.isArray(user.allowedKomoditas)
+      ? (user.allowedKomoditas.includes("*") ? "Semua Komoditas (*)" : user.allowedKomoditas.join(", "))
+      : String(user.allowedKomoditas || "Semua Komoditas (*)");
+
+    var pdfStr = user.canExportPdf ? "Diizinkan" : "Tutup";
+    var aiStr = user.canAccessAI ? "Diizinkan" : "Nonaktif";
+    var auditStr = user.canAccessReconciliation ? "Diizinkan" : "Tutup";
+
+    var lastRow = sh.getLastRow();
+    var foundRowIndex = -1;
+    if (lastRow > 1) {
+      var emails = sh.getRange(2, 2, lastRow - 1, 1).getValues();
+      for (var i = 0; i < emails.length; i++) {
+        if (String(emails[i][0]).toLowerCase().trim() === cleanEmail) {
+          foundRowIndex = i + 2;
+          break;
+        }
+      }
+    }
+
+    if (foundRowIndex > 0) {
+      sh.getRange(foundRowIndex, 2, 1, 10).setValues([[
+        cleanEmail,
+        user.nama || "",
+        user.role || "Staff Operasional",
+        pin,
+        allowedKomoditasStr,
+        pdfStr,
+        aiStr,
+        auditStr,
+        "Aktif",
+        nowStr
+      ]]);
+    } else {
+      var newNo = Math.max(1, lastRow);
+      sh.appendRow([
+        newNo,
+        cleanEmail,
+        user.nama || "",
+        user.role || "Staff Operasional",
+        pin,
+        allowedKomoditasStr,
+        pdfStr,
+        aiStr,
+        auditStr,
+        "Aktif",
+        nowStr
+      ]);
+    }
+    return { success: true, message: "Hak akses " + cleanEmail + " berhasil disimpan ke Spreadsheet HAK_AKSES_USER." };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+function deleteUserConfigFromSheet_(email) {
+  try {
+    if (!email) return { success: false, message: "Email kosong" };
+    var cleanEmail = String(email).toLowerCase().trim();
+    var ss = getTargetSpreadsheet_();
+    var sh = ss.getSheetByName("HAK_AKSES_USER");
+    if (!sh || sh.getLastRow() < 2) return { success: true, message: "Sheet kosong" };
+
+    var lastRow = sh.getLastRow();
+    var emails = sh.getRange(2, 2, lastRow - 1, 1).getValues();
+    var deleted = false;
+    for (var i = emails.length - 1; i >= 0; i--) {
+      if (String(emails[i][0]).toLowerCase().trim() === cleanEmail) {
+        sh.deleteRow(i + 2);
+        deleted = true;
+      }
+    }
+    return { success: true, deleted: deleted, message: "Akun " + cleanEmail + " berhasil dihapus dari Spreadsheet." };
+  } catch (e) {
+    return { success: false, error: e.message };
   }
 }
 

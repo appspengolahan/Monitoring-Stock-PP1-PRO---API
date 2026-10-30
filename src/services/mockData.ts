@@ -94,6 +94,26 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     ],
     "mutasiTerbaru": [
       {
+        "id": "tembakau-blend-20261030-1",
+        "tanggal": "2026-10-30T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pemasukan Hasil Blend",
+        "masuk": 1758.7,
+        "keluar": 0,
+        "saldo": 1758.7,
+        "cek": true
+      },
+      {
+        "id": "tembakau-blend-20261030-2",
+        "tanggal": "2026-10-30T00:00:00.000Z",
+        "kode": "KARANG - BK",
+        "jenisMutasi": "Pemasukan Hasil Blend",
+        "masuk": 874.6,
+        "keluar": 0,
+        "saldo": 874.6,
+        "cek": true
+      },
+      {
         "id": "tembakau-blend-20261029-1",
         "tanggal": "2026-10-29T00:00:00.000Z",
         "kode": "153 - BK",

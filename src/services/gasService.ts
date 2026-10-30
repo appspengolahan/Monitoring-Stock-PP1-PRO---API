@@ -20,7 +20,8 @@ const STORAGE_KEYS = {
   SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2',
   SETORAN_CENGKEH_RECONCILIATION: 'stockpp1_setoran_cengkeh_reconciliation_v1',
   CENGKEH_DRYER_RECONCILIATION: 'stockpp1_cengkeh_dryer_reconciliation_v1',
-  RECONCILIATION_DISPLAY: 'stockpp1_reconciliation_display_config_v1'
+  RECONCILIATION_DISPLAY: 'stockpp1_reconciliation_display_config_v1',
+  DELETED_USERS: 'stockpp1_deleted_users_v1'
 };
 
 export class GasService {
@@ -375,24 +376,62 @@ export class GasService {
     return this.getAvailableRoles();
   }
 
+  public static getDeletedUsers(): string[] {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.DELETED_USERS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed.map(e => String(e).toLowerCase().trim());
+      }
+    } catch {}
+    return [];
+  }
+
+  public static addDeletedUser(email: string): void {
+    if (typeof localStorage === 'undefined') return;
+    const clean = email.toLowerCase().trim();
+    if (!clean) return;
+    const current = this.getDeletedUsers();
+    if (!current.includes(clean)) {
+      current.push(clean);
+      localStorage.setItem(STORAGE_KEYS.DELETED_USERS, JSON.stringify(current));
+    }
+  }
+
+  public static removeDeletedUser(email: string): void {
+    if (typeof localStorage === 'undefined') return;
+    const clean = email.toLowerCase().trim();
+    const current = this.getDeletedUsers().filter(e => e !== clean);
+    localStorage.setItem(STORAGE_KEYS.DELETED_USERS, JSON.stringify(current));
+  }
+
   public static async syncUsersWithServer(): Promise<UserAccessConfig[]> {
     try {
       const res = await fetch('/api/user-configs');
       if (res.ok) {
         const json = await res.json();
-        if (json && Array.isArray(json.users) && json.users.length > 0) {
+        if (json && Array.isArray(json.users)) {
+          const deleted = new Set(this.getDeletedUsers());
           const current = this.getUserConfigs();
           const emailMap = new Map<string, UserAccessConfig>();
-          current.forEach(u => emailMap.set(u.email.toLowerCase().trim(), u));
+          current.forEach(u => {
+            const clean = u.email.toLowerCase().trim();
+            if (!deleted.has(clean)) {
+              emailMap.set(clean, u);
+            }
+          });
           json.users.forEach((u: any) => {
             if (u && u.email) {
               const clean = u.email.toLowerCase().trim();
-              const existing = emailMap.get(clean);
-              emailMap.set(clean, {
-                ...existing,
-                ...u,
-                email: clean
-              });
+              if (!deleted.has(clean)) {
+                const existing = emailMap.get(clean);
+                emailMap.set(clean, {
+                  ...existing,
+                  ...u,
+                  email: clean
+                });
+              }
             }
           });
           const merged = Array.from(emailMap.values());
@@ -411,16 +450,20 @@ export class GasService {
   }
 
   public static getUserConfigs(): UserAccessConfig[] {
-    const stored = localStorage.getItem(STORAGE_KEYS.USER_CONFIGS);
+    const deleted = new Set(this.getDeletedUsers());
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.USER_CONFIGS) : null;
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge initial system configs with any newly registered users in localStorage
-          const existingEmails = new Set(parsed.map((p: UserAccessConfig) => p.email.toLowerCase().trim()));
-          const merged = [...parsed];
+          // Filter out explicitly deleted users
+          const filtered = parsed.filter((p: UserAccessConfig) => !deleted.has(p.email.toLowerCase().trim()));
+          const existingEmails = new Set(filtered.map((p: UserAccessConfig) => p.email.toLowerCase().trim()));
+          const merged = [...filtered];
           for (const init of INITIAL_USER_CONFIGS) {
-            if (!existingEmails.has(init.email.toLowerCase().trim())) {
+            const cleanInit = init.email.toLowerCase().trim();
+            // JANGAN masukkan kembali jika user sudah sengaja dihapus oleh admin!
+            if (!existingEmails.has(cleanInit) && !deleted.has(cleanInit)) {
               merged.push(init);
             }
           }
@@ -428,8 +471,9 @@ export class GasService {
         }
       } catch (e) {}
     }
-    this.saveUserConfigs(INITIAL_USER_CONFIGS);
-    return INITIAL_USER_CONFIGS;
+    const initialFiltered = INITIAL_USER_CONFIGS.filter(u => !deleted.has(u.email.toLowerCase().trim()));
+    this.saveUserConfigs(initialFiltered);
+    return initialFiltered;
   }
 
   public static saveUserConfigs(configs: UserAccessConfig[]): void {
@@ -437,8 +481,9 @@ export class GasService {
   }
 
   public static upsertUserConfig(config: UserAccessConfig): UserAccessConfig[] {
-    const configs = this.getUserConfigs();
     const cleanEmail = config.email.toLowerCase().trim();
+    this.removeDeletedUser(cleanEmail);
+    const configs = this.getUserConfigs();
     if (config.role) {
       this.addCustomRole(config.role);
     }
@@ -463,8 +508,9 @@ export class GasService {
   }
 
   public static async upsertUserConfigAsync(config: UserAccessConfig): Promise<UserAccessConfig[]> {
-    const configs = this.getUserConfigs();
     const cleanEmail = config.email.toLowerCase().trim();
+    this.removeDeletedUser(cleanEmail);
+    const configs = this.getUserConfigs();
     if (config.role) {
       this.addCustomRole(config.role);
     }
@@ -543,8 +589,38 @@ export class GasService {
   }
 
   public static deleteUserConfig(email: string): UserAccessConfig[] {
-    const configs = this.getUserConfigs().filter(c => c.email.toLowerCase() !== email.toLowerCase());
+    const cleanEmail = email.toLowerCase().trim();
+    this.addDeletedUser(cleanEmail);
+    const configs = this.getUserConfigs().filter(c => c.email.toLowerCase().trim() !== cleanEmail);
     this.saveUserConfigs(configs);
+
+    if (typeof window !== 'undefined') {
+      fetch('/api/user-configs/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail })
+      }).catch(e => console.warn('Failed to delete user on server:', e));
+    }
+    return configs;
+  }
+
+  public static async deleteUserConfigAsync(email: string): Promise<UserAccessConfig[]> {
+    const cleanEmail = email.toLowerCase().trim();
+    this.addDeletedUser(cleanEmail);
+    const configs = this.getUserConfigs().filter(c => c.email.toLowerCase().trim() !== cleanEmail);
+    this.saveUserConfigs(configs);
+
+    if (typeof window !== 'undefined') {
+      try {
+        await fetch('/api/user-configs/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail })
+        });
+      } catch (e) {
+        console.warn('Failed to delete user on server:', e);
+      }
+    }
     return configs;
   }
 
@@ -703,7 +779,7 @@ export class GasService {
   }
 
   /**
-   * Toleransi cerdas pencocokan tanggal rekonsiliasi (mengakomodasi shift malam hingga 36 jam & akhir pekan hingga 76 jam)
+   * Toleransi cerdas pencocokan tanggal rekonsiliasi (mengakomodasi shift malam hingga 24 jam)
    */
   public static isDateMatchingReconciliation(date1?: string | null, date2?: string | null): boolean {
     if (!date1 || !date2) return false;
@@ -716,19 +792,17 @@ export class GasService {
     if (ep1 <= 0 || ep2 <= 0) return false;
     const diffMs = Math.abs(ep1 - ep2);
 
-    // Toleransi shift malam normal (hingga 36 jam)
-    if (diffMs <= 36 * 3600 * 1000) return true;
+    // Toleransi shift malam normal (maksimal 24 jam / hari bersebelahan)
+    if (diffMs <= 24 * 3600 * 1000) return true;
 
-    // Toleransi akhir pekan (Jumat ke Senin = hingga 76 jam)
-    if (diffMs <= 76 * 3600 * 1000) {
+    // Toleransi transisi Minggu malam ke Senin pagi (maksimal 36 jam)
+    if (diffMs <= 36 * 3600 * 1000) {
       const d1 = new Date(ep1);
       const d2 = new Date(ep2);
       const day1 = d1.getUTCDay();
       const day2 = d2.getUTCDay();
-      const isWeekendTransition = 
-        (day1 === 5 || day1 === 6 || day1 === 0) || 
-        (day2 === 5 || day2 === 6 || day2 === 0);
-      if (isWeekendTransition) return true;
+      const isSunMon = (day1 === 0 && day2 === 1) || (day1 === 1 && day2 === 0);
+      if (isSunMon) return true;
     }
 
     return false;
@@ -1814,6 +1888,36 @@ export class GasService {
                 migrated = true;
               }
             }
+
+            if ((k.komoditas || '').toLowerCase().includes('blend')) {
+              const hasOct30 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-10-30'));
+              if (!hasOct30) {
+                const oct30Entries = [
+                  {
+                    id: 'tembakau-blend-dhp-153BK-2026-10-30',
+                    tanggal: '2026-10-30T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pemasukan Hasil Blend',
+                    masuk: 1758.7,
+                    keluar: 0,
+                    saldo: 1758.7,
+                    cek: true
+                  },
+                  {
+                    id: 'tembakau-blend-dhp-KARANGBK-2026-10-30',
+                    tanggal: '2026-10-30T00:00:00.000Z',
+                    kode: 'KARANG - BK',
+                    jenisMutasi: 'Pemasukan Hasil Blend',
+                    masuk: 874.6,
+                    keluar: 0,
+                    saldo: 874.6,
+                    cek: true
+                  }
+                ];
+                k.mutasiTerbaru = [...oct30Entries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+            }
           });
           if (migrated) {
             this.clearSnapshotCache();
@@ -2642,6 +2746,29 @@ export class GasService {
 
   // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---
   public static readonly DEFAULT_DHP_BLEND_ENTRIES: DHPEntry[] = [
+    // === DATA 30 OKTOBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi) ===
+    {
+      tanggal: '2026-10-30T00:00:00.000Z',
+      nama: '153 - BK',
+      nettoKg: 1758.7,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: '153 - BK 11', nettoKg: 879.2 },
+        { no: 2, namaMolen: '153 - BK 12', nettoKg: 879.5 }
+      ]
+    },
+    {
+      tanggal: '2026-10-30T00:00:00.000Z',
+      nama: 'KARANG - BK',
+      nettoKg: 874.6,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: 'KARANG - BK 01', nettoKg: 874.6 }
+      ]
+    },
+
     // === DATA 29 OKTOBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi) ===
     {
       tanggal: '2026-10-29T00:00:00.000Z',

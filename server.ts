@@ -770,7 +770,7 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     }
   });
 
-  app.post('/api/user-configs/delete', (req, res) => {
+  app.all(['/api/user-configs/delete', '/api/user-configs-delete'], (req, res) => {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ ok: false, error: 'Email required' });

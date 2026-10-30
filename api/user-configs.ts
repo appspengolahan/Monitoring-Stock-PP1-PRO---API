@@ -169,11 +169,27 @@ function readRoles(): string[] {
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  if (req.method === 'DELETE' || (req.method === 'POST' && req.body?.action === 'delete')) {
+    try {
+      const email = req.query?.email || req.body?.email;
+      if (!email) {
+        return res.status(400).json({ ok: false, error: 'Email is required' });
+      }
+      const cleanEmail = String(email).toLowerCase().trim();
+      let users = readUsers();
+      users = users.filter((u: any) => u.email.toLowerCase().trim() !== cleanEmail);
+      writeUsers(users);
+      return res.status(200).json({ ok: true, users });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
   }
 
   if (req.method === 'POST') {
