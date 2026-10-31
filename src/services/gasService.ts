@@ -15,7 +15,7 @@ const STORAGE_KEYS = {
   CUSTOM_MUTASI: 'stockpp1_custom_mutasi_v1',
   SNAPSHOT_CACHE: 'stockpp1_snapshot_cache',
   DHP_RECONCILIATION: 'stockpp1_dhp_reconciliation_v3',
-  DHP_BLEND_RECONCILIATION: 'stockpp1_dhp_blend_reconciliation_v1',
+  DHP_BLEND_RECONCILIATION: 'stockpp1_dhp_blend_reconciliation_v2',
   PENGIRIMAN_BLEND_RECONCILIATION: 'stockpp1_pengiriman_blend_reconciliation_v1',
   SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2',
   SETORAN_CENGKEH_RECONCILIATION: 'stockpp1_setoran_cengkeh_reconciliation_v1',

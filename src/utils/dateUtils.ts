@@ -109,9 +109,9 @@ function parseDateIndoInternal(str: string): Date | null {
     if (!isNaN(dateObj.getTime())) return dateObj;
   }
 
-  // 6. Format Teks Indonesia: contoh "Jumat, 09 Oktober 2026", "9 Oktober 2026", "24 April 2026"
-  // Buang nama hari opsional ("Senin, ", "Jumat, ", dst.)
-  const cleanStr = str.replace(/^(minggu|senin|selasa|rabu|kamis|jumat|sabtu|ahad)[\s,]+/i, '').trim();
+  // 6. Format Teks Indonesia: contoh "Jumat, 09 Oktober 2026", "Jum, 30 Okt 2026", "9 Oktober 2026", "24 April 2026"
+  // Buang nama hari opsional ("Senin, ", "Jumat, ", "Jum, ", "Sab, ", dst.)
+  const cleanStr = str.replace(/^(minggu|senin|selasa|rabu|kamis|jumat|sabtu|ahad|min|sen|sel|rab|kam|jum|sab)[\s,.]+/i, '').trim();
   const textMatch = cleanStr.match(/^(\d{1,2})[\s\-]+([a-zA-Z]+)[\s\-]+(\d{4})/);
   if (textMatch) {
     const d = parseInt(textMatch[1], 10);
