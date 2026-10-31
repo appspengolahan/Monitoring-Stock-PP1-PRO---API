@@ -1550,9 +1550,146 @@ function doPost(e) {
       return jsonResponse_(delRes);
     }
 
+    // Endpoint untuk Push Entri BSPP Digital Baru dari Web Apps (misal data 27 Okt 2026 ke atas)
+    if (action === "pushbspp" || action === "appendbspp" || action === "savebspp") {
+      var bsppData = payload.entries || payload.data || payload.entry || [];
+      var komoditasTarget = payload.commodity || payload.komoditas || (e && e.parameter && e.parameter.commodity) || "";
+      var pushRes = saveBsppEntriesToSheet_(bsppData, komoditasTarget);
+      return jsonResponse_(pushRes);
+    }
+
     return jsonResponse_({ success: false, message: "Aksi tidak dikenali: " + action });
   } catch (err) {
     return jsonResponse_({ success: false, error: err.message || String(err) });
+  }
+}
+
+/**
+ * Menyimpan / Menambahkan Entri BSPP Harian yang Dikirim Langsung dari Web App
+ * Otomatis menangani deduplikasi ID Unik, sorting kronologis, dan update ringkasan konsolidasi.
+ */
+function saveBsppEntriesToSheet_(entries, commodityKey) {
+  try {
+    if (!entries) return { success: false, message: "Data entri BSPP kosong." };
+    var entryList = Array.isArray(entries) ? entries : [entries];
+    if (entryList.length === 0) return { success: false, message: "Daftar entri BSPP kosong." };
+
+    var ss = getTargetSpreadsheet_();
+    var cfg = null;
+    if (commodityKey) {
+      var cKey = String(commodityKey).toUpperCase().trim();
+      if (cKey.includes("CENGKEH")) cfg = SINKRONISASI_CONFIG.CENGKEH;
+      else if (cKey.includes("BLEND")) cfg = SINKRONISASI_CONFIG.BLEND;
+      else if (cKey.includes("RAJANG II") || cKey.includes("RAJANG 2")) cfg = SINKRONISASI_CONFIG.RAJANG_II;
+      else if (cKey.includes("RAJANG I") || cKey.includes("RAJANG 1")) cfg = SINKRONISASI_CONFIG.RAJANG_I;
+    }
+
+    // Jika parameter komoditas belum ada, deteksi dari entri pertama
+    if (!cfg && entryList[0].komoditas) {
+      var kName = String(entryList[0].komoditas).toUpperCase();
+      if (kName.includes("CENGKEH")) cfg = SINKRONISASI_CONFIG.CENGKEH;
+      else if (kName.includes("BLEND")) cfg = SINKRONISASI_CONFIG.BLEND;
+      else if (kName.includes("RAJANG II") || kName.includes("RAJANG 2")) cfg = SINKRONISASI_CONFIG.RAJANG_II;
+      else if (kName.includes("RAJANG I") || kName.includes("RAJANG 1")) cfg = SINKRONISASI_CONFIG.RAJANG_I;
+    }
+    if (!cfg) cfg = SINKRONISASI_CONFIG.BLEND;
+
+    var sheet = ss.getSheetByName(cfg.nama);
+    if (!sheet) {
+      setupCommoditySheet_(ss, cfg.nama, cfg.warnaHeader);
+      sheet = ss.getSheetByName(cfg.nama);
+    }
+
+    var lastRow = sheet.getLastRow();
+    var existingRows = [];
+    var existingIdMap = {};
+
+    if (lastRow > 1) {
+      existingRows = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+      for (var r = 0; r < existingRows.length; r++) {
+        var idVal = String(existingRows[r][10]).trim(); // Kolom 11: ID Unik
+        if (idVal) existingIdMap[idVal] = r;
+      }
+    }
+
+    var insertedRows = [];
+    var updatedCount = 0;
+    var nowStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
+
+    entryList.forEach(function(item) {
+      var isoDate = parseIndonesianDateStringToIso_(item.tanggal) || String(item.tanggal || "").slice(0, 10);
+      var jenisStr = String(item.jenis || item.varian || "").trim();
+      var netto = parseIndonesianNumber_(item.labelNetto, 0);
+      var timbang = parseIndonesianNumber_(item.timbangUlang, 0);
+      var selisihKg = (item.selisihKg !== undefined && item.selisihKg !== null)
+        ? parseIndonesianNumber_(item.selisihKg, timbang - netto)
+        : Math.round((timbang - netto) * 10) / 10;
+      var selisihPct = (item.selisihPersen !== undefined && item.selisihPersen !== null)
+        ? parseIndonesianNumber_(item.selisihPersen, netto > 0 ? selisihKg / netto : 0)
+        : (netto > 0 ? selisihKg / netto : 0);
+      if (selisihPct > 1) selisihPct = selisihPct / 100;
+
+      var status = String(item.status || "").trim();
+      if (!status) {
+        if (selisihKg < -0.05) status = "Selisih Kurang";
+        else if (selisihKg > 0.05) status = "Selisih Lebih";
+        else status = "Tanpa Selisih";
+      }
+      var suhu = (item.suhu !== undefined && item.suhu !== null && String(item.suhu) !== "") ? item.suhu : (cfg.suhuDefault || "-");
+      var uniqueId = item.idUnik || generateUniqueId_({ tanggal: isoDate, jenis: jenisStr, labelNetto: netto }, cfg.nama);
+
+      if (existingIdMap[uniqueId] !== undefined) {
+        var idx = existingIdMap[uniqueId];
+        existingRows[idx][4] = netto;
+        existingRows[idx][5] = timbang;
+        existingRows[idx][6] = selisihKg;
+        existingRows[idx][7] = selisihPct;
+        existingRows[idx][8] = status;
+        existingRows[idx][9] = suhu;
+        existingRows[idx][11] = nowStr;
+        updatedCount++;
+      } else {
+        insertedRows.push([
+          existingRows.length + insertedRows.length + 1,
+          isoDate,
+          cfg.nama,
+          jenisStr,
+          netto,
+          timbang,
+          selisihKg,
+          selisihPct,
+          status,
+          suhu,
+          uniqueId,
+          nowStr
+        ]);
+      }
+    });
+
+    if (existingRows.length > 0 && updatedCount > 0) {
+      sheet.getRange(2, 1, existingRows.length, 12).setValues(existingRows);
+    }
+    if (insertedRows.length > 0) {
+      var startRow = sheet.getLastRow() + 1;
+      var maxRows = sheet.getMaxRows();
+      if (startRow + insertedRows.length > maxRows) {
+        sheet.insertRowsAfter(maxRows, insertedRows.length + 100);
+      }
+      sheet.getRange(startRow, 1, insertedRows.length, 12).setValues(insertedRows);
+    }
+
+    sortAndNormalizeSheet_(sheet);
+    updateSummarySheetData_(ss);
+
+    return {
+      success: true,
+      message: "Berhasil menyimpan " + insertedRows.length + " data baru & " + updatedCount + " data diperbarui ke tab " + cfg.nama,
+      inserted: insertedRows.length,
+      updated: updatedCount,
+      sheetName: cfg.nama
+    };
+  } catch (err) {
+    return { success: false, error: err.message || String(err) };
   }
 }
 
