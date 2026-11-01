@@ -37,6 +37,7 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
   const [categoryFilter, setCategoryFilter] = useState<'all' | CommodityCategory>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Defisit' | 'Menipis' | 'Aman'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [hideZeroStock, setHideZeroStock] = useState<boolean>(true); // Default: sembunyikan saldo 0 / tidak aktif
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [selectedItemDetail, setSelectedItemDetail] = useState<CalculatedStockItem | null>(null);
@@ -72,8 +73,15 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
   // 5. Filtered items
   const filteredItems = useMemo(() => {
     return items.filter(item => {
-      // Category filter
-      if (categoryFilter !== 'all' && item.kategori !== categoryFilter) return false;
+      // Category filter - strict match
+      if (categoryFilter === 'Cengkeh' && item.kategori !== 'Cengkeh') return false;
+      if (categoryFilter === 'Tembakau & Krosok (Rajang II)' && item.kategori !== 'Tembakau & Krosok (Rajang II)') return false;
+
+      // Checkbox "Sembunyikan Saldo 0":
+      // Ketika aktif (default), sembunyikan bahan yang tidak memiliki saldo riil gudang dan tidak ada rencana pemakaian
+      if (hideZeroStock && item.saldoRiilGudang <= 0 && item.totalKebutuhan <= 0) {
+        return false;
+      }
 
       // Status filter
       if (statusFilter !== 'all' && item.status !== statusFilter) return false;
@@ -89,7 +97,7 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
 
       return true;
     });
-  }, [items, categoryFilter, statusFilter, searchQuery]);
+  }, [items, categoryFilter, statusFilter, searchQuery, hideZeroStock]);
 
   // Plan Breakdown info
   const planInfo = prufData.planInfo;
@@ -318,9 +326,9 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
             </div>
           )}
 
-          {/* Quick Filter Buttons */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400 font-medium mr-1">Filter Kategori:</span>
+          {/* Quick Filter Buttons & Sembunyikan Saldo 0 */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-slate-400 font-medium mr-0.5">Filter Kategori:</span>
             <button
               onClick={() => setCategoryFilter('all')}
               className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
@@ -335,7 +343,7 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
                 categoryFilter === 'Tembakau & Krosok (Rajang II)' ? 'bg-amber-800 text-white shadow-2xs' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
               }`}
             >
-              Rajang II ({items.filter(i => i.kategori.includes('Rajang II')).length})
+              Rajang II ({items.filter(i => i.kategori === 'Tembakau & Krosok (Rajang II)').length})
             </button>
             <button
               onClick={() => setCategoryFilter('Cengkeh')}
@@ -345,6 +353,19 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
             >
               Cengkeh ({items.filter(i => i.kategori === 'Cengkeh').length})
             </button>
+
+            <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
+
+            {/* Checkbox Sembunyikan Saldo 0 */}
+            <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 transition-colors shadow-2xs">
+              <input
+                type="checkbox"
+                checked={hideZeroStock}
+                onChange={(e) => setHideZeroStock(e.target.checked)}
+                className="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+              />
+              <span>Sembunyikan Saldo 0</span>
+            </label>
           </div>
         </div>
       </div>
@@ -425,7 +446,12 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
               {filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={12} className="py-12 text-center text-slate-400">
-                    Tidak ada bahan yang cocok dengan kriteria pencarian / filter.
+                    <div>Tidak ada bahan yang cocok dengan kriteria pencarian / filter.</div>
+                    {hideZeroStock && (
+                      <div className="text-[11px] text-slate-400 mt-1">
+                        (Bahan bersaldo 0 disembunyikan. Hilangkan centang &quot;Sembunyikan Saldo 0&quot; di atas untuk menampilkan seluruh bahan).
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (

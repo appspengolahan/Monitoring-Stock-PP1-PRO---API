@@ -4,14 +4,15 @@ import {
   EstimationConfig, 
   EstimationSummary, 
   PrufItem,
-  BatchPlanInfo
+  BatchPlanInfo,
+  CommodityCategory
 } from '../types/stockEstimation';
 import { KomoditasData } from '../types';
 import databasePrufBaseline from '../data/databasePrufBaseline.json';
 import { GasService } from './gasService';
 
 const SPREADSHEET_ID = '1qnTh5PL0oitFtH7tx7pI1r4jBnWk9vgVuUVJnWUAvk4';
-const STORAGE_KEY_PRUF_DATA = 'stockpp1_database_pruf_cache_v1';
+const STORAGE_KEY_PRUF_DATA = 'stockpp1_database_pruf_cache_v3';
 const STORAGE_KEY_ESTIMATION_CONFIG = 'stockpp1_estimation_config_v1';
 
 export const SUBSTITUTION_RULES: Record<string, string> = {
@@ -54,6 +55,9 @@ export class StockEstimationService {
   public static getPrufData(): DatabasePrufData {
     if (typeof localStorage !== 'undefined') {
       try {
+        // Hapus cache lama versi 1 dan 2 agar bersih
+        localStorage.removeItem('stockpp1_database_pruf_cache_v1');
+        localStorage.removeItem('stockpp1_database_pruf_cache_v2');
         const stored = localStorage.getItem(STORAGE_KEY_PRUF_DATA);
         if (stored) {
           const parsed = JSON.parse(stored);
@@ -254,10 +258,42 @@ export class StockEstimationService {
       return { saldo: 0, matchedName: '' };
     };
 
-    // Gabungkan bahan tembakau dan cengkeh
+    // Helper verifikasi jenis bahan
+    const isCloveName = (name: string): boolean => {
+      const n = name.toUpperCase();
+      return n.includes('CENGKEH') || n.includes('MANADO') || n.includes('GAGANG') || n.includes('PELURU') || n.includes('ANGKUP') || n.includes('JAWA/LOKAL');
+    };
+
+    // 2. Isolasi ketat Cengkeh dan Tembakau agar tidak pernah tertukar
+    const cleanCengkeh: PrufItem[] = (data.cengkehItems || [])
+      .filter(item => {
+        if (!item || !item.nama) return false;
+        // Pastikan tidak ada bahan tembakau di cengkeh
+        const isTbk = item.nama.toLowerCase().includes('boyolali') || 
+                      item.nama.toLowerCase().includes('lombok') || 
+                      item.nama.toLowerCase().includes('madura') ||
+                      item.nama.toLowerCase().includes('besuki') ||
+                      item.nama.toLowerCase().includes('amerika');
+        return !isTbk && (item.kategori === 'Cengkeh' || isCloveName(item.nama));
+      })
+      .map((item, idx) => ({
+        ...item,
+        id: `cgk_${idx}_${item.nama.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        kategori: 'Cengkeh' as CommodityCategory
+      }));
+
+    const cleanTembakau: PrufItem[] = (data.tembakauItems || [])
+      .filter(item => item && item.nama && item.kategori !== 'Cengkeh' && !isCloveName(item.nama))
+      .map((item, idx) => ({
+        ...item,
+        id: `tbk_${idx}_${item.nama.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        kategori: 'Tembakau & Krosok (Rajang II)' as CommodityCategory
+      }));
+
+    // Gabungkan bahan tembakau dan cengkeh yang sudah terisolasi murni
     const allPrufItems: PrufItem[] = [
-      ...data.tembakauItems,
-      ...data.cengkehItems
+      ...cleanTembakau,
+      ...cleanCengkeh
     ];
 
     const totalBatchPlan = data.planInfo.campurTotalSemua || 47; // Default 47 campur sesuai sheet
