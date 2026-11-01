@@ -1,0 +1,1498 @@
+{
+  "spreadsheetId": "1qnTh5PL0oitFtH7tx7pI1r4jBnWk9vgVuUVJnWUAvk4",
+  "lastUpdated": "2026-11-01T08:50:24.369Z",
+  "planInfo": {
+    "campur153": 40,
+    "campurKarang": 6,
+    "campurSP": 0,
+    "campurTIS": 0,
+    "campurTotalSKT": 46,
+    "campurFReguler": 1,
+    "campurFRLABold": 0,
+    "campurTotalSKM": 1,
+    "campurTotalSemua": 47
+  },
+  "cengkehItems": [
+    {
+      "id": "cengkeh_1_3_09_13",
+      "kategori": "Cengkeh",
+      "kodeIntern": "1.3.09.13",
+      "nama": "GAGANG PELURU A 2018",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    },
+    {
+      "id": "cengkeh_1_3_52_10",
+      "kategori": "Cengkeh",
+      "kodeIntern": "1.3.52.10",
+      "nama": "MANADO GRADE A (2021)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    },
+    {
+      "id": "cengkeh_manado_grade_a__2023_",
+      "kategori": "Cengkeh",
+      "kodeIntern": "",
+      "nama": "MANADO GRADE A (2023)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    },
+    {
+      "id": "cengkeh_1_3_08_31",
+      "kategori": "Cengkeh",
+      "kodeIntern": "1.3.08.31",
+      "nama": "MANADO GRADE A (2024)",
+      "resep": {
+        "pct153": 36,
+        "kg153": 216,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 35,
+        "kgFReguler": 77,
+        "pctTIS": 36,
+        "kgTIS": 50.4,
+        "pctKarang": 36,
+        "kgKarang": 216
+      },
+      "kebutuhanPlan": {
+        "req153": 8640,
+        "reqKarang": 1296,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 9936,
+        "reqFReguler": 77,
+        "reqFRLABold": 0,
+        "totalSKM": 77,
+        "totalSemua": 10013
+      }
+    },
+    {
+      "id": "cengkeh_1_3_08_38a",
+      "kategori": "Cengkeh",
+      "kodeIntern": "1.3.08.38A",
+      "nama": "MANADO KODE B",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    }
+  ],
+  "tembakauItems": [
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_09_15",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.09.15",
+      "nama": "Amerika 2025 (BO1)",
+      "resep": {
+        "pct153": 6,
+        "kg153": 36,
+        "pctSP": 6,
+        "kgSP": 36,
+        "pctFReguler": 6,
+        "kgFReguler": 13.2,
+        "pctTIS": 6,
+        "kgTIS": 8.4,
+        "pctKarang": 7,
+        "kgKarang": 42
+      },
+      "kebutuhanPlan": {
+        "req153": 1440,
+        "reqKarang": 252,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 1692,
+        "reqFReguler": 13.2,
+        "reqFRLABold": 0,
+        "totalSKM": 13.2,
+        "totalSemua": 1705.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__beringin_2024__hs_",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "",
+      "nama": "Beringin 2024 (HS)",
+      "resep": {
+        "pct153": 2,
+        "kg153": 12,
+        "pctSP": 2,
+        "kgSP": 12,
+        "pctFReguler": 2.5,
+        "kgFReguler": 5.5,
+        "pctTIS": 2,
+        "kgTIS": 2.8,
+        "pctKarang": 2,
+        "kgKarang": 12
+      },
+      "kebutuhanPlan": {
+        "req153": 480,
+        "reqKarang": 72,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 552,
+        "reqFReguler": 5.5,
+        "reqFRLABold": 0,
+        "totalSKM": 5.5,
+        "totalSemua": 557.5
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__besuki_2024__zn_",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "",
+      "nama": "Besuki 2024 (ZN)",
+      "resep": {
+        "pct153": 0.5,
+        "kg153": 3,
+        "pctSP": 0.5,
+        "kgSP": 3,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0.5,
+        "kgTIS": 0.7,
+        "pctKarang": 0.5,
+        "kgKarang": 3
+      },
+      "kebutuhanPlan": {
+        "req153": 120,
+        "reqKarang": 18,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 138,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 138
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__besuki_2025__zn_",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "",
+      "nama": "Besuki 2025 (ZN)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_08_31",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.08.31",
+      "nama": "Besuki Grade B (2022)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_09_16",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.09.16",
+      "nama": "Brazil 2025 (BOA)",
+      "resep": {
+        "pct153": 4,
+        "kg153": 24,
+        "pctSP": 4,
+        "kgSP": 24,
+        "pctFReguler": 5,
+        "kgFReguler": 11,
+        "pctTIS": 4,
+        "kgTIS": 5.6,
+        "pctKarang": 4,
+        "kgKarang": 24
+      },
+      "kebutuhanPlan": {
+        "req153": 960,
+        "reqKarang": 144,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 1104,
+        "reqFReguler": 11,
+        "reqFRLABold": 0,
+        "totalSKM": 11,
+        "totalSemua": 1115
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_09_13",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.09.13",
+      "nama": "Brazil Grade B (2022)",
+      "resep": {
+        "pct153": 1,
+        "kg153": 6,
+        "pctSP": 1,
+        "kgSP": 6,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 1,
+        "kgTIS": 1.4,
+        "pctKarang": 1,
+        "kgKarang": 6
+      },
+      "kebutuhanPlan": {
+        "req153": 240,
+        "reqKarang": 36,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 276,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 276
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_2_66_2",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.2.66.2",
+      "nama": "Diet Trial - 1 (2025)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0.5,
+        "kgSP": 3,
+        "pctFReguler": 1,
+        "kgFReguler": 2.2,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0.5,
+        "kgKarang": 3
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 18,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 18,
+        "reqFReguler": 2.2,
+        "reqFRLABold": 0,
+        "totalSKM": 2.2,
+        "totalSemua": 20.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__diet_trial___3__2026_",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "",
+      "nama": "Diet Trial - 3 (2026)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0.5,
+        "kgSP": 3,
+        "pctFReguler": 3,
+        "kgFReguler": 6.6,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 1.5,
+        "kgKarang": 9
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 54,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 54,
+        "reqFReguler": 6.6,
+        "reqFRLABold": 0,
+        "totalSKM": 6.6,
+        "totalSemua": 60.6
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_22_60",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.22.60",
+      "nama": "Diet Trial - 3 Plus (2026)",
+      "resep": {
+        "pct153": 1,
+        "kg153": 6,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 1,
+        "kgTIS": 1.4,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 240,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 240,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 240
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_34_20a",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.34.20A",
+      "nama": "Expanded Stem - 1B Grade B (2023)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0.5,
+        "kgFReguler": 1.1,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 1.1,
+        "reqFRLABold": 0,
+        "totalSKM": 1.1,
+        "totalSemua": 1.1
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_66_1",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.66.1",
+      "nama": "FCV Diet Tobacco SGI (2024)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 1,
+        "kgFReguler": 2.2,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 2.2,
+        "reqFRLABold": 0,
+        "totalSKM": 2.2,
+        "totalSemua": 2.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_05_25",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.05.25",
+      "nama": "Garut 2024 (FR)",
+      "resep": {
+        "pct153": 1,
+        "kg153": 6,
+        "pctSP": 1,
+        "kgSP": 6,
+        "pctFReguler": 1,
+        "kgFReguler": 2.2,
+        "pctTIS": 1,
+        "kgTIS": 1.4,
+        "pctKarang": 1,
+        "kgKarang": 6
+      },
+      "kebutuhanPlan": {
+        "req153": 240,
+        "reqKarang": 36,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 276,
+        "reqFReguler": 2.2,
+        "reqFRLABold": 0,
+        "totalSKM": 2.2,
+        "totalSemua": 278.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__garut_2025__fr_",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "",
+      "nama": "Garut 2025 (FR)",
+      "resep": {
+        "pct153": 1,
+        "kg153": 6,
+        "pctSP": 1,
+        "kgSP": 6,
+        "pctFReguler": 0.5,
+        "kgFReguler": 1.1,
+        "pctTIS": 1,
+        "kgTIS": 1.4,
+        "pctKarang": 1,
+        "kgKarang": 6
+      },
+      "kebutuhanPlan": {
+        "req153": 240,
+        "reqKarang": 36,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 276,
+        "reqFReguler": 1.1,
+        "reqFRLABold": 0,
+        "totalSKM": 1.1,
+        "totalSemua": 277.1
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_69_01t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.69.01T",
+      "nama": "Hang Boyolali 2024 (FS)",
+      "resep": {
+        "pct153": 0.5,
+        "kg153": 3,
+        "pctSP": 0.5,
+        "kgSP": 3,
+        "pctFReguler": 1,
+        "kgFReguler": 2.2,
+        "pctTIS": 0.5,
+        "kgTIS": 0.7,
+        "pctKarang": 0.5,
+        "kgKarang": 3
+      },
+      "kebutuhanPlan": {
+        "req153": 120,
+        "reqKarang": 18,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 138,
+        "reqFReguler": 2.2,
+        "reqFRLABold": 0,
+        "totalSKM": 2.2,
+        "totalSemua": 140.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_10_18t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.10.18T",
+      "nama": "Hang Madura 2024 (BAT)",
+      "resep": {
+        "pct153": 0.5,
+        "kg153": 3,
+        "pctSP": 0.5,
+        "kgSP": 3,
+        "pctFReguler": 1,
+        "kgFReguler": 2.2,
+        "pctTIS": 0.5,
+        "kgTIS": 0.7,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 120,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 120,
+        "reqFReguler": 2.2,
+        "reqFRLABold": 0,
+        "totalSKM": 2.2,
+        "totalSemua": 122.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_10_17",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.10.17",
+      "nama": "Hang Madura Grade B (2021)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 1,
+        "kgFReguler": 2.2,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 2.2,
+        "reqFRLABold": 0,
+        "totalSKM": 2.2,
+        "totalSemua": 2.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_69_01t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.69.01T",
+      "nama": "Janturan Boyolali 2024 (VJI)",
+      "resep": {
+        "pct153": 1,
+        "kg153": 6,
+        "pctSP": 1,
+        "kgSP": 6,
+        "pctFReguler": 1,
+        "kgFReguler": 2.2,
+        "pctTIS": 1,
+        "kgTIS": 1.4,
+        "pctKarang": 1,
+        "kgKarang": 6
+      },
+      "kebutuhanPlan": {
+        "req153": 240,
+        "reqKarang": 36,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 276,
+        "reqFReguler": 2.2,
+        "reqFRLABold": 0,
+        "totalSKM": 2.2,
+        "totalSemua": 278.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_64_4",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.64.4",
+      "nama": "Janturan Grade B (2020)",
+      "resep": {
+        "pct153": 0.5,
+        "kg153": 3,
+        "pctSP": 0.5,
+        "kgSP": 3,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0.5,
+        "kgTIS": 0.7,
+        "pctKarang": 0.5,
+        "kgKarang": 3
+      },
+      "kebutuhanPlan": {
+        "req153": 120,
+        "reqKarang": 18,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 138,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 138
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_64_7t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.64.7T",
+      "nama": "Janturan Jombang 2024 (MYN)",
+      "resep": {
+        "pct153": 0.5,
+        "kg153": 3,
+        "pctSP": 0.5,
+        "kgSP": 3,
+        "pctFReguler": 1.5,
+        "kgFReguler": 3.3,
+        "pctTIS": 0.5,
+        "kgTIS": 0.7,
+        "pctKarang": 0.5,
+        "kgKarang": 3
+      },
+      "kebutuhanPlan": {
+        "req153": 120,
+        "reqKarang": 18,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 138,
+        "reqFReguler": 3.3,
+        "reqFRLABold": 0,
+        "totalSKM": 3.3,
+        "totalSemua": 141.3
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_11_24",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.11.24",
+      "nama": "Joning 2024 (AR)",
+      "resep": {
+        "pct153": 0.5,
+        "kg153": 3,
+        "pctSP": 0.5,
+        "kgSP": 3,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0.5,
+        "kgTIS": 0.7,
+        "pctKarang": 0.5,
+        "kgKarang": 3
+      },
+      "kebutuhanPlan": {
+        "req153": 120,
+        "reqKarang": 18,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 138,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 138
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__kasturi_2023__st_",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "",
+      "nama": "Kasturi 2023 (ST)",
+      "resep": {
+        "pct153": 1,
+        "kg153": 6,
+        "pctSP": 1,
+        "kgSP": 6,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 1,
+        "kgTIS": 1.4,
+        "pctKarang": 1,
+        "kgKarang": 6
+      },
+      "kebutuhanPlan": {
+        "req153": 240,
+        "reqKarang": 36,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 276,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 276
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_08_38a",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.08.38A",
+      "nama": "Kasturi 2024 (BE) - 1",
+      "resep": {
+        "pct153": 3.5,
+        "kg153": 21,
+        "pctSP": 1.5,
+        "kgSP": 9,
+        "pctFReguler": 4,
+        "kgFReguler": 8.8,
+        "pctTIS": 3.5,
+        "kgTIS": 4.9,
+        "pctKarang": 3.5,
+        "kgKarang": 21
+      },
+      "kebutuhanPlan": {
+        "req153": 840,
+        "reqKarang": 126,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 966,
+        "reqFReguler": 8.8,
+        "reqFRLABold": 0,
+        "totalSKM": 8.8,
+        "totalSemua": 974.8
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_67_1t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.67.1T",
+      "nama": "Krs. Garut 2024 (MYN)",
+      "resep": {
+        "pct153": 1,
+        "kg153": 6,
+        "pctSP": 1,
+        "kgSP": 6,
+        "pctFReguler": 2,
+        "kgFReguler": 4.4,
+        "pctTIS": 1,
+        "kgTIS": 1.4,
+        "pctKarang": 1,
+        "kgKarang": 6
+      },
+      "kebutuhanPlan": {
+        "req153": 240,
+        "reqKarang": 36,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 276,
+        "reqFReguler": 4.4,
+        "reqFRLABold": 0,
+        "totalSKM": 4.4,
+        "totalSemua": 280.4
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_13_43t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.13.43T",
+      "nama": "Krs. Garut 2025 (MYN)",
+      "resep": {
+        "pct153": 1.5,
+        "kg153": 9,
+        "pctSP": 1.5,
+        "kgSP": 9,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 1.5,
+        "kgTIS": 2.1,
+        "pctKarang": 1.5,
+        "kgKarang": 9
+      },
+      "kebutuhanPlan": {
+        "req153": 360,
+        "reqKarang": 54,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 414,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 414
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_23_51t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.23.51T",
+      "nama": "Lombok 2024 (BE) - 1",
+      "resep": {
+        "pct153": 3,
+        "kg153": 18,
+        "pctSP": 3,
+        "kgSP": 18,
+        "pctFReguler": 2,
+        "kgFReguler": 4.4,
+        "pctTIS": 3,
+        "kgTIS": 4.2,
+        "pctKarang": 3,
+        "kgKarang": 18
+      },
+      "kebutuhanPlan": {
+        "req153": 720,
+        "reqKarang": 108,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 828,
+        "reqFReguler": 4.4,
+        "reqFRLABold": 0,
+        "totalSKM": 4.4,
+        "totalSemua": 832.4
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_23_51t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.23.51T",
+      "nama": "Lombok 2024 (FS) - 1",
+      "resep": {
+        "pct153": 1,
+        "kg153": 6,
+        "pctSP": 1,
+        "kgSP": 6,
+        "pctFReguler": 2,
+        "kgFReguler": 4.4,
+        "pctTIS": 1,
+        "kgTIS": 1.4,
+        "pctKarang": 1,
+        "kgKarang": 6
+      },
+      "kebutuhanPlan": {
+        "req153": 240,
+        "reqKarang": 36,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 276,
+        "reqFReguler": 4.4,
+        "reqFRLABold": 0,
+        "totalSKM": 4.4,
+        "totalSemua": 280.4
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_15_143r",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.15.143R",
+      "nama": "Madura 2024 (BAT) R",
+      "resep": {
+        "pct153": 32,
+        "kg153": 192,
+        "pctSP": 32,
+        "kgSP": 192,
+        "pctFReguler": 28,
+        "kgFReguler": 61.6,
+        "pctTIS": 32,
+        "kgTIS": 44.8,
+        "pctKarang": 32,
+        "kgKarang": 192
+      },
+      "kebutuhanPlan": {
+        "req153": 7680,
+        "reqKarang": 1152,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 8832,
+        "reqFReguler": 61.6,
+        "reqFRLABold": 0,
+        "totalSKM": 61.6,
+        "totalSemua": 8893.6
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_22_59r",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.22.59R",
+      "nama": "Maesan 2024 (HS)",
+      "resep": {
+        "pct153": 1,
+        "kg153": 6,
+        "pctSP": 1,
+        "kgSP": 6,
+        "pctFReguler": 1,
+        "kgFReguler": 2.2,
+        "pctTIS": 1,
+        "kgTIS": 1.4,
+        "pctKarang": 1,
+        "kgKarang": 6
+      },
+      "kebutuhanPlan": {
+        "req153": 240,
+        "reqKarang": 36,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 276,
+        "reqFReguler": 2.2,
+        "reqFRLABold": 0,
+        "totalSKM": 2.2,
+        "totalSemua": 278.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_33_15r",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.33.15R",
+      "nama": "Mranggen 2024 (LL)",
+      "resep": {
+        "pct153": 3,
+        "kg153": 18,
+        "pctSP": 3,
+        "kgSP": 18,
+        "pctFReguler": 3,
+        "kgFReguler": 6.6,
+        "pctTIS": 3,
+        "kgTIS": 4.2,
+        "pctKarang": 3,
+        "kgKarang": 18
+      },
+      "kebutuhanPlan": {
+        "req153": 720,
+        "reqKarang": 108,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 828,
+        "reqFReguler": 6.6,
+        "reqFRLABold": 0,
+        "totalSKM": 6.6,
+        "totalSemua": 834.6
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_17_60t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.17.60T",
+      "nama": "Paiton 2023 (DM)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 4,
+        "kgFReguler": 8.8,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 8.8,
+        "reqFRLABold": 0,
+        "totalSKM": 8.8,
+        "totalSemua": 8.8
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_17_64r",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.17.64R",
+      "nama": "Paiton 2024 (VJI)",
+      "resep": {
+        "pct153": 4,
+        "kg153": 24,
+        "pctSP": 4,
+        "kgSP": 24,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 4,
+        "kgTIS": 5.6,
+        "pctKarang": 4,
+        "kgKarang": 24
+      },
+      "kebutuhanPlan": {
+        "req153": 960,
+        "reqKarang": 144,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 1104,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 1104
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_07_54",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.07.54",
+      "nama": "Pakpie Grade B (2019)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_07_64t",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.07.64T",
+      "nama": "Ploso 2024 (MYN)",
+      "resep": {
+        "pct153": 5.5,
+        "kg153": 33,
+        "pctSP": 4,
+        "kgSP": 24,
+        "pctFReguler": 5,
+        "kgFReguler": 11,
+        "pctTIS": 5.5,
+        "kgTIS": 7.7,
+        "pctKarang": 5.5,
+        "kgKarang": 33
+      },
+      "kebutuhanPlan": {
+        "req153": 1320,
+        "reqKarang": 198,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 1518,
+        "reqFReguler": 11,
+        "reqFRLABold": 0,
+        "totalSKM": 11,
+        "totalSemua": 1529
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_59_02",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.59.02",
+      "nama": "Rajangan Kuningan Grade A",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_65_6",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.65.6",
+      "nama": "Sapudi 2024 (GF)",
+      "resep": {
+        "pct153": 1.5,
+        "kg153": 9,
+        "pctSP": 1.5,
+        "kgSP": 9,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 1.5,
+        "kgTIS": 2.1,
+        "pctKarang": 1.5,
+        "kgKarang": 9
+      },
+      "kebutuhanPlan": {
+        "req153": 360,
+        "reqKarang": 54,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 414,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 414
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_68_1",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.68.1",
+      "nama": "Tbk Escot 2024 (BE)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 3.5,
+        "kgFReguler": 7.7,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 7.7,
+        "reqFRLABold": 0,
+        "totalSKM": 7.7,
+        "totalSemua": 7.7
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_20_31",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.20.31",
+      "nama": "Temanggung Grade C (2017)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_20_32",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.20.32",
+      "nama": "Temanggung Srintil Grade C (2015)",
+      "resep": {
+        "pct153": 0,
+        "kg153": 0,
+        "pctSP": 0,
+        "kgSP": 0,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0,
+        "kgTIS": 0,
+        "pctKarang": 0,
+        "kgKarang": 0
+      },
+      "kebutuhanPlan": {
+        "req153": 0,
+        "reqKarang": 0,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 0,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 0
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__weleri_2024__hk_",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "",
+      "nama": "Weleri 2024 (HK)",
+      "resep": {
+        "pct153": 4.5,
+        "kg153": 27,
+        "pctSP": 4.5,
+        "kgSP": 27,
+        "pctFReguler": 5,
+        "kgFReguler": 11,
+        "pctTIS": 4.5,
+        "kgTIS": 6.3,
+        "pctKarang": 4.5,
+        "kgKarang": 27
+      },
+      "kebutuhanPlan": {
+        "req153": 1080,
+        "reqKarang": 162,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 1242,
+        "reqFReguler": 11,
+        "reqFRLABold": 0,
+        "totalSKM": 11,
+        "totalSemua": 1253
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_22_58",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.22.58",
+      "nama": "Weleri Grade B (2021)",
+      "resep": {
+        "pct153": 0.5,
+        "kg153": 3,
+        "pctSP": 0.5,
+        "kgSP": 3,
+        "pctFReguler": 0,
+        "kgFReguler": 0,
+        "pctTIS": 0.5,
+        "kgTIS": 0.7,
+        "pctKarang": 0.5,
+        "kgKarang": 3
+      },
+      "kebutuhanPlan": {
+        "req153": 120,
+        "reqKarang": 18,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 138,
+        "reqFReguler": 0,
+        "reqFRLABold": 0,
+        "totalSKM": 0,
+        "totalSemua": 138
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_62_4",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.62.4",
+      "nama": "Zambia M1L (2023)",
+      "resep": {
+        "pct153": 2,
+        "kg153": 12,
+        "pctSP": 2,
+        "kgSP": 12,
+        "pctFReguler": 2,
+        "kgFReguler": 4.4,
+        "pctTIS": 2,
+        "kgTIS": 2.8,
+        "pctKarang": 1.5,
+        "kgKarang": 9
+      },
+      "kebutuhanPlan": {
+        "req153": 480,
+        "reqKarang": 54,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 534,
+        "reqFReguler": 4.4,
+        "reqFRLABold": 0,
+        "totalSKM": 4.4,
+        "totalSemua": 538.4
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_14_30",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.14.30",
+      "nama": "Zimbabwe 2025 (HR) L1OF",
+      "resep": {
+        "pct153": 5,
+        "kg153": 30,
+        "pctSP": 5,
+        "kgSP": 30,
+        "pctFReguler": 4,
+        "kgFReguler": 8.8,
+        "pctTIS": 5,
+        "kgTIS": 7,
+        "pctKarang": 5,
+        "kgKarang": 30
+      },
+      "kebutuhanPlan": {
+        "req153": 1200,
+        "reqKarang": 180,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 1380,
+        "reqFReguler": 8.8,
+        "reqFRLABold": 0,
+        "totalSKM": 8.8,
+        "totalSemua": 1388.8
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_52_10",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.52.10",
+      "nama": "Zimbabwe 2025 (L2OF/P)",
+      "resep": {
+        "pct153": 2,
+        "kg153": 12,
+        "pctSP": 2,
+        "kgSP": 12,
+        "pctFReguler": 1,
+        "kgFReguler": 2.2,
+        "pctTIS": 2,
+        "kgTIS": 2.8,
+        "pctKarang": 2,
+        "kgKarang": 12
+      },
+      "kebutuhanPlan": {
+        "req153": 480,
+        "reqKarang": 72,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 552,
+        "reqFReguler": 2.2,
+        "reqFRLABold": 0,
+        "totalSKM": 2.2,
+        "totalSemua": 554.2
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_14_26",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.14.26",
+      "nama": "Zimbabwe B1L (2023)",
+      "resep": {
+        "pct153": 5,
+        "kg153": 30,
+        "pctSP": 6,
+        "kgSP": 36,
+        "pctFReguler": 4,
+        "kgFReguler": 8.8,
+        "pctTIS": 5,
+        "kgTIS": 7,
+        "pctKarang": 4,
+        "kgKarang": 24
+      },
+      "kebutuhanPlan": {
+        "req153": 1200,
+        "reqKarang": 144,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 1344,
+        "reqFReguler": 8.8,
+        "reqFRLABold": 0,
+        "totalSKM": 8.8,
+        "totalSemua": 1352.8
+      }
+    },
+    {
+      "id": "tembakau___krosok__rajang_ii__1_3_14_27",
+      "kategori": "Tembakau & Krosok (Rajang II)",
+      "kodeIntern": "1.3.14.27",
+      "nama": "Zimbabwe M1L (2023)",
+      "resep": {
+        "pct153": 3,
+        "kg153": 18,
+        "pctSP": 3,
+        "kgSP": 18,
+        "pctFReguler": 3.5,
+        "kgFReguler": 7.7,
+        "pctTIS": 3,
+        "kgTIS": 4.2,
+        "pctKarang": 3,
+        "kgKarang": 18
+      },
+      "kebutuhanPlan": {
+        "req153": 720,
+        "reqKarang": 108,
+        "reqSP": 0,
+        "reqTIS": 0,
+        "totalSKT": 828,
+        "reqFReguler": 7.7,
+        "reqFRLABold": 0,
+        "totalSKM": 7.7,
+        "totalSemua": 835.7
+      }
+    }
+  ]
+}

@@ -10,12 +10,14 @@ import {
   Sparkles,
   HelpCircle,
   FileSpreadsheet,
-  Sliders
+  Sliders,
+  Calculator
 } from 'lucide-react';
 import { GasService } from '../../services/gasService';
 import { exportToPdf } from '../../services/pdfExport';
 import { SktSkmSettingsModal } from '../modals/SktSkmSettingsModal';
 import { formatTanggalIndo } from '../../utils/dateUtils';
+import { KalkulatorEstimasiStock } from './KalkulatorEstimasiStock';
 
 interface SaldoKodePanelProps {
   data: KomoditasData[];
@@ -45,6 +47,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
   const [snapshotDate, setSnapshotDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [hideZero, setHideZero] = useState<boolean>(false);
   const [isSktSkmModalOpen, setIsSktSkmModalOpen] = useState<boolean>(false);
+  const [subTab, setSubTab] = useState<'saldo_list' | 'kalkulator'>('saldo_list');
   const [sktSkmVersion, setSktSkmVersion] = useState<number>(0);
 
   // Listen to SKT/SKM config changes from anywhere in the app
@@ -254,9 +257,44 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-      {/* Header - Compact */}
-      <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-4">
+      {/* Sub Navigation Bar: Saldo Kode vs Kalkulator Estimasi Stock */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 sm:px-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-semibold overflow-x-auto">
+          <button
+            onClick={() => setSubTab('saldo_list')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+              subTab === 'saldo_list' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Kartu Saldo per Kode / Grade</span>
+          </button>
+          <button
+            onClick={() => setSubTab('kalkulator')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+              subTab === 'kalkulator' ? 'bg-indigo-600 text-white shadow-2xs font-bold' : 'text-indigo-900 hover:text-indigo-950 hover:bg-indigo-50/50'
+            }`}
+          >
+            <Calculator className="w-3.5 h-3.5 text-amber-300" />
+            <span>Kalkulator Estimasi Stock &amp; Planing</span>
+            <span className="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full font-bold ml-0.5">Baru</span>
+          </button>
+        </div>
+
+        <div className="text-[11px] text-slate-500 font-medium px-1 hidden sm:block">
+          {subTab === 'saldo_list' 
+            ? 'Menampilkan saldo kartu stok berjalan PP1' 
+            : 'Menghubungkan resep DATABASEPRUF dengan stok riil Rajang II & Cengkeh'}
+        </div>
+      </div>
+
+      {subTab === 'kalkulator' ? (
+        <KalkulatorEstimasiStock komoditasList={data} />
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+          {/* Header - Compact */}
+          <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
             {isSnapshotMode ? 'Saldo per Kode / Grade (Snapshot Historis)' : 'Saldo Terkini per Kode / Grade'}
@@ -604,6 +642,8 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
         onClose={() => setIsSktSkmModalOpen(false)}
         onConfigChanged={() => setSktSkmVersion(v => v + 1)}
       />
+        </div>
+      )}
     </div>
   );
 };
