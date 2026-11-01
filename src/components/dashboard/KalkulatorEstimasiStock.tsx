@@ -38,9 +38,20 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'Defisit' | 'Menipis' | 'Aman'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [hideZeroStock, setHideZeroStock] = useState<boolean>(true); // Default: sembunyikan saldo 0 / tidak aktif
+  const [sortField, setSortField] = useState<'nama' | 'kodeIntern' | 'totalKebutuhan' | 'saldoRiilGudang' | 'sisaSaldo' | 'ketahananHari' | 'status'>('nama');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [selectedItemDetail, setSelectedItemDetail] = useState<CalculatedStockItem | null>(null);
+
+  const handleToggleSort = (field: 'nama' | 'kodeIntern' | 'totalKebutuhan' | 'saldoRiilGudang' | 'sisaSaldo' | 'ketahananHari' | 'status') => {
+    if (sortField === field) {
+      setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   // 2. Refresh from Google Sheets
   const handleRefreshSheet = async () => {
@@ -70,9 +81,9 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
     return StockEstimationService.calculateStockEstimations(komoditasList, config, prufData);
   }, [komoditasList, config, prufData]);
 
-  // 5. Filtered items
+  // 5. Filtered & Sorted items (Default: Alphabet A - Z)
   const filteredItems = useMemo(() => {
-    return items.filter(item => {
+    const list = items.filter(item => {
       // Category filter - strict match
       if (categoryFilter === 'Cengkeh' && item.kategori !== 'Cengkeh') return false;
       if (categoryFilter === 'Tembakau & Krosok (Rajang II)' && item.kategori !== 'Tembakau & Krosok (Rajang II)') return false;
@@ -97,7 +108,31 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
 
       return true;
     });
-  }, [items, categoryFilter, statusFilter, searchQuery, hideZeroStock]);
+
+    // Urutkan data - Default adalah Alphabet A - Z berdasarkan Nama Bahan & Grade
+    list.sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'nama') {
+        comparison = a.nama.localeCompare(b.nama, 'id', { sensitivity: 'base' });
+      } else if (sortField === 'kodeIntern') {
+        comparison = (a.kodeIntern || '').localeCompare(b.kodeIntern || '', 'id');
+      } else if (sortField === 'totalKebutuhan') {
+        comparison = a.totalKebutuhan - b.totalKebutuhan;
+      } else if (sortField === 'saldoRiilGudang') {
+        comparison = a.saldoRiilGudang - b.saldoRiilGudang;
+      } else if (sortField === 'sisaSaldo') {
+        comparison = a.sisaSaldo - b.sisaSaldo;
+      } else if (sortField === 'ketahananHari') {
+        comparison = a.ketahananHari - b.ketahananHari;
+      } else if (sortField === 'status') {
+        const order = { Defisit: 1, Menipis: 2, Aman: 3 };
+        comparison = (order[a.status] || 99) - (order[b.status] || 99);
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return list;
+  }, [items, categoryFilter, statusFilter, searchQuery, hideZeroStock, sortField, sortDirection]);
 
   // Plan Breakdown info
   const planInfo = prufData.planInfo;
@@ -429,17 +464,94 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
             <thead>
               <tr className="bg-slate-900 text-white text-[11px] uppercase tracking-wider font-bold">
                 <th className="py-3 px-3 text-center w-12">No</th>
-                <th className="py-3 px-3">Kode Intern</th>
-                <th className="py-3 px-4">Nama Bahan &amp; Grade</th>
+                <th 
+                  onClick={() => handleToggleSort('kodeIntern')}
+                  className="py-3 px-3 cursor-pointer hover:text-indigo-200 transition-colors select-none"
+                  title="Klik untuk urutkan Kode Intern"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Kode Intern</span>
+                    {sortField === 'kodeIntern' && (
+                      <span className="text-[10px] text-amber-300 font-mono">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  onClick={() => handleToggleSort('nama')}
+                  className="py-3 px-4 cursor-pointer hover:text-indigo-200 transition-colors select-none bg-slate-800/80"
+                  title="Klik untuk mengubah urutan A-Z / Z-A"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Nama Bahan &amp; Grade</span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/40 text-amber-300 border border-indigo-400/30 font-mono font-bold">
+                      {sortField === 'nama' ? (sortDirection === 'asc' ? 'A → Z' : 'Z → A') : 'A-Z'}
+                    </span>
+                  </div>
+                </th>
                 <th className="py-3 px-3 text-center">Komoditas</th>
                 <th className="py-3 px-3 text-right bg-slate-800 text-indigo-200" title="Kolom T: Total Kebutuhan SKT">SKT (Kg)</th>
                 <th className="py-3 px-3 text-right bg-slate-800 text-indigo-200" title="Kolom W: Total Kebutuhan SKM">SKM (Kg)</th>
-                <th className="py-3 px-4 text-right bg-indigo-900 text-amber-300 font-extrabold" title="Kolom X: Acuan Utama Kebutuhan (Total SKT + SKM)">Total Kebutuhan (X)</th>
-                <th className="py-3 px-4 text-right font-extrabold bg-slate-800 text-emerald-300" title="Saldo Terkini Fisik Gudang Rajang II / Cengkeh">Saldo Riil Gudang</th>
-                <th className="py-3 px-3 text-right">Sisa Saldo</th>
+                <th 
+                  onClick={() => handleToggleSort('totalKebutuhan')}
+                  className="py-3 px-4 text-right bg-indigo-900 text-amber-300 font-extrabold cursor-pointer hover:bg-indigo-800 transition-colors select-none" 
+                  title="Kolom X: Acuan Utama Kebutuhan (Total SKT + SKM). Klik untuk urutkan."
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Total Kebutuhan (X)</span>
+                    {sortField === 'totalKebutuhan' && (
+                      <span className="text-[10px] text-amber-300 font-mono">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  onClick={() => handleToggleSort('saldoRiilGudang')}
+                  className="py-3 px-4 text-right font-extrabold bg-slate-800 text-emerald-300 cursor-pointer hover:bg-slate-700 transition-colors select-none" 
+                  title="Saldo Terkini Fisik Gudang Rajang II / Cengkeh. Klik untuk urutkan."
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Saldo Riil Gudang</span>
+                    {sortField === 'saldoRiilGudang' && (
+                      <span className="text-[10px] text-emerald-300 font-mono">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  onClick={() => handleToggleSort('sisaSaldo')}
+                  className="py-3 px-3 text-right cursor-pointer hover:text-indigo-200 transition-colors select-none"
+                  title="Klik untuk urutkan Sisa Saldo"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Sisa Saldo</span>
+                    {sortField === 'sisaSaldo' && (
+                      <span className="text-[10px] text-amber-300 font-mono">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
                 <th className="py-3 px-3 text-right" title="Rata-rata Pemakaian per Hari">Pemakaian / Hari</th>
-                <th className="py-3 px-3 text-center">Ketahanan Hari</th>
-                <th className="py-3 px-3 text-center">Status</th>
+                <th 
+                  onClick={() => handleToggleSort('ketahananHari')}
+                  className="py-3 px-3 text-center cursor-pointer hover:text-indigo-200 transition-colors select-none"
+                  title="Klik untuk urutkan Ketahanan Hari"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Ketahanan Hari</span>
+                    {sortField === 'ketahananHari' && (
+                      <span className="text-[10px] text-amber-300 font-mono">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  onClick={() => handleToggleSort('status')}
+                  className="py-3 px-3 text-center cursor-pointer hover:text-indigo-200 transition-colors select-none"
+                  title="Klik untuk urutkan Status"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Status</span>
+                    {sortField === 'status' && (
+                      <span className="text-[10px] text-amber-300 font-mono">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">

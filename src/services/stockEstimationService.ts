@@ -372,14 +372,8 @@ export class StockEstimationService {
       };
     });
 
-    // Urutkan: Defisit paling atas, lalu Menipis, lalu yang paling sedikit ketahanan harinya
-    calculatedItems.sort((a, b) => {
-      const order = { Defisit: 1, Menipis: 2, Aman: 3 };
-      if (order[a.status] !== order[b.status]) {
-        return order[a.status] - order[b.status];
-      }
-      return a.ketahananHari - b.ketahananHari;
-    });
+    // Urutkan: Alphabet Nama Bahan & Grade A - Z agar rapi dan mudah dicari
+    calculatedItems.sort((a, b) => a.nama.localeCompare(b.nama, 'id', { sensitivity: 'base' }));
 
     // Hitung Ringkasan KPI
     let totalKebutuhanSemuaKg = 0;
