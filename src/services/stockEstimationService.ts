@@ -5,7 +5,10 @@ import {
   EstimationSummary, 
   PrufItem,
   BatchPlanInfo,
-  CommodityCategory
+  CommodityCategory,
+  WeeklyBlendPlanData,
+  DailyBlendScheduleItem,
+  DayOfWeek
 } from '../types/stockEstimation';
 import { KomoditasData } from '../types';
 import databasePrufBaseline from '../data/databasePrufBaseline.json';
@@ -29,6 +32,8 @@ export class StockEstimationService {
       usageBasis: 'target_batch_per_day',
       targetBatchPerDay: 10, // 10 Molen / hari (Standar kapasitas harian pabrik)
       targetWorkDays: 5,     // 5 Hari kerja per minggu
+      trackingMode: 'plan_awal',
+      completedDays: []
     };
   }
 
@@ -89,9 +94,13 @@ export class StockEstimationService {
         return await res.text();
       };
 
-      const [tbkCsv, cgkCsv] = await Promise.all([
+      const [tbkCsv, cgkCsv, planCsv] = await Promise.all([
         fetchTab('DATABASEPRUF TEMBAKAU & KROSOK'),
-        fetchTab('DATABASEPRUF CENGKEH')
+        fetchTab('DATABASEPRUF CENGKEH'),
+        fetchTab('PLANING BLEND MINGGUAN').catch(e => {
+          console.warn('Tab PLANING BLEND MINGGUAN belum dapat diakses:', e);
+          return '';
+        })
       ]);
 
       const parseCsvRow = (text: string): string[] => {
@@ -184,10 +193,74 @@ export class StockEstimationService {
       const tbk = processSheet(tbkCsv, 'Tembakau & Krosok (Rajang II)');
       const cgk = processSheet(cgkCsv, 'Cengkeh');
 
+      // Parsing PLANING BLEND MINGGUAN jika ada
+      let weeklyPlan: WeeklyBlendPlanData | undefined = undefined;
+      if (planCsv && planCsv.trim().length > 0) {
+        const planLines = planCsv.split('\n').filter(l => l.trim().length > 0);
+        if (planLines.length >= 2) {
+          const dateRow = parseCsvRow(planLines[1]);
+          const dates = {
+            senin: dateRow[3] || 'Senin',
+            selasa: dateRow[4] || 'Selasa',
+            rabu: dateRow[5] || 'Rabu',
+            kamis: dateRow[6] || 'Kamis',
+            jumat: dateRow[7] || 'Jumat',
+            sabtu: dateRow[8] || 'Sabtu',
+            minggu: dateRow[9] || 'Minggu'
+          };
+
+          const schedules: DailyBlendScheduleItem[] = [];
+          let dailyTotals = {
+            senin: 0,
+            selasa: 0,
+            rabu: 0,
+            kamis: 0,
+            jumat: 0,
+            sabtu: 0,
+            minggu: 0,
+            total: 0
+          };
+
+          for (let i = 2; i < planLines.length; i++) {
+            const r = parseCsvRow(planLines[i]);
+            const blendName = (r[1] || '').trim();
+            if (!blendName) continue;
+            if (blendName.toUpperCase() === 'TOTAL') {
+              dailyTotals = {
+                senin: parseNum(r[3]),
+                selasa: parseNum(r[4]),
+                rabu: parseNum(r[5]),
+                kamis: parseNum(r[6]),
+                jumat: parseNum(r[7]),
+                sabtu: parseNum(r[8]),
+                minggu: parseNum(r[9]),
+                total: parseNum(r[10])
+              };
+            } else {
+              schedules.push({
+                blendName,
+                kapasitas: (r[2] || '').trim(),
+                senin: parseNum(r[3]),
+                selasa: parseNum(r[4]),
+                rabu: parseNum(r[5]),
+                kamis: parseNum(r[6]),
+                jumat: parseNum(r[7]),
+                sabtu: parseNum(r[8]),
+                minggu: parseNum(r[9]),
+                totalCampuran: parseNum(r[10])
+              });
+            }
+          }
+
+          weeklyPlan = { dates, schedules, dailyTotals };
+        }
+      }
+
       const combined: DatabasePrufData = {
         spreadsheetId: SPREADSHEET_ID,
         lastUpdated: new Date().toISOString(),
         planInfo: tbk.planInfo,
+        weeklyPlan,
         cengkehItems: cgk.items,
         tembakauItems: tbk.items
       };
@@ -297,31 +370,114 @@ export class StockEstimationService {
       ...cleanCengkeh
     ];
 
-    const totalBatchPlan = data.planInfo.campurTotalSemua || 47; // Default 47 campur sesuai sheet
+    const basePlan = { ...data.planInfo };
+    const totalWeeklyPlanBatches = basePlan.campurTotalSemua || 47;
+
+    const isTrackingActive = activeConfig.trackingMode === 'realisasi_berjalan';
+    const completedDays = isTrackingActive ? (activeConfig.completedDays || []) : [];
+
+    // 1. Hitung batch yang sudah terealisasi berdasarkan hari kerja yang dipilih
+    const completedBatches = {
+      campur153: 0,
+      campurKarang: 0,
+      campurSP: 0,
+      campurTIS: 0,
+      campurFReguler: 0,
+      campurFRLABold: 0,
+      total: 0
+    };
+
+    if (completedDays.length > 0 && data.weeklyPlan?.schedules) {
+      for (const schedule of data.weeklyPlan.schedules) {
+        const name = schedule.blendName.toUpperCase();
+        let daySum = 0;
+        for (const day of completedDays) {
+          daySum += Number(schedule[day] || 0);
+        }
+
+        if (name.includes('SP 153')) {
+          completedBatches.campurSP += daySum;
+        } else if (name.includes('153')) {
+          completedBatches.campur153 += daySum;
+        } else if (name.includes('KARANG')) {
+          completedBatches.campurKarang += daySum;
+        } else if (name.includes('TIS')) {
+          completedBatches.campurTIS += daySum;
+        } else if (name.includes('LA BOLD')) {
+          completedBatches.campurFRLABold += daySum;
+        } else if (name.includes('F REGULER') || name.includes('AVE')) {
+          completedBatches.campurFReguler += daySum;
+        }
+        completedBatches.total += daySum;
+      }
+    }
+
+    // 2. Hitung sisa batch campuran yang belum dikerjakan
+    const remainingBatches = {
+      campur153: Math.max(0, (basePlan.campur153 || 0) - completedBatches.campur153),
+      campurKarang: Math.max(0, (basePlan.campurKarang || 0) - completedBatches.campurKarang),
+      campurSP: Math.max(0, (basePlan.campurSP || 0) - completedBatches.campurSP),
+      campurTIS: Math.max(0, (basePlan.campurTIS || 0) - completedBatches.campurTIS),
+      campurFReguler: Math.max(0, (basePlan.campurFReguler || 0) - completedBatches.campurFReguler),
+      campurFRLABold: Math.max(0, (basePlan.campurFRLABold || 0) - completedBatches.campurFRLABold),
+      total: 0
+    };
+    remainingBatches.total = 
+      remainingBatches.campur153 + 
+      remainingBatches.campurKarang + 
+      remainingBatches.campurSP + 
+      remainingBatches.campurTIS + 
+      remainingBatches.campurFReguler + 
+      remainingBatches.campurFRLABold;
+
+    // Tentukan batch yang aktif dihitung saat ini
+    const activeBatchPlan = (isTrackingActive && completedDays.length > 0)
+      ? remainingBatches.total
+      : totalWeeklyPlanBatches;
 
     const calculatedItems: CalculatedStockItem[] = allPrufItems.map(pruf => {
       const { saldo, matchedName } = findStockBalance(pruf.nama, pruf.kodeIntern, pruf.kategori);
-      const totalKebutuhan = pruf.kebutuhanPlan.totalSemua; // Kolom X (Acuan Utama)
-      const kebutuhanSKT = pruf.kebutuhanPlan.totalSKT;     // Kolom T
-      const kebutuhanSKM = pruf.kebutuhanPlan.totalSKM;     // Kolom W
+      
+      let kebutuhanSKT = pruf.kebutuhanPlan.totalSKT;     // Kolom T
+      let kebutuhanSKM = pruf.kebutuhanPlan.totalSKM;     // Kolom W
+      let totalKebutuhan = pruf.kebutuhanPlan.totalSemua; // Kolom X (Acuan Utama)
+
+      // Jika mode realisasi berjalan aktif dan ada hari yang sudah diselesaikan:
+      // Hitung ulang secara dinamis kebutuhan bahan berdasarkan sisa batch masing-masing blend
+      if (isTrackingActive && completedDays.length > 0) {
+        const dynReq153 = (pruf.resep.kg153 || 0) * remainingBatches.campur153;
+        const dynReqKarang = (pruf.resep.kgKarang || 0) * remainingBatches.campurKarang;
+        const dynReqSP = (pruf.resep.kgSP || 0) * remainingBatches.campurSP;
+        const dynReqTIS = (pruf.resep.kgTIS || 0) * remainingBatches.campurTIS;
+        kebutuhanSKT = Math.round((dynReq153 + dynReqKarang + dynReqSP + dynReqTIS) * 10) / 10;
+
+        const dynReqFReguler = (pruf.resep.kgFReguler || 0) * remainingBatches.campurFReguler;
+        const dynReqFRLABold = (basePlan.campurFRLABold > 0 && pruf.kebutuhanPlan.reqFRLABold) 
+          ? (pruf.kebutuhanPlan.reqFRLABold / basePlan.campurFRLABold) * remainingBatches.campurFRLABold 
+          : 0;
+        kebutuhanSKM = Math.round((dynReqFReguler + dynReqFRLABold) * 10) / 10;
+
+        totalKebutuhan = Math.round((kebutuhanSKT + kebutuhanSKM) * 10) / 10;
+      }
 
       const sisaSaldo = Math.round((saldo - totalKebutuhan) * 10) / 10;
 
       // Hitung Pemakaian per Batch (Kg)
-      const pemakaianPerBatch = totalBatchPlan > 0 
-        ? Math.round((totalKebutuhan / totalBatchPlan) * 100) / 100 
+      const pemakaianPerBatch = activeBatchPlan > 0 
+        ? Math.round((totalKebutuhan / activeBatchPlan) * 100) / 100 
         : 0;
 
       // Hitung Pemakaian Harian (Kg/Hari) berdasarkan acuan user:
       // Opsi 1 (target_batch_per_day): pemakaianPerBatch * targetBatchPerDay
-      // Opsi 2 (target_work_days): totalKebutuhan / targetWorkDays
+      // Opsi 2 (target_work_days): totalKebutuhan / sisa hari kerja
       let pemakaianPerHari = 0;
       if (activeConfig.usageBasis === 'target_batch_per_day') {
         const batchRate = activeConfig.targetBatchPerDay || 10;
         pemakaianPerHari = Math.round(pemakaianPerBatch * batchRate * 10) / 10;
       } else {
-        const workDays = activeConfig.targetWorkDays || 5;
-        pemakaianPerHari = workDays > 0 ? Math.round((totalKebutuhan / workDays) * 10) / 10 : 0;
+        const baseWorkDays = activeConfig.targetWorkDays || 5;
+        const remainingWorkDays = Math.max(1, baseWorkDays - completedDays.length);
+        pemakaianPerHari = remainingWorkDays > 0 ? Math.round((totalKebutuhan / remainingWorkDays) * 10) / 10 : 0;
       }
 
       // Hitung Ketahanan
@@ -405,7 +561,10 @@ export class StockEstimationService {
       .slice(0, 4);
 
     const summary: EstimationSummary = {
-      totalBatchPlan,
+      totalBatchPlan: totalWeeklyPlanBatches,
+      totalBatchRealisasi: completedBatches.total,
+      totalBatchSisa: remainingBatches.total,
+      activeBatchCount: activeBatchPlan,
       totalKebutuhanSemuaKg: Math.round(totalKebutuhanSemuaKg * 10) / 10,
       totalKebutuhanTembakauKg: Math.round(totalKebutuhanTbkKg * 10) / 10,
       totalKebutuhanCengkehKg: Math.round(totalKebutuhanCgkKg * 10) / 10,

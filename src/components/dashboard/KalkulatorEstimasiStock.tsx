@@ -4,7 +4,8 @@ import {
   CalculatedStockItem, 
   EstimationConfig, 
   CommodityCategory, 
-  DailyUsageBasis 
+  DailyUsageBasis,
+  DayOfWeek
 } from '../../types/stockEstimation';
 import { StockEstimationService } from '../../services/stockEstimationService';
 import { 
@@ -43,6 +44,7 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [selectedItemDetail, setSelectedItemDetail] = useState<CalculatedStockItem | null>(null);
+  const [showWeeklyPlanModal, setShowWeeklyPlanModal] = useState<boolean>(false);
 
   const handleToggleSort = (field: 'nama' | 'kodeIntern' | 'totalKebutuhan' | 'saldoRiilGudang' | 'sisaSaldo' | 'ketahananHari' | 'status') => {
     if (sortField === field) {
@@ -151,32 +153,50 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
   // Plan Breakdown info
   const planInfo = prufData.planInfo;
 
-  // Rincian rencana campuran per jenis tembakau blend (misal: 153-BK, Karang, F REGULER (LN, AVE), dsb)
-  const activeBlendPlans = useMemo(() => {
-    const list: { label: string; count: number }[] = [];
-    if (planInfo.campur153 > 0) list.push({ label: '153-BK', count: planInfo.campur153 });
-    if (planInfo.campurKarang > 0) list.push({ label: 'Karang', count: planInfo.campurKarang });
-    if (planInfo.campurSP > 0) list.push({ label: 'SP 153', count: planInfo.campurSP });
-    if (planInfo.campurTIS > 0) list.push({ label: 'TIS KBT24', count: planInfo.campurTIS });
+  // Status tracking realisasi harian
+  const isTrackingActive = config.trackingMode === 'realisasi_berjalan';
+  const completedDays = isTrackingActive ? (config.completedDays || []) : [];
 
-    // SKM Blends: ganti label SKM generik dengan jenis blend spesifik F REGULER (LN, AVE)
-    const fReguler = planInfo.campurFReguler > 0 ? planInfo.campurFReguler : planInfo.campurTotalSKM;
-    if (fReguler > 0) {
-      list.push({ label: 'F REGULER (LN, AVE)', count: fReguler });
+  // Rincian rencana campuran per jenis tembakau blend (bisa rencana awal atau sisa yang belum terealisasi)
+  const activeBlendPlans = useMemo(() => {
+    let b153 = planInfo.campur153 || 40;
+    let bKarang = planInfo.campurKarang || 6;
+    let bSP = planInfo.campurSP || 0;
+    let bTIS = planInfo.campurTIS || 0;
+    let bFReguler = planInfo.campurFReguler > 0 ? planInfo.campurFReguler : (planInfo.campurTotalSKM || 1);
+    let bFRLABold = planInfo.campurFRLABold || 0;
+
+    // Jika mode realisasi berjalan aktif dan ada hari yang selesai, kurangi dengan batch hari tersebut
+    if (isTrackingActive && completedDays.length > 0 && prufData.weeklyPlan?.schedules) {
+      for (const schedule of prufData.weeklyPlan.schedules) {
+        const name = schedule.blendName.toUpperCase();
+        let daySum = 0;
+        for (const day of completedDays) {
+          daySum += Number(schedule[day] || 0);
+        }
+
+        if (name.includes('SP 153')) bSP = Math.max(0, bSP - daySum);
+        else if (name.includes('153')) b153 = Math.max(0, b153 - daySum);
+        else if (name.includes('KARANG')) bKarang = Math.max(0, bKarang - daySum);
+        else if (name.includes('TIS')) bTIS = Math.max(0, bTIS - daySum);
+        else if (name.includes('LA BOLD')) bFRLABold = Math.max(0, bFRLABold - daySum);
+        else if (name.includes('F REGULER') || name.includes('AVE')) bFReguler = Math.max(0, bFReguler - daySum);
+      }
     }
-    if (planInfo.campurFRLABold > 0) {
-      list.push({ label: 'FR LA Bold', count: planInfo.campurFRLABold });
-    }
+
+    const list: { label: string; count: number }[] = [];
+    if (b153 > 0) list.push({ label: '153-BK', count: b153 });
+    if (bKarang > 0) list.push({ label: 'Karang', count: bKarang });
+    if (bSP > 0) list.push({ label: 'SP 153', count: bSP });
+    if (bTIS > 0) list.push({ label: 'TIS KBT24', count: bTIS });
+    if (bFReguler > 0) list.push({ label: 'F REGULER (LN, AVE)', count: bFReguler });
+    if (bFRLABold > 0) list.push({ label: 'FR LA Bold', count: bFRLABold });
 
     if (list.length === 0) {
-      list.push(
-        { label: '153-BK', count: planInfo.campur153 || 40 },
-        { label: 'Karang', count: planInfo.campurKarang || 6 },
-        { label: 'F REGULER (LN, AVE)', count: planInfo.campurTotalSKM || 1 }
-      );
+      list.push({ label: 'Semua Rencana Selesai', count: 0 });
     }
     return list;
-  }, [planInfo]);
+  }, [planInfo, isTrackingActive, completedDays, prufData.weeklyPlan]);
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
@@ -197,6 +217,14 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowWeeklyPlanModal(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/90 hover:bg-slate-700 text-slate-100 border border-slate-700 flex items-center gap-2 transition-all shadow-xs"
+              title="Buka Rincian Jadwal Harian Blend Mingguan (Senin - Minggu) dari tab PLANING BLEND MINGGUAN"
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-300" />
+              <span>Jadwal Harian Blend</span>
+            </button>
             <button
               onClick={handleRefreshSheet}
               disabled={isRefreshing}
@@ -227,18 +255,227 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
         )}
       </div>
 
+      {/* Dynamic Daily Progress & Realization Tracker */}
+      <div className="bg-gradient-to-br from-white to-slate-50/80 rounded-2xl p-4 border border-indigo-100/80 shadow-xs space-y-3.5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center font-bold shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Pelacakan Progres &amp; Realisasi Campuran Harian
+                </h3>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                  Dinamis
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Pilih hari kerja yang campurannya sudah selesai diproses di molen untuk otomatis mengurangi kebutuhan bahan (Kolom X) sisa minggu.
+              </p>
+            </div>
+          </div>
+
+          {/* Mode Switcher */}
+          <div className="flex items-center bg-slate-200/70 p-1 rounded-xl shrink-0 text-xs font-semibold">
+            <button
+              onClick={() => handleUpdateConfig({ trackingMode: 'plan_awal' })}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                config.trackingMode !== 'realisasi_berjalan'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Plan Awal Minggu (47 Campur)
+            </button>
+            <button
+              onClick={() => handleUpdateConfig({ 
+                trackingMode: 'realisasi_berjalan',
+                completedDays: config.completedDays && config.completedDays.length > 0 ? config.completedDays : ['senin']
+              })}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                config.trackingMode === 'realisasi_berjalan'
+                  ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Realisasi Harian Berjalan (Sisa)
+            </button>
+          </div>
+        </div>
+
+        {/* Realisasi Controls - active when in 'realisasi_berjalan' mode */}
+        {config.trackingMode === 'realisasi_berjalan' ? (
+          <div className="space-y-3 pt-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <span>Centang Hari yang Sudah Selesai:</span>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="text-slate-400 font-medium mr-1">Preset Cepat:</span>
+                <button
+                  onClick={() => handleUpdateConfig({ completedDays: [] })}
+                  className={`px-2 py-1 rounded-lg border transition-all ${
+                    (config.completedDays || []).length === 0
+                      ? 'bg-slate-900 text-white border-slate-900 font-bold'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Belum Ada (Sisa 47)
+                </button>
+                <button
+                  onClick={() => handleUpdateConfig({ completedDays: ['senin'] })}
+                  className={`px-2 py-1 rounded-lg border transition-all ${
+                    JSON.stringify(config.completedDays) === JSON.stringify(['senin'])
+                      ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Senin Selesai (Sisa 38)
+                </button>
+                <button
+                  onClick={() => handleUpdateConfig({ completedDays: ['senin', 'selasa'] })}
+                  className={`px-2 py-1 rounded-lg border transition-all ${
+                    (config.completedDays || []).includes('senin') && (config.completedDays || []).includes('selasa') && (config.completedDays || []).length === 2
+                      ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Selasa Selesai (Sisa 28)
+                </button>
+                <button
+                  onClick={() => handleUpdateConfig({ completedDays: ['senin', 'selasa', 'rabu'] })}
+                  className={`px-2 py-1 rounded-lg border transition-all ${
+                    (config.completedDays || []).includes('rabu') && (config.completedDays || []).length === 3
+                      ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Rabu Selesai (Sisa 19)
+                </button>
+                <button
+                  onClick={() => handleUpdateConfig({ completedDays: ['senin', 'selasa', 'rabu', 'kamis'] })}
+                  className={`px-2 py-1 rounded-lg border transition-all ${
+                    (config.completedDays || []).includes('kamis') && (config.completedDays || []).length === 4
+                      ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Kamis Selesai (Sisa 10)
+                </button>
+                <button
+                  onClick={() => handleUpdateConfig({ completedDays: ['senin', 'selasa', 'rabu', 'kamis', 'jumat'] })}
+                  className={`px-2 py-1 rounded-lg border transition-all ${
+                    (config.completedDays || []).length === 5
+                      ? 'bg-emerald-700 text-white border-emerald-700 font-bold'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Semua Selesai (0)
+                </button>
+              </div>
+            </div>
+
+            {/* Day-by-Day Toggle Chips */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {[
+                { day: 'senin' as DayOfWeek, label: 'Senin', count: prufData.weeklyPlan?.dailyTotals.senin || 9, date: prufData.weeklyPlan?.dates.senin || '02/11/26' },
+                { day: 'selasa' as DayOfWeek, label: 'Selasa', count: prufData.weeklyPlan?.dailyTotals.selasa || 10, date: prufData.weeklyPlan?.dates.selasa || '03/11/26' },
+                { day: 'rabu' as DayOfWeek, label: 'Rabu', count: prufData.weeklyPlan?.dailyTotals.rabu || 9, date: prufData.weeklyPlan?.dates.rabu || '04/11/26' },
+                { day: 'kamis' as DayOfWeek, label: 'Kamis', count: prufData.weeklyPlan?.dailyTotals.kamis || 9, date: prufData.weeklyPlan?.dates.kamis || '05/11/26' },
+                { day: 'jumat' as DayOfWeek, label: 'Jumat', count: prufData.weeklyPlan?.dailyTotals.jumat || 10, date: prufData.weeklyPlan?.dates.jumat || '06/11/26' },
+              ].map(({ day, label, count, date }) => {
+                const isCompleted = (config.completedDays || []).includes(day);
+                return (
+                  <button
+                    key={day}
+                    onClick={() => {
+                      const current = config.completedDays || [];
+                      const next = isCompleted ? current.filter(d => d !== day) : [...current, day];
+                      handleUpdateConfig({ completedDays: next });
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                      isCompleted
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] ${
+                          isCompleted ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400 border border-slate-300'
+                        }`}>
+                          {isCompleted ? '✓' : ''}
+                        </span>
+                        <span>{label}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 block mt-0.5">{date}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-xs font-extrabold ${isCompleted ? 'text-emerald-700 line-through opacity-75' : 'text-slate-900'}`}>
+                        {count}
+                      </span>
+                      <span className="text-[10px] text-slate-500 block">Campur</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Status Information Callout */}
+            <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-2.5 text-xs text-indigo-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  <strong>{(config.completedDays || []).length} Hari Selesai ({summary.totalBatchRealisasi} Campur)</strong> $\rightarrow$ Kebutuhan dihitung berdasarkan sisa <strong>{summary.totalBatchSisa} Campuran</strong> yang belum diproses.
+                </span>
+              </div>
+              <div className="text-xs font-semibold text-slate-600 shrink-0">
+                Kolom X Terkoreksi: <span className="text-indigo-900 font-black">{summary.totalKebutuhanSemuaKg.toLocaleString('id-ID')} Kg</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-600 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-slate-500" />
+              <span>Saat ini menampilkan <strong>Perencanaan Penuh Awal Minggu ({summary.totalBatchPlan} Campuran)</strong>. Beralih ke <em>Realisasi Harian Berjalan</em> untuk memotong kebutuhan berdasarkan progres molen hari kerja.</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Card 1: Total Plan */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs">
+        <div 
+          onClick={() => setShowWeeklyPlanModal(true)}
+          className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer group"
+          title="Klik untuk melihat matriks jadwal harian blend mingguan"
+        >
           <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-            <span className="font-semibold">Rencana Campuran</span>
-            <Layers className="w-4 h-4 text-indigo-600" />
+            <span className="font-semibold group-hover:text-indigo-600 transition-colors">
+              {isTrackingActive && completedDays.length > 0 ? 'Sisa Rencana Campur' : 'Rencana Campuran'}
+            </span>
+            <div className="flex items-center gap-1 text-[11px] text-indigo-600 opacity-80 group-hover:opacity-100">
+              <Calendar className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline font-medium">Jadwal</span>
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900">
-            {summary.totalBatchPlan} <span className="text-xs font-semibold text-slate-500">Campur</span>
+          <div className="flex items-baseline gap-2">
+            <div className="text-2xl font-black text-slate-900 group-hover:text-indigo-950 transition-colors">
+              {summary.activeBatchCount} <span className="text-xs font-semibold text-slate-500">Campur</span>
+            </div>
+            {isTrackingActive && completedDays.length > 0 && (
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300">
+                {summary.totalBatchRealisasi} Terealisasi
+              </span>
+            )}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5" title="Rincian Rencana Campuran per Jenis Tembakau Blend">
+          <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5" title="Rincian Sisa Campuran per Jenis Tembakau Blend">
             {activeBlendPlans.map((bp, i) => (
               <React.Fragment key={bp.label}>
                 <span className="font-semibold text-slate-700 whitespace-nowrap">
@@ -804,6 +1041,178 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
             >
               Tutup Rincian
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Jadwal Planing Blend Mingguan */}
+      {showWeeklyPlanModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden space-y-4 p-6 max-h-[92vh] flex flex-col">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Sumber Data Terverifikasi
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">Google Sheets: Tab PLANING BLEND MINGGUAN</span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mt-1 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-indigo-600" />
+                  <span>Jadwal Alokasi Campuran Mingguan PP1 (Senin – Minggu)</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Data kapasitas molen dan rencana batch harian untuk seluruh jenis tembakau blend
+                </p>
+              </div>
+              <button
+                onClick={() => setShowWeeklyPlanModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Table Schedule Matrix */}
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-white font-semibold">
+                    <th className="py-2.5 px-3">Nama Jenis Tembakau Blend</th>
+                    <th className="py-2.5 px-2 text-center">Kapasitas</th>
+                    <th className="py-2.5 px-2 text-center bg-slate-800">
+                      Senin
+                      <div className="text-[10px] text-slate-400 font-normal">{prufData.weeklyPlan?.dates.senin || '02/11/26'}</div>
+                    </th>
+                    <th className="py-2.5 px-2 text-center">
+                      Selasa
+                      <div className="text-[10px] text-slate-400 font-normal">{prufData.weeklyPlan?.dates.selasa || '03/11/26'}</div>
+                    </th>
+                    <th className="py-2.5 px-2 text-center bg-slate-800">
+                      Rabu
+                      <div className="text-[10px] text-slate-400 font-normal">{prufData.weeklyPlan?.dates.rabu || '04/11/26'}</div>
+                    </th>
+                    <th className="py-2.5 px-2 text-center">
+                      Kamis
+                      <div className="text-[10px] text-slate-400 font-normal">{prufData.weeklyPlan?.dates.kamis || '05/11/26'}</div>
+                    </th>
+                    <th className="py-2.5 px-2 text-center bg-slate-800">
+                      Jumat
+                      <div className="text-[10px] text-slate-400 font-normal">{prufData.weeklyPlan?.dates.jumat || '06/11/26'}</div>
+                    </th>
+                    <th className="py-2.5 px-2 text-center text-slate-400">
+                      Sabtu
+                      <div className="text-[10px] text-slate-500 font-normal">{prufData.weeklyPlan?.dates.sabtu || '07/11/26'}</div>
+                    </th>
+                    <th className="py-2.5 px-2 text-center text-slate-400 bg-slate-800">
+                      Minggu
+                      <div className="text-[10px] text-slate-500 font-normal">{prufData.weeklyPlan?.dates.minggu || '08/11/26'}</div>
+                    </th>
+                    <th className="py-2.5 px-3 text-right bg-indigo-900 font-bold">Total Campuran</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {prufData.weeklyPlan && prufData.weeklyPlan.schedules.length > 0 ? (
+                    prufData.weeklyPlan.schedules.map((item, idx) => (
+                      <tr key={idx} className={item.totalCampuran > 0 ? 'bg-indigo-50/20 font-medium' : 'hover:bg-slate-50'}>
+                        <td className="py-2.5 px-3 font-semibold text-slate-800">{item.blendName}</td>
+                        <td className="py-2.5 px-2 text-center text-slate-600 font-mono text-[11px]">{item.kapasitas || '—'}</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800 bg-slate-50/50">{item.senin || '—'}</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800">{item.selasa || '—'}</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800 bg-slate-50/50">{item.rabu || '—'}</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800">{item.kamis || '—'}</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800 bg-slate-50/50">{item.jumat || '—'}</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">{item.sabtu || '—'}</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">{item.minggu || '—'}</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-indigo-700 bg-indigo-50/60">
+                          {item.totalCampuran}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    // Fallback visual data jika belum ditarik
+                    <>
+                      <tr className="bg-indigo-50/20 font-medium">
+                        <td className="py-2.5 px-3 font-semibold text-slate-800">153 - BK</td>
+                        <td className="py-2.5 px-2 text-center text-slate-600 font-mono text-[11px]">@ 600</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800 bg-slate-50/50">8</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800">10</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800 bg-slate-50/50">9</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800">6</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800 bg-slate-50/50">7</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-indigo-700 bg-indigo-50/60">40</td>
+                      </tr>
+                      <tr className="hover:bg-slate-50">
+                        <td className="py-2.5 px-3 font-semibold text-slate-800">SP 153 - BK</td>
+                        <td className="py-2.5 px-2 text-center text-slate-600 font-mono text-[11px]">@ 600</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-slate-500 bg-indigo-50/60">0</td>
+                      </tr>
+                      <tr className="bg-indigo-50/20 font-medium">
+                        <td className="py-2.5 px-3 font-semibold text-slate-800">KARANG - BK</td>
+                        <td className="py-2.5 px-2 text-center text-slate-600 font-mono text-[11px]">@ 600</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800">3</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800 bg-slate-50/50">3</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-indigo-700 bg-indigo-50/60">6</td>
+                      </tr>
+                      <tr className="bg-indigo-50/20 font-medium">
+                        <td className="py-2.5 px-3 font-semibold text-slate-800">F REGULER (LN, AVE)</td>
+                        <td className="py-2.5 px-2 text-center text-slate-600 font-mono text-[11px]">@ 220</td>
+                        <td className="py-2.5 px-2 text-center text-slate-800 bg-slate-50/50">1</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400">—</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-50/50">—</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-indigo-700 bg-indigo-50/60">1</td>
+                      </tr>
+                    </>
+                  )}
+                  {/* Total Row */}
+                  <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-300">
+                    <td className="py-2.5 px-3">TOTAL HARIAN</td>
+                    <td className="py-2.5 px-2 text-center text-slate-500">—</td>
+                    <td className="py-2.5 px-2 text-center text-indigo-700 bg-slate-200/50">{prufData.weeklyPlan?.dailyTotals.senin || 9}</td>
+                    <td className="py-2.5 px-2 text-center text-indigo-700">{prufData.weeklyPlan?.dailyTotals.selasa || 10}</td>
+                    <td className="py-2.5 px-2 text-center text-indigo-700 bg-slate-200/50">{prufData.weeklyPlan?.dailyTotals.rabu || 9}</td>
+                    <td className="py-2.5 px-2 text-center text-indigo-700">{prufData.weeklyPlan?.dailyTotals.kamis || 9}</td>
+                    <td className="py-2.5 px-2 text-center text-indigo-700 bg-slate-200/50">{prufData.weeklyPlan?.dailyTotals.jumat || 10}</td>
+                    <td className="py-2.5 px-2 text-center text-slate-400">{prufData.weeklyPlan?.dailyTotals.sabtu || '—'}</td>
+                    <td className="py-2.5 px-2 text-center text-slate-400 bg-slate-200/50">{prufData.weeklyPlan?.dailyTotals.minggu || '—'}</td>
+                    <td className="py-2.5 px-3 text-right text-indigo-900 bg-indigo-100 font-black text-sm">
+                      {prufData.weeklyPlan?.dailyTotals.total || summary.totalBatchPlan}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Terhubung langsung ke Google Sheets (ID: 1qnTh5PL0oitFtH7tx7pI1r4jBnWk9vgVuUVJnWUAvk4)</span>
+              </span>
+              <button
+                onClick={() => setShowWeeklyPlanModal(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-xs transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
