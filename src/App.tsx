@@ -26,6 +26,7 @@ import { AISmartInsights } from './components/dashboard/AISmartInsights';
 import { AIBotModal } from './components/modals/AIBotModal';
 import { SktSkmSettingsModal } from './components/modals/SktSkmSettingsModal';
 import { SystemAuditReportModal } from './components/modals/SystemAuditReportModal';
+import { StockEstimationService } from './services/stockEstimationService';
 import { useFullscreen } from './hooks/useFullscreen';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { 
@@ -214,6 +215,8 @@ export default function App() {
         setBsppList(res.data.bspp);
         setLastSync(new Date().toISOString());
       }
+      // Sinkronkan juga kalkulator resep pruf & rencana campur
+      StockEstimationService.refreshFromGoogleSheets().catch(() => {});
       setSyncStatusNotice(res.message);
       setTimeout(() => setSyncStatusNotice(null), 5000);
     } catch (err: any) {
@@ -237,6 +240,8 @@ export default function App() {
         setBsppList(res.data.bspp);
         setLastSync(new Date().toISOString());
       }
+      // Sinkronkan juga data master pruf & rencana campur langsung dari Google Sheets
+      StockEstimationService.refreshFromGoogleSheets().catch(() => {});
       setSyncStatusNotice(res.message);
       setTimeout(() => setSyncStatusNotice(null), 6000);
     } catch (err: any) {

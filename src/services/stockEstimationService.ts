@@ -73,6 +73,7 @@ export class StockEstimationService {
   public static savePrufData(data: DatabasePrufData): void {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_PRUF_DATA, JSON.stringify(data));
+      window.dispatchEvent(new CustomEvent('stockpp1_pruf_data_updated'));
     }
   }
 

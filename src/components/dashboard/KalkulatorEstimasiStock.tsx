@@ -53,7 +53,21 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
     }
   };
 
-  // 2. Refresh from Google Sheets
+  const [prufVersion, setPrufVersion] = useState<number>(0);
+
+  // Auto-sync data resep pruf & rencana campur saat kalkulator pertama kali dibuka
+  // serta mendengarkan sinyal update jika ditarik dari navbar atas
+  useEffect(() => {
+    const handlePrufUpdate = () => setPrufVersion(v => v + 1);
+    window.addEventListener('stockpp1_pruf_data_updated', handlePrufUpdate);
+
+    // Tarik data terbaru dari Google Sheets secara senyap di background
+    StockEstimationService.refreshFromGoogleSheets().catch(() => {});
+
+    return () => window.removeEventListener('stockpp1_pruf_data_updated', handlePrufUpdate);
+  }, []);
+
+  // 2. Refresh manual from Google Sheets
   const handleRefreshSheet = async () => {
     setIsRefreshing(true);
     setRefreshMessage(null);
@@ -74,8 +88,8 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
     setConfig(updated);
   };
 
-  // 4. Calculate estimation items
-  const prufData = useMemo(() => StockEstimationService.getPrufData(), [isRefreshing]);
+  // 4. Calculate estimation items (Otomatis recalculate saat isRefreshing atau prufVersion berubah)
+  const prufData = useMemo(() => StockEstimationService.getPrufData(), [isRefreshing, prufVersion]);
 
   const { items, summary } = useMemo(() => {
     return StockEstimationService.calculateStockEstimations(komoditasList, config, prufData);
@@ -137,6 +151,33 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
   // Plan Breakdown info
   const planInfo = prufData.planInfo;
 
+  // Rincian rencana campuran per jenis tembakau blend (misal: 153-BK, Karang, F REGULER (LN, AVE), dsb)
+  const activeBlendPlans = useMemo(() => {
+    const list: { label: string; count: number }[] = [];
+    if (planInfo.campur153 > 0) list.push({ label: '153-BK', count: planInfo.campur153 });
+    if (planInfo.campurKarang > 0) list.push({ label: 'Karang', count: planInfo.campurKarang });
+    if (planInfo.campurSP > 0) list.push({ label: 'SP 153', count: planInfo.campurSP });
+    if (planInfo.campurTIS > 0) list.push({ label: 'TIS KBT24', count: planInfo.campurTIS });
+
+    // SKM Blends: ganti label SKM generik dengan jenis blend spesifik F REGULER (LN, AVE)
+    const fReguler = planInfo.campurFReguler > 0 ? planInfo.campurFReguler : planInfo.campurTotalSKM;
+    if (fReguler > 0) {
+      list.push({ label: 'F REGULER (LN, AVE)', count: fReguler });
+    }
+    if (planInfo.campurFRLABold > 0) {
+      list.push({ label: 'FR LA Bold', count: planInfo.campurFRLABold });
+    }
+
+    if (list.length === 0) {
+      list.push(
+        { label: '153-BK', count: planInfo.campur153 || 40 },
+        { label: 'Karang', count: planInfo.campurKarang || 6 },
+        { label: 'F REGULER (LN, AVE)', count: planInfo.campurTotalSKM || 1 }
+      );
+    }
+    return list;
+  }, [planInfo]);
+
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* Header Info & Title */}
@@ -197,10 +238,15 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
           <div className="text-2xl font-black text-slate-900">
             {summary.totalBatchPlan} <span className="text-xs font-semibold text-slate-500">Campur</span>
           </div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-            <span className="font-semibold text-slate-700">153-BK: {planInfo.campur153}</span> · 
-            <span className="font-semibold text-slate-700">Karang: {planInfo.campurKarang}</span> · 
-            <span className="font-semibold text-slate-700">SKM: {planInfo.campurTotalSKM}</span>
+          <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5" title="Rincian Rencana Campuran per Jenis Tembakau Blend">
+            {activeBlendPlans.map((bp, i) => (
+              <React.Fragment key={bp.label}>
+                <span className="font-semibold text-slate-700 whitespace-nowrap">
+                  {bp.label}: {bp.count}
+                </span>
+                {i < activeBlendPlans.length - 1 && <span className="text-slate-300">·</span>}
+              </React.Fragment>
+            ))}
           </div>
         </div>
 
