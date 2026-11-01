@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { KomoditasData, MutasiItem, KategoriProduksi, ReconciliationDisplayConfig } from '../../types';
 import { 
   Search, 
@@ -27,6 +27,7 @@ import { exportToPdf } from '../../services/pdfExport';
 import { GasService } from '../../services/gasService';
 import { SktSkmSettingsModal } from '../modals/SktSkmSettingsModal';
 import { KelolaJenisMutasiModal } from '../modals/KelolaJenisMutasiModal';
+import { MutasiDatePicker, DateFilterMode } from './MutasiDatePicker';
 import { 
   parseDateIndo, 
   getTanggalKey, 
@@ -242,6 +243,29 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     const target = allMutasi.find(e => e.komoditas === filterKomoditas);
     return target?._dateKey || '';
   }, [allMutasi, filterKomoditas]);
+
+  // Daftar seluruh tanggal unik transaksi mutasi (diurutkan dari terbaru ke terlama)
+  const distinctDates = useMemo(() => {
+    const set = new Set<string>();
+    allMutasi.forEach(e => {
+      if (filterKomoditas === 'all' || e.komoditas === filterKomoditas) {
+        if (e._dateKey) set.add(e._dateKey);
+      }
+    });
+    return Array.from(set).sort().reverse();
+  }, [allMutasi, filterKomoditas]);
+
+  const handleApplyDateFilter = useCallback((from: string, to: string, showAll: boolean) => {
+    setFilterFrom(from);
+    setFilterTo(to);
+    setShowAllDates(showAll);
+  }, []);
+
+  const handleResetToLatest = useCallback(() => {
+    setFilterFrom('');
+    setFilterTo('');
+    setShowAllDates(false);
+  }, []);
 
   // Available Kode options based on selected Komoditas
   const kodeOptions = useMemo(() => {
@@ -1129,70 +1153,23 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
           </div>
         </div>
 
-        {/* Date Ranges & Toggle Zero - Compact */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60">
+        {/* Date Filter Component (Harian, Mingguan, Bulanan, Rentang Bebas, Terkini, Semua) */}
+        <div className="pt-2 border-t border-slate-200/70">
+          <MutasiDatePicker
+            filterFrom={filterFrom}
+            filterTo={filterTo}
+            showAllDates={showAllDates}
+            latestTanggal={latestTanggal}
+            availableDates={distinctDates}
+            totalFilteredCount={filteredEntries.length}
+            onApplyDateFilter={handleApplyDateFilter}
+            onResetToLatest={handleResetToLatest}
+          />
+        </div>
+
+        {/* Action Toggles: Filter Badge Rekonsiliasi & Sembunyikan 0 & Reset */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
-              <Calendar className="w-3 h-3 text-slate-500" />
-              <span>Cari Periode:</span>
-            </span>
-            <input
-              type="date"
-              value={filterFrom}
-              onChange={e => {
-                setFilterFrom(e.target.value);
-                setShowAllDates(false);
-              }}
-              className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
-              title="Dari tanggal"
-            />
-            <span className="text-[11px] text-slate-400">s/d</span>
-            <input
-              type="date"
-              value={filterTo}
-              onChange={e => {
-                setFilterTo(e.target.value);
-                setShowAllDates(false);
-              }}
-              className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700"
-              title="Sampai tanggal"
-            />
-
-            {(filterFrom || filterTo || showAllDates) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterFrom('');
-                  setFilterTo('');
-                  setShowAllDates(false);
-                }}
-                className="text-[10.5px] text-blue-700 hover:text-blue-900 underline px-1 font-semibold flex items-center gap-0.5 cursor-pointer"
-                title="Kembalikan ke tampilan mutasi tanggal terbaru saja"
-              >
-                ↺ Tanggal Terbaru
-              </button>
-            )}
-
-            {!filterFrom && !filterTo && !showAllDates && !filterOnlyReconciled && (
-              filterKomoditas !== 'all' && latestTanggal ? (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-900 border border-blue-200 rounded text-[11px] font-semibold">
-                  <span>⚡ Tanggal Terbaru: {formatTanggalIndo(latestTanggal)}</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowAllDates(true)}
-                    className="text-[10px] text-blue-600 hover:text-blue-900 underline font-normal cursor-pointer"
-                    title="Lihat seluruh mutasi dari semua tanggal"
-                  >
-                    Semua Tanggal
-                  </button>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 rounded text-[11px] font-semibold">
-                  <span>⚡ Mutasi Terkini Lintas Bahan Baku</span>
-                </span>
-              )
-            )}
-
             {/* Tombol Cepat: Filter Khusus Transaksi Ber-Badge Rekonsiliasi */}
             <button
               type="button"
@@ -1212,7 +1189,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
               <span>{filterOnlyReconciled ? '✓ Mode Rekonsiliasi Aktif' : `Filter Badge Rekonsiliasi (${totalReconciledCount})`}</span>
             </button>
 
-            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero || filterOnlyReconciled) && (
+            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero || filterOnlyReconciled || filterFrom || filterTo || showAllDates) && (
               <button
                 type="button"
                 onClick={() => {
@@ -1222,12 +1199,14 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   setSearchQuery('');
                   setFilterHideZero(false);
                   setFilterOnlyReconciled(false);
+                  setFilterFrom('');
+                  setFilterTo('');
                   setShowAllDates(false);
                 }}
                 className="text-[10.5px] text-slate-500 hover:text-slate-800 underline px-1 font-medium flex items-center gap-0.5 cursor-pointer"
                 title="Reset semua filter ke default"
               >
-                Reset Filter
+                Reset Semua Filter
               </button>
             )}
           </div>

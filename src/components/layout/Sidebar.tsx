@@ -21,7 +21,8 @@ import {
   Sliders,
   FileCheck2
 } from 'lucide-react';
-import { UserSession } from '../../types';
+import { UserSession, PublicPortalConfig } from '../../types';
+import { PublicPortalService } from '../../services/publicPortalService';
 
 interface SidebarProps {
   currentTab: string;
@@ -33,6 +34,8 @@ interface SidebarProps {
   onOpenUserManagement?: () => void;
   onOpenAIBot?: () => void;
   onOpenSktSkmSettings?: () => void;
+  isPublicView?: boolean;
+  publicConfig?: PublicPortalConfig;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isFullscreen?: boolean;
@@ -51,6 +54,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   onOpenUserManagement,
   onOpenAIBot,
   onOpenSktSkmSettings,
+  isPublicView = false,
+  publicConfig,
   isCollapsed = false,
   onToggleCollapse,
   isFullscreen = false,
@@ -114,6 +119,20 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
     }] : [])
   ];
 
+  const filteredMenuItems = React.useMemo(() => {
+    if (!isPublicView) return menuItems;
+    const cfg = publicConfig || PublicPortalService.getConfig();
+    return menuItems.filter(item => {
+      if (item.id === 'ringkasan') return cfg.showRingkasan;
+      if (item.id === 'mutasi') return cfg.showMutasi;
+      if (item.id === 'kode') return cfg.showSaldoKode;
+      if (item.id === 'bspp') return cfg.showBspp;
+      if (item.id === 'analisa') return cfg.showAnalisa;
+      if (item.id === 'ai_logistik') return cfg.showAiLogistik;
+      return false;
+    });
+  }, [menuItems, isPublicView, publicConfig]);
+
   return (
     <aside 
       className={`h-full bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none transition-all duration-300 ease-in-out relative ${
@@ -137,7 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
                   PT BATU KARANG
                 </h2>
                 <p className="text-[11.5px] text-slate-400 font-medium truncate">
-                  Divisi Produksi I (PP1)
+                  {isPublicView ? 'Portal Publik Tim PP1' : 'Divisi Produksi I (PP1)'}
                 </p>
               </div>
             )}
@@ -157,36 +176,48 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
 
         {/* User Role Card in Sidebar */}
         {!isCollapsed ? (
-          <div className="mt-4 p-3 bg-slate-800/60 rounded-xl border border-slate-700/60 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                <span>Akses Aktif</span>
+          isPublicView ? (
+            <div className="mt-4 p-2.5 bg-emerald-950/40 rounded-xl border border-emerald-800/40 flex items-center justify-between animate-in fade-in duration-200">
+              <div>
+                <span className="text-[10px] text-emerald-400 uppercase font-semibold">Akses Portal</span>
+                <div className="text-xs font-bold text-white">Publik Tim PP1</div>
+              </div>
+              <span className="text-[9.5px] font-mono font-bold text-emerald-300 bg-emerald-900/60 px-2 py-0.5 rounded-full">
+                READ-ONLY
               </span>
-              <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                Live
-              </span>
             </div>
-            <div className="text-sm font-semibold text-white truncate">
-              {session.nama}
+          ) : (
+            <div className="mt-4 p-3 bg-slate-800/60 rounded-xl border border-slate-700/60 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                <span className="flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Akses Aktif</span>
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Live
+                </span>
+              </div>
+              <div className="text-sm font-semibold text-white truncate">
+                {session.nama}
+              </div>
+              <div className="text-[12px] text-blue-300 font-medium truncate">
+                {session.role}
+              </div>
             </div>
-            <div className="text-[12px] text-blue-300 font-medium truncate">
-              {session.role}
-            </div>
-          </div>
+          )
         ) : (
           <div 
             className="mt-3 w-10 h-10 rounded-xl bg-slate-800/70 border border-slate-700/60 flex items-center justify-center text-blue-400 cursor-pointer relative group"
-            title={`${session.nama} (${session.role}) - Akses Aktif`}
+            title={isPublicView ? "Portal Publik (Read-Only)" : `${session.nama} (${session.role}) - Akses Aktif`}
           >
-            <ShieldCheck className="w-4 h-4 text-blue-400" />
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400"></span>
             
             {/* Tooltip on Hover */}
             <div className="absolute left-full ml-3 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
-              <p className="font-bold">{session.nama}</p>
-              <p className="text-[11px] text-blue-300">{session.role}</p>
+              <p className="font-bold">{isPublicView ? 'Portal Publik PP1' : session.nama}</p>
+              <p className="text-[11px] text-emerald-300">{isPublicView ? 'Read-Only Tanpa Login' : session.role}</p>
             </div>
           </div>
         )}
@@ -196,11 +227,11 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       <div className={`flex-1 py-4 space-y-1.5 overflow-y-auto min-h-0 ${isCollapsed ? 'px-2' : 'px-3'}`}>
         {!isCollapsed && (
           <div className="px-3 pb-2 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
-            Modul Operasional
+            {isPublicView ? 'Menu Publik Terverifikasi' : 'Modul Operasional'}
           </div>
         )}
 
-        {menuItems.map(item => {
+        {filteredMenuItems.map(item => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
           return (
@@ -279,136 +310,140 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
           </div>
         )}
 
-        {(session.hasDevAccess || session.canManageUsers) && !isCollapsed && (
-          <div className="pt-4 px-3 pb-2 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
-            Infrastruktur &amp; Akses
-          </div>
-        )}
-        {(session.hasDevAccess || session.canManageUsers) && isCollapsed && <div className="my-2 border-t border-slate-800" />}
-
-        {/* GAS Headless Config Tab (Only for Dev / Site Engineer) */}
-        {session.hasDevAccess && (
-          <div className="relative group">
-            <button
-              onClick={onOpenMigration}
-              className={`w-full flex items-center rounded-xl transition-all ${
-                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
-              } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
-              title={isCollapsed ? "Headless GAS Center (REST JSON API)" : undefined}
-            >
-              <Database className="w-5 h-5 text-indigo-400 shrink-0" />
-              {!isCollapsed && (
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold truncate leading-tight text-indigo-200">
-                    Headless GAS Center
-                  </div>
-                  <div className="text-[10.5px] text-slate-500 truncate">
-                    REST JSON API &amp; Test URL
-                  </div>
-                </div>
-              )}
-            </button>
-            {isCollapsed && (
-              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
-                <div className="font-semibold text-indigo-200">Headless GAS Center</div>
-                <div className="text-[10px] text-slate-400">REST JSON API &amp; Test URL</div>
+        {!isPublicView && (
+          <>
+            {(session.hasDevAccess || session.canManageUsers) && !isCollapsed && (
+              <div className="pt-4 px-3 pb-2 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
+                Infrastruktur &amp; Akses
               </div>
             )}
-          </div>
-        )}
+            {(session.hasDevAccess || session.canManageUsers) && isCollapsed && <div className="my-2 border-t border-slate-800" />}
 
-        {/* Laporan Pemeriksaan Web Apps (Only for Dev / Site Engineer) */}
-        {session.hasDevAccess && onOpenSystemAuditReport && (
-          <div className="relative group">
-            <button
-              onClick={onOpenSystemAuditReport}
-              className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
-                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
-              } text-slate-300 hover:text-white hover:bg-slate-800/80 group-hover:border-slate-700`}
-              title={isCollapsed ? "Laporan Pemeriksaan & Baseline v2.0" : undefined}
-            >
-              <FileCheck2 className="w-5 h-5 text-teal-400 shrink-0 group-hover:scale-105 transition-transform" />
-              {!isCollapsed && (
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold truncate leading-tight text-teal-300 flex items-center gap-1.5">
-                    <span>Laporan Pemeriksaan</span>
-                    <span className="text-[9.5px] bg-teal-500/20 text-teal-300 px-1.5 py-0.2 rounded border border-teal-500/30 font-mono font-bold">v2.0</span>
+            {/* GAS Headless Config Tab (Only for Dev / Site Engineer) */}
+            {session.hasDevAccess && (
+              <div className="relative group">
+                <button
+                  onClick={onOpenMigration}
+                  className={`w-full flex items-center rounded-xl transition-all ${
+                    isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+                  } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
+                  title={isCollapsed ? "Headless GAS Center (REST JSON API)" : undefined}
+                >
+                  <Database className="w-5 h-5 text-indigo-400 shrink-0" />
+                  {!isCollapsed && (
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold truncate leading-tight text-indigo-200">
+                        Headless GAS Center
+                      </div>
+                      <div className="text-[10.5px] text-slate-500 truncate">
+                        REST JSON API &amp; Test URL
+                      </div>
+                    </div>
+                  )}
+                </button>
+                {isCollapsed && (
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                    <div className="font-semibold text-indigo-200">Headless GAS Center</div>
+                    <div className="text-[10px] text-slate-400">REST JSON API &amp; Test URL</div>
                   </div>
-                  <div className="text-[10.5px] text-slate-400 truncate mt-0.5">
-                    Baseline &amp; Audit Keandalan
-                  </div>
-                </div>
-              )}
-            </button>
-            {isCollapsed && (
-              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
-                <div className="font-semibold text-teal-300">Laporan Pemeriksaan Web Apps</div>
-                <div className="text-[10px] text-slate-400">Baseline v2.0 &amp; Audit Keandalan</div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* User Management RBAC Tab */}
-        {session.canManageUsers && onOpenUserManagement && (
-          <div className="relative group">
-            <button
-              onClick={onOpenUserManagement}
-              className={`w-full flex items-center rounded-xl transition-all ${
-                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
-              } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
-              title={isCollapsed ? "Pengaturan Hak Akses Staf (RBAC)" : undefined}
-            >
-              <Users className="w-5 h-5 text-blue-400 shrink-0" />
-              {!isCollapsed && (
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold truncate leading-tight text-blue-200">
-                    Hak Akses Staf
+            {/* Laporan Pemeriksaan Web Apps (Only for Dev / Site Engineer) */}
+            {session.hasDevAccess && onOpenSystemAuditReport && (
+              <div className="relative group">
+                <button
+                  onClick={onOpenSystemAuditReport}
+                  className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
+                    isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+                  } text-slate-300 hover:text-white hover:bg-slate-800/80 group-hover:border-slate-700`}
+                  title={isCollapsed ? "Laporan Pemeriksaan & Baseline v2.0" : undefined}
+                >
+                  <FileCheck2 className="w-5 h-5 text-teal-400 shrink-0 group-hover:scale-105 transition-transform" />
+                  {!isCollapsed && (
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold truncate leading-tight text-teal-300 flex items-center gap-1.5">
+                        <span>Laporan Pemeriksaan</span>
+                        <span className="text-[9.5px] bg-teal-500/20 text-teal-300 px-1.5 py-0.2 rounded border border-teal-500/30 font-mono font-bold">v2.0</span>
+                      </div>
+                      <div className="text-[10.5px] text-slate-400 truncate mt-0.5">
+                        Baseline &amp; Audit Keandalan
+                      </div>
+                    </div>
+                  )}
+                </button>
+                {isCollapsed && (
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                    <div className="font-semibold text-teal-300">Laporan Pemeriksaan Web Apps</div>
+                    <div className="text-[10px] text-slate-400">Baseline v2.0 &amp; Audit Keandalan</div>
                   </div>
-                  <div className="text-[10.5px] text-slate-500 truncate">
-                    Atur Pembatasan Bahan Baku
-                  </div>
-                </div>
-              )}
-            </button>
-            {isCollapsed && (
-              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
-                <div className="font-semibold text-blue-200">Hak Akses Staf</div>
-                <div className="text-[10px] text-slate-400">Atur Pembatasan Bahan Baku</div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Jalur SKT & SKM Configuration Tab */}
-        {onOpenSktSkmSettings && (
-          <div className="relative group">
-            <button
-              onClick={onOpenSktSkmSettings}
-              className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
-                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
-              } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
-              title={isCollapsed ? "Pengaturan Jalur SKT & SKM per Bahan" : undefined}
-            >
-              <Sliders className="w-5 h-5 text-amber-400 shrink-0" />
-              {!isCollapsed && (
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold truncate leading-tight text-amber-200">
-                    Jalur SKT &amp; SKM
+            {/* User Management RBAC Tab */}
+            {session.canManageUsers && onOpenUserManagement && (
+              <div className="relative group">
+                <button
+                  onClick={onOpenUserManagement}
+                  className={`w-full flex items-center rounded-xl transition-all ${
+                    isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+                  } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
+                  title={isCollapsed ? "Pengaturan Hak Akses Staf (RBAC)" : undefined}
+                >
+                  <Users className="w-5 h-5 text-blue-400 shrink-0" />
+                  {!isCollapsed && (
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold truncate leading-tight text-blue-200">
+                        Hak Akses Staf
+                      </div>
+                      <div className="text-[10.5px] text-slate-500 truncate">
+                        Atur Pembatasan Bahan Baku
+                      </div>
+                    </div>
+                  )}
+                </button>
+                {isCollapsed && (
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                    <div className="font-semibold text-blue-200">Hak Akses Staf</div>
+                    <div className="text-[10px] text-slate-400">Atur Pembatasan Bahan Baku</div>
                   </div>
-                  <div className="text-[10.5px] text-slate-500 truncate">
-                    Checklist Bahan Aktif / Pasif
-                  </div>
-                </div>
-              )}
-            </button>
-            {isCollapsed && (
-              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
-                <div className="font-semibold text-amber-200">Jalur SKT &amp; SKM</div>
-                <div className="text-[10px] text-slate-400">Checklist Bahan Aktif / Pasif</div>
+                )}
               </div>
             )}
-          </div>
+
+            {/* Jalur SKT & SKM Configuration Tab */}
+            {onOpenSktSkmSettings && (
+              <div className="relative group">
+                <button
+                  onClick={onOpenSktSkmSettings}
+                  className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
+                    isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+                  } text-slate-400 hover:text-slate-100 hover:bg-slate-800/70`}
+                  title={isCollapsed ? "Pengaturan Jalur SKT & SKM per Bahan" : undefined}
+                >
+                  <Sliders className="w-5 h-5 text-amber-400 shrink-0" />
+                  {!isCollapsed && (
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold truncate leading-tight text-amber-200">
+                        Jalur SKT &amp; SKM
+                      </div>
+                      <div className="text-[10.5px] text-slate-500 truncate">
+                        Checklist Bahan Aktif / Pasif
+                      </div>
+                    </div>
+                  )}
+                </button>
+                {isCollapsed && (
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                    <div className="font-semibold text-amber-200">Jalur SKT &amp; SKM</div>
+                    <div className="text-[10px] text-slate-400">Checklist Bahan Aktif / Pasif</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Switch Board Data Proses */}

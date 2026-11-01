@@ -17,7 +17,8 @@ import {
   Bot,
   CloudDownload,
   RefreshCw,
-  FileCheck2
+  FileCheck2,
+  Share2
 } from 'lucide-react';
 import { UserSession, UserRole } from '../../types';
 import { GasService } from '../../services/gasService';
@@ -41,6 +42,8 @@ interface NavbarProps {
   onOpenAIBot?: () => void;
   onOpenAILogistik?: () => void;
   onOpenSktSkmSettings?: () => void;
+  onOpenPublicPortalSettings?: () => void;
+  isPublicView?: boolean;
   onLogout: () => void;
   isSidebarCollapsed?: boolean;
   onToggleSidebarCollapse?: () => void;
@@ -70,6 +73,8 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
   onOpenAIBot,
   onOpenAILogistik,
   onOpenSktSkmSettings,
+  onOpenPublicPortalSettings,
+  isPublicView = false,
   onLogout,
   isSidebarCollapsed = false,
   onToggleSidebarCollapse,
@@ -179,29 +184,49 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
             </button>
           )}
 
-          {/* 2. Dropdown Dinamis: Gabungan Seluruh Menu Alat & Fitur */}
-          <div className="relative" ref={toolsRef}>
+          {/* Tombol Bagikan Link Publik (Khusus Akun Internal / Admin) */}
+          {!isPublicView && onOpenPublicPortalSettings && (
             <button
-              type="button"
-              onClick={() => {
-                setIsToolsOpen(prev => !prev);
-                setIsRoleOpen(false);
-              }}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs ${
-                isToolsOpen
-                  ? 'bg-blue-50 text-blue-800 border-blue-300 ring-2 ring-blue-500/20'
-                  : 'bg-slate-100 hover:bg-slate-200/90 text-slate-800 border-slate-200/90'
-              }`}
-              title="Akses cepat ke alat, modul AI, dan pengaturan"
+              onClick={onOpenPublicPortalSettings}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 border border-indigo-200 transition-colors shadow-2xs cursor-pointer"
+              title="Bagikan &amp; Atur Tautan Publik untuk Tim Divisi (Read-Only Tanpa Login)"
             >
-              <Grid className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="hidden md:inline">Menu Alat &amp; Fitur</span>
-              <span className="md:hidden">Menu</span>
-              <span className="text-[10px] bg-white border border-slate-200 text-slate-600 px-1.5 py-0.2 rounded-full font-mono font-bold">
-                {availableToolsCount}
-              </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
+              <Share2 className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="hidden lg:inline">Bagikan Link Publik</span>
+              <span className="lg:hidden">Bagikan</span>
             </button>
+          )}
+
+          {isPublicView ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Portal Publik (Read-Only)</span>
+            </div>
+          ) : (
+            <>
+              {/* 2. Dropdown Dinamis: Gabungan Seluruh Menu Alat & Fitur */}
+              <div className="relative" ref={toolsRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsToolsOpen(prev => !prev);
+                    setIsRoleOpen(false);
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs ${
+                    isToolsOpen
+                      ? 'bg-blue-50 text-blue-800 border-blue-300 ring-2 ring-blue-500/20'
+                      : 'bg-slate-100 hover:bg-slate-200/90 text-slate-800 border-slate-200/90'
+                  }`}
+                  title="Akses cepat ke alat, modul AI, dan pengaturan"
+                >
+                  <Grid className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span className="hidden md:inline">Menu Alat &amp; Fitur</span>
+                  <span className="md:hidden">Menu</span>
+                  <span className="text-[10px] bg-white border border-slate-200 text-slate-600 px-1.5 py-0.2 rounded-full font-mono font-bold">
+                    {availableToolsCount}
+                  </span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
+                </button>
 
             {/* Panel Dropdown Dinamis */}
             {isToolsOpen && (
@@ -554,8 +579,10 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
           >
             <LogOut className="w-4 h-4" />
           </button>
-        </div>
-      </div>
-    </header>
+        </>
+      )}
+    </div>
+  </div>
+</header>
   );
 });

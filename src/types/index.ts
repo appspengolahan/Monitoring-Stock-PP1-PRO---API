@@ -252,3 +252,13 @@ export interface CustomJenisMutasiItem {
   isCustom: true;
   createdAt: string;
 }
+
+export interface PublicPortalConfig {
+  showRingkasan: boolean;       // Ringkasan Stok (Overview 4 Bahan Baku Utama) - Default: true
+  showMutasi: boolean;          // Mutasi Lintas Bahan (Mutasi masuk/keluar harian & filter) - Default: true
+  showSaldoKode: boolean;       // Saldo Kode / Grade (Daftar stok per kode/grade) - Default: true
+  showKalkulatorPruf: boolean;   // Kalkulator Estimasi Stock & Planing - Default: false
+  showBspp: boolean;            // Bukti Selisih Persediaan (BSPP) - Default: false
+  showAnalisa: boolean;         // Analisa Komposisi & Grafik - Default: false
+  showAiLogistik: boolean;      // AI Logistik & Prediksi - Default: false
+}

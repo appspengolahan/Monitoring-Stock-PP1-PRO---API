@@ -22,6 +22,8 @@ import { KalkulatorEstimasiStock } from './KalkulatorEstimasiStock';
 interface SaldoKodePanelProps {
   data: KomoditasData[];
   initialCommodity?: string;
+  isPublicView?: boolean;
+  allowKalkulatorInPublic?: boolean;
 }
 
 interface FlattenedKode {
@@ -37,8 +39,11 @@ interface FlattenedKode {
 
 export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
   data,
-  initialCommodity = 'all'
+  initialCommodity = 'all',
+  isPublicView = false,
+  allowKalkulatorInPublic = false
 }) => {
+  const canShowKalkulator = !isPublicView || allowKalkulatorInPublic;
   const [filterKomoditas, setFilterKomoditas] = useState<string>(initialCommodity);
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [filterProduksi, setFilterProduksi] = useState<'all' | 'SKT' | 'SKM' | 'Gabungan'>('all');
@@ -258,38 +263,40 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Sub Navigation Bar: Saldo Kode vs Kalkulator Estimasi Stock */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 sm:px-4 rounded-2xl border border-slate-200/90 shadow-2xs">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-semibold overflow-x-auto">
-          <button
-            onClick={() => setSubTab('saldo_list')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-              subTab === 'saldo_list' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Kartu Saldo per Kode / Grade</span>
-          </button>
-          <button
-            onClick={() => setSubTab('kalkulator')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-              subTab === 'kalkulator' ? 'bg-indigo-600 text-white shadow-2xs font-bold' : 'text-indigo-900 hover:text-indigo-950 hover:bg-indigo-50/50'
-            }`}
-          >
-            <Calculator className="w-3.5 h-3.5 text-amber-300" />
-            <span>Kalkulator Estimasi Stock &amp; Planing</span>
-            <span className="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full font-bold ml-0.5">Baru</span>
-          </button>
-        </div>
+      {/* Sub Navigation Bar: Saldo Kode vs Kalkulator Estimasi Stock (Hanya tampil jika kalkulator diizinkan) */}
+      {canShowKalkulator && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 sm:px-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-semibold overflow-x-auto">
+            <button
+              onClick={() => setSubTab('saldo_list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                subTab === 'saldo_list' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Kartu Saldo per Kode / Grade</span>
+            </button>
+            <button
+              onClick={() => setSubTab('kalkulator')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                subTab === 'kalkulator' ? 'bg-indigo-600 text-white shadow-2xs font-bold' : 'text-indigo-900 hover:text-indigo-950 hover:bg-indigo-50/50'
+              }`}
+            >
+              <Calculator className="w-3.5 h-3.5 text-amber-300" />
+              <span>Kalkulator Estimasi Stock &amp; Planing</span>
+              <span className="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full font-bold ml-0.5">Baru</span>
+            </button>
+          </div>
 
-        <div className="text-[11px] text-slate-500 font-medium px-1 hidden sm:block">
-          {subTab === 'saldo_list' 
-            ? 'Menampilkan saldo kartu stok berjalan PP1' 
-            : 'Menghubungkan resep DATABASEPRUF dengan stok riil Rajang II & Cengkeh'}
+          <div className="text-[11px] text-slate-500 font-medium px-1 hidden sm:block">
+            {subTab === 'saldo_list' 
+              ? 'Menampilkan saldo kartu stok berjalan PP1' 
+              : 'Menghubungkan resep DATABASEPRUF dengan stok riil Rajang II & Cengkeh'}
+          </div>
         </div>
-      </div>
+      )}
 
-      {subTab === 'kalkulator' ? (
+      {canShowKalkulator && subTab === 'kalkulator' ? (
         <KalkulatorEstimasiStock komoditasList={data} />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">

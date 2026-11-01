@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { KomoditasData, BSPPData, UserSession, UserRole } from './types';
+import { KomoditasData, BSPPData, UserSession, UserRole, PublicPortalConfig } from './types';
 import { GasService } from './services/gasService';
+import { PublicPortalService } from './services/publicPortalService';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
@@ -26,6 +27,7 @@ import { AISmartInsights } from './components/dashboard/AISmartInsights';
 import { AIBotModal } from './components/modals/AIBotModal';
 import { SktSkmSettingsModal } from './components/modals/SktSkmSettingsModal';
 import { SystemAuditReportModal } from './components/modals/SystemAuditReportModal';
+import { PublicPortalSettingsModal } from './components/modals/PublicPortalSettingsModal';
 import { StockEstimationService } from './services/stockEstimationService';
 import { useFullscreen } from './hooks/useFullscreen';
 import { usePWAInstall } from './hooks/usePWAInstall';
@@ -49,14 +51,37 @@ import {
   KeyRound,
   Bot,
   Sparkles,
-  FileCheck2
+  FileCheck2,
+  Share2
 } from 'lucide-react';
 
 export default function App() {
+  // 0. Public Portal View Detection & Configuration
+  const [isPublicView] = useState<boolean>(() => PublicPortalService.isPublicView());
+  const [publicConfig, setPublicConfig] = useState<PublicPortalConfig>(() => PublicPortalService.getConfig());
+  const [isPublicPortalSettingsOpen, setIsPublicPortalSettingsOpen] = useState<boolean>(false);
+
   // 1. Initial cached data (Instant 0.01s load)
   const [komoditasList, setKomoditasList] = useState<KomoditasData[]>(() => GasService.getCachedKomoditas());
   const [bsppList, setBsppList] = useState<BSPPData[]>(() => GasService.getCachedBSPP());
-  const [session, setSession] = useState<UserSession>(() => GasService.getCurrentSession());
+  const [session, setSession] = useState<UserSession>(() => {
+    if (PublicPortalService.isPublicView()) {
+      return {
+        nama: 'Portal Publik Tim PP1',
+        email: 'publik@batukarang.com',
+        role: 'Viewer Publik (Read-Only)' as any,
+        hasDevAccess: false,
+        isDefaultPassword: false,
+        allowedKomoditas: ['*'],
+        canExportPdf: false,
+        canManageUsers: false,
+        canAccessAI: false,
+        isLoggedIn: true,
+        token: 'session_public_readonly'
+      };
+    }
+    return GasService.getCurrentSession();
+  });
   const [lastSync, setLastSync] = useState<string>(() => GasService.getLastSyncTime() || new Date().toISOString());
 
   // 2. Active View & Filter states
@@ -97,12 +122,14 @@ export default function App() {
   const [isSktSkmOpen, setIsSktSkmOpen] = useState<boolean>(false);
   const [isSystemAuditReportOpen, setIsSystemAuditReportOpen] = useState<boolean>(false);
 
-  // Auto-detect ?page=admin query param to open login modal
+  // Auto-detect ?page=admin query param to open login modal (hanya untuk mode internal)
   useEffect(() => {
     try {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('page') === 'admin' || urlParams.get('login') === 'true' || urlParams.get('email')) {
-        setIsLoginOpen(true);
+      if (!isPublicView) {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('page') === 'admin' || urlParams.get('login') === 'true' || urlParams.get('email')) {
+          setIsLoginOpen(true);
+        }
       }
     } catch (e) {}
 
@@ -110,7 +137,31 @@ export default function App() {
     GasService.syncUsersWithServer().catch(err => {
       console.warn('Initial user whitelist sync notice:', err);
     });
+  }, [isPublicView]);
+
+  // Listen to public portal config update events
+  useEffect(() => {
+    const handlePortalConfigChange = (e: any) => {
+      if (e.detail) {
+        setPublicConfig(e.detail);
+      } else {
+        setPublicConfig(PublicPortalService.getConfig());
+      }
+    };
+    window.addEventListener('stockpp1_public_portal_config_updated', handlePortalConfigChange);
+    return () => {
+      window.removeEventListener('stockpp1_public_portal_config_updated', handlePortalConfigChange);
+    };
   }, []);
+
+  // Redirect to an allowed tab if current tab is restricted in public view
+  useEffect(() => {
+    if (isPublicView) {
+      if (!PublicPortalService.isTabAllowedInPublic(currentTab, publicConfig)) {
+        setCurrentTab('ringkasan');
+      }
+    }
+  }, [isPublicView, currentTab, publicConfig]);
 
   // Auto-refresh komoditasList when reconciliation data is fetched or updated (debounced to avoid freeze)
   useEffect(() => {
@@ -338,6 +389,8 @@ export default function App() {
         onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
         onOpenAILogistik={hasAIAccess ? () => { setCurrentTab('ai_logistik'); setTargetCommodityFilter('all'); } : undefined}
         onOpenSktSkmSettings={() => setIsSktSkmOpen(true)}
+        onOpenPublicPortalSettings={() => setIsPublicPortalSettingsOpen(true)}
+        isPublicView={isPublicView}
         onLogout={handleLogout}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebarCollapse={handleToggleSidebar}
@@ -362,6 +415,8 @@ export default function App() {
             onOpenUserManagement={() => setIsUserManagementOpen(true)}
             onOpenAIBot={hasAIAccess ? () => setIsAIBotOpen(true) : undefined}
             onOpenSktSkmSettings={() => setIsSktSkmOpen(true)}
+            isPublicView={isPublicView}
+            publicConfig={publicConfig}
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={handleToggleSidebar}
             isFullscreen={isFullscreen}
@@ -391,31 +446,37 @@ export default function App() {
 
           {/* Quick Tab Segmented Bar for Mobile / Tablet */}
           <div className="lg:hidden flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-xl mb-3 overflow-x-auto text-xs font-semibold select-none">
-            <button
-              onClick={() => { setCurrentTab('ringkasan'); setTargetCommodityFilter('all'); }}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'ringkasan' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              Ringkasan Stok
-            </button>
-            <button
-              onClick={() => setCurrentTab('mutasi')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'mutasi' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              Mutasi Lintas Bahan
-            </button>
-            <button
-              onClick={() => setCurrentTab('kode')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'kode' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              Saldo Kode
-            </button>
-            {hasBsppAccess && (
+            {(!isPublicView || publicConfig.showRingkasan) && (
+              <button
+                onClick={() => { setCurrentTab('ringkasan'); setTargetCommodityFilter('all'); }}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  currentTab === 'ringkasan' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
+                }`}
+              >
+                Ringkasan Stok
+              </button>
+            )}
+            {(!isPublicView || publicConfig.showMutasi) && (
+              <button
+                onClick={() => setCurrentTab('mutasi')}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  currentTab === 'mutasi' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
+                }`}
+              >
+                Mutasi Lintas Bahan
+              </button>
+            )}
+            {(!isPublicView || publicConfig.showSaldoKode) && (
+              <button
+                onClick={() => setCurrentTab('kode')}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  currentTab === 'kode' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
+                }`}
+              >
+                Saldo Kode
+              </button>
+            )}
+            {(!isPublicView ? hasBsppAccess : publicConfig.showBspp) && (
               <button
                 onClick={() => setCurrentTab('bspp')}
                 className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
@@ -425,15 +486,17 @@ export default function App() {
                 BSPP
               </button>
             )}
-            <button
-              onClick={() => setCurrentTab('analisa')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                currentTab === 'analisa' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
-              }`}
-            >
-              Analisa
-            </button>
-            {hasAIAccess && (
+            {(!isPublicView || publicConfig.showAnalisa) && (
+              <button
+                onClick={() => setCurrentTab('analisa')}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  currentTab === 'analisa' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
+                }`}
+              >
+                Analisa
+              </button>
+            )}
+            {!isPublicView && hasAIAccess && (
               <button
                 onClick={() => setCurrentTab('ai_logistik')}
                 className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5 ${
@@ -444,7 +507,7 @@ export default function App() {
                 <span>AI Logistik</span>
               </button>
             )}
-            {session.hasDevAccess && (
+            {!isPublicView && session.hasDevAccess && (
               <button
                 onClick={() => setIsMigrationOpen(true)}
                 className="px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-all bg-blue-600 text-white font-bold flex items-center gap-1 shrink-0 shadow-2xs"
@@ -464,7 +527,7 @@ export default function App() {
               />
 
               {/* AI Smart Insights Bar (Pindah ke posisi paling bawah dashboard) */}
-              {hasAIAccess && (
+              {!isPublicView && hasAIAccess && (
                 <AISmartInsights
                   komoditasList={visibleKomoditasList}
                   bsppList={visibleBsppList}
@@ -491,6 +554,8 @@ export default function App() {
             <SaldoKodePanel
               data={visibleKomoditasList}
               initialCommodity={targetCommodityFilter}
+              isPublicView={isPublicView}
+              allowKalkulatorInPublic={publicConfig.showKalkulatorPruf}
             />
           )}
 
@@ -502,7 +567,7 @@ export default function App() {
             <AnalyticsCharts data={visibleKomoditasList} />
           )}
 
-          {currentTab === 'ai_logistik' && hasAIAccess && (
+          {currentTab === 'ai_logistik' && !isPublicView && hasAIAccess && (
             <AILogistikPanel
               komoditasList={visibleKomoditasList}
               bsppList={visibleBsppList}
@@ -518,13 +583,15 @@ export default function App() {
               <p className="font-semibold text-slate-700">
                 Monitoring Stock Persediaan PP1 · Divisi Produksi I · PT Batu Karang
               </p>
-              <button
-                onClick={() => setIsLoginOpen(true)}
-                className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
-                title="Pintu Masuk Admin (?page=admin)"
-              >
-                <Lock className="w-3.5 h-3.5" />
-              </button>
+              {!isPublicView && (
+                <button
+                  onClick={() => setIsLoginOpen(true)}
+                  className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+                  title="Pintu Masuk Admin (?page=admin)"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
             <div className="flex items-center justify-center flex-wrap gap-2 text-[10px]">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -549,6 +616,8 @@ export default function App() {
         }}
         onOpenMenu={() => setIsMobileMenuOpen(true)}
         allowedKomoditas={session.allowedKomoditas}
+        isPublicView={isPublicView}
+        publicConfig={publicConfig}
       />
 
       {/* Mobile Drawer Menu */}
@@ -765,12 +834,18 @@ export default function App() {
       />
 
       <LoginModal
-        isOpen={isLoginOpen || !session.isLoggedIn}
+        isOpen={!isPublicView && (isLoginOpen || !session.isLoggedIn)}
         onSuccess={newSession => {
           setSession(newSession);
           setIsLoginOpen(false);
         }}
         onClose={session.isLoggedIn ? () => setIsLoginOpen(false) : undefined}
+      />
+
+      {/* Pengaturan Portal Publik Tautkan Link */}
+      <PublicPortalSettingsModal
+        isOpen={isPublicPortalSettingsOpen}
+        onClose={() => setIsPublicPortalSettingsOpen(false)}
       />
 
       <SktSkmSettingsModal
@@ -779,14 +854,16 @@ export default function App() {
       />
 
       {/* Laporan Pemeriksaan & Baseline v2.0 Modal (Dev & Engineer) */}
-      <SystemAuditReportModal
-        isOpen={isSystemAuditReportOpen}
-        onClose={() => setIsSystemAuditReportOpen(false)}
-        komoditasList={komoditasList}
-      />
+      {!isPublicView && (
+        <SystemAuditReportModal
+          isOpen={isSystemAuditReportOpen}
+          onClose={() => setIsSystemAuditReportOpen(false)}
+          komoditasList={komoditasList}
+        />
+      )}
 
-      {/* AI Logistik & Stock Bot Modal (Hanya jika berhak akses) */}
-      {hasAIAccess && (
+      {/* AI Logistik & Stock Bot Modal (Hanya jika berhak akses & bukan mode publik) */}
+      {!isPublicView && hasAIAccess && (
         <AIBotModal
           isOpen={isAIBotOpen}
           onClose={() => setIsAIBotOpen(false)}
@@ -796,8 +873,8 @@ export default function App() {
         />
       )}
 
-      {/* Floating AI Stock Assistant Trigger Button (Bottom Right - Hanya non-staff) */}
-      {hasAIAccess && (
+      {/* Floating AI Stock Assistant Trigger Button (Bottom Right - Hanya non-staff & bukan publik) */}
+      {!isPublicView && hasAIAccess && (
         <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-30">
           <button
             onClick={() => setIsAIBotOpen(true)}
