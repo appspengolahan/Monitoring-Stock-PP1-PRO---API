@@ -377,10 +377,10 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                            <span>Laporan Pemeriksaan</span>
-                            <span className="text-[9px] px-1 bg-teal-100 text-teal-800 rounded font-mono font-bold">Baseline v2.0</span>
+                            <span>Laporan Audit &amp; Kesiapan</span>
+                            <span className="text-[9px] px-1 bg-emerald-100 text-emerald-800 rounded font-mono font-bold">5 Pilar &amp; PDF</span>
                           </div>
-                          <div className="text-[11px] text-slate-500 truncate">Verifikasi menyeluruh &amp; keandalan</div>
+                          <div className="text-[11px] text-slate-500 truncate">Ketahanan, latensi, mitigasi celah &amp; PDF</div>
                         </div>
                       </button>
                     )}
