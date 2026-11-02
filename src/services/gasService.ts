@@ -2049,8 +2049,30 @@ export class GasService {
     const enriched = this.enrichKomoditasData(data);
     this.clearSnapshotCache();
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEYS.KOMODITAS, JSON.stringify(enriched));
-      localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+      try {
+        localStorage.setItem(STORAGE_KEYS.KOMODITAS, JSON.stringify(enriched));
+        localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+      } catch (err: any) {
+        // Quota Guard: Jika penyimpanan HP operator penuh, bersihkan cache non-esensial dan pangkas mutasi lama
+        console.warn('LocalStorage quota warning. Menjalankan auto-purge & trimming cache...', err);
+        this.clearSnapshotCache();
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('telemetry_') || key.includes('temp_') || key.includes('snapshot'))) {
+              localStorage.removeItem(key);
+            }
+          }
+          const trimmed = enriched.map(k => ({
+            ...k,
+            mutasiTerbaru: (k.mutasiTerbaru || []).slice(0, 100)
+          }));
+          localStorage.setItem(STORAGE_KEYS.KOMODITAS, JSON.stringify(trimmed));
+          localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+        } catch (retryErr) {
+          console.error('Auto-purge storage recovery failed:', retryErr);
+        }
+      }
     }
   }
 

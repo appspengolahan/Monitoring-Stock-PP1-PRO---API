@@ -139,6 +139,18 @@ export default function App() {
     });
   }, [isPublicView]);
 
+  // Guard Proteksi Celah Keamanan Akses Publik: Pastikan tab aktif selalu berada dalam whitelist konfigurasi
+  useEffect(() => {
+    if (isPublicView && !PublicPortalService.isTabAllowedInPublic(currentTab, publicConfig)) {
+      const fallbackTab = publicConfig.showRingkasan ? 'ringkasan' :
+                          publicConfig.showMutasi ? 'mutasi' :
+                          publicConfig.showSaldoKode ? 'kode' :
+                          publicConfig.showBspp ? 'bspp' :
+                          publicConfig.showAnalisa ? 'analisa' : 'ringkasan';
+      setCurrentTab(fallbackTab);
+    }
+  }, [isPublicView, currentTab, publicConfig]);
+
   // Listen to public portal config update events
   useEffect(() => {
     const handlePortalConfigChange = (e: any) => {
@@ -801,37 +813,45 @@ export default function App() {
         onClose={() => setIsHelpOpen(false)}
       />
 
-      <GasMigrationModal
-        isOpen={isMigrationOpen}
-        onClose={() => setIsMigrationOpen(false)}
-        onRefreshData={handleRefresh}
-      />
+      {!isPublicView && (
+        <GasMigrationModal
+          isOpen={isMigrationOpen}
+          onClose={() => setIsMigrationOpen(false)}
+          onRefreshData={handleRefresh}
+        />
+      )}
 
-      <SwitchAppModal
-        isOpen={isSwitchAppOpen}
-        onClose={() => setIsSwitchAppOpen(false)}
-        allowedKomoditas={session.allowedKomoditas}
-        canManage={session.hasDevAccess || session.role === 'Web Developer' || session.role === 'Site Engineer / PM'}
-      />
+      {!isPublicView && (
+        <SwitchAppModal
+          isOpen={isSwitchAppOpen}
+          onClose={() => setIsSwitchAppOpen(false)}
+          allowedKomoditas={session.allowedKomoditas}
+          canManage={session.hasDevAccess || session.role === 'Web Developer' || session.role === 'Site Engineer / PM'}
+        />
+      )}
 
-      <UserManagementModal
-        isOpen={isUserManagementOpen}
-        onClose={() => setIsUserManagementOpen(false)}
-        availableKomoditas={allAvailableCommodityNames}
-        currentUserEmail={session.email}
-      />
+      {!isPublicView && (
+        <UserManagementModal
+          isOpen={isUserManagementOpen}
+          onClose={() => setIsUserManagementOpen(false)}
+          availableKomoditas={allAvailableCommodityNames}
+          currentUserEmail={session.email}
+        />
+      )}
 
-      <ChangePasswordModal
-        isOpen={isChangePasswordOpen}
-        onClose={() => setIsChangePasswordOpen(false)}
-        userEmail={session.email}
-        userName={session.nama}
-        onSuccess={() => {
-          setSession(GasService.getCurrentSession());
-          setSyncStatusNotice('Password berhasil diperbarui.');
-          setTimeout(() => setSyncStatusNotice(null), 4000);
-        }}
-      />
+      {!isPublicView && (
+        <ChangePasswordModal
+          isOpen={isChangePasswordOpen}
+          onClose={() => setIsChangePasswordOpen(false)}
+          userEmail={session.email}
+          userName={session.nama}
+          onSuccess={() => {
+            setSession(GasService.getCurrentSession());
+            setSyncStatusNotice('Password berhasil diperbarui.');
+            setTimeout(() => setSyncStatusNotice(null), 4000);
+          }}
+        />
+      )}
 
       <LoginModal
         isOpen={!isPublicView && (isLoginOpen || !session.isLoggedIn)}
@@ -843,15 +863,19 @@ export default function App() {
       />
 
       {/* Pengaturan Portal Publik Tautkan Link */}
-      <PublicPortalSettingsModal
-        isOpen={isPublicPortalSettingsOpen}
-        onClose={() => setIsPublicPortalSettingsOpen(false)}
-      />
+      {!isPublicView && (
+        <PublicPortalSettingsModal
+          isOpen={isPublicPortalSettingsOpen}
+          onClose={() => setIsPublicPortalSettingsOpen(false)}
+        />
+      )}
 
-      <SktSkmSettingsModal
-        isOpen={isSktSkmOpen}
-        onClose={() => setIsSktSkmOpen(false)}
-      />
+      {!isPublicView && (
+        <SktSkmSettingsModal
+          isOpen={isSktSkmOpen}
+          onClose={() => setIsSktSkmOpen(false)}
+        />
+      )}
 
       {/* Laporan Pemeriksaan & Baseline v2.0 Modal (Dev & Engineer) */}
       {!isPublicView && (
