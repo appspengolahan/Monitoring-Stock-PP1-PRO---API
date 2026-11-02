@@ -556,9 +556,9 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
         )}
 
         {/* Reset Action */}
-        <div className="flex items-center gap-1.5 ml-auto">
-          {/* Tombol Reset ke Hari Ini (Tanggal Berjalan) */}
-          {(selectedSingleDate !== todayKey || filterFrom !== todayKey || filterTo !== todayKey || showAllDates) && (
+        {(selectedSingleDate !== todayKey || filterFrom !== todayKey || filterTo !== todayKey || showAllDates) && (
+          <div className="flex items-center gap-1.5 ml-auto">
+            {/* Tombol Reset ke Hari Ini (Tanggal Berjalan) */}
             <button
               type="button"
               onClick={() => {
@@ -574,21 +574,8 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
               <RotateCcw className="w-3 h-3 text-emerald-600" />
               <span>Reset ke Hari Ini</span>
             </button>
-          )}
-
-          {/* Tombol pintas ke Data Terkini jika ada data rencana di masa depan */}
-          {latestTanggal && latestTanggal !== todayKey && selectedSingleDate !== latestTanggal && (
-            <button
-              type="button"
-              onClick={() => handleSelectMode('latest')}
-              className="inline-flex items-center gap-1 text-[11px] text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-1 rounded-lg font-semibold transition-all cursor-pointer shadow-2xs"
-              title="Lihat data yang sudah dicicil/diinput terlebih dahulu"
-            >
-              <Sparkles className="w-3 h-3 text-amber-600" />
-              <span>Ke Data Terkini ({formatTanggalIndo(latestTanggal)})</span>
-            </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
