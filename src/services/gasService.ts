@@ -1755,13 +1755,18 @@ export class GasService {
           const mKode = (m.kode || '').trim().toUpperCase();
           const mDateKey = getTanggalKey(m.tanggal);
 
-          const matchedSetoran = setoranCengkehList.find(s => {
+          let matchedSetoran = setoranCengkehList.find(s => {
             const sDateKey = getTanggalKey(s.tanggal);
-            const dateMatch = !mDateKey || !sDateKey || sDateKey === mDateKey ||
-              Math.abs(getEpochTime(m.tanggal) - getEpochTime(s.tanggal)) <= 86400000;
-            const kodeMatch = this.isCengkehMaterialMatch(s.nama, mKode);
-            return dateMatch && kodeMatch;
+            return mDateKey && sDateKey && sDateKey === mDateKey && this.isCengkehMaterialMatch(s.nama, mKode);
           });
+          if (!matchedSetoran) {
+            matchedSetoran = setoranCengkehList.find(s => {
+              const sDateKey = getTanggalKey(s.tanggal);
+              const dateMatch = !mDateKey || !sDateKey || sDateKey === mDateKey ||
+                Math.abs(getEpochTime(m.tanggal) - getEpochTime(s.tanggal)) <= 86400000;
+              return dateMatch && this.isCengkehMaterialMatch(s.nama, mKode);
+            });
+          }
 
           if (matchedSetoran) {
             matchedSetoranCengkehSet.add(matchedSetoran.nama + '_' + (matchedSetoran.tanggal || ''));
@@ -1902,6 +1907,62 @@ export class GasService {
                 if (m.kode === 'MANADO A 2024') { m.kode = 'MANADO GRADE A (2024)'; migrated = true; }
               });
 
+              // Pastikan entri mutasi 02 November 2026 ada di mutasi Cengkeh
+              const hasNov2 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-02'));
+              if (!hasNov2) {
+                const nov2Entries = [
+                  {
+                    id: 'cengkeh-setoran-MANADOGRADEA2024-2026-11-02',
+                    tanggal: '2026-11-02T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'Pengeluaran Setoran',
+                    masuk: 0,
+                    keluar: 2160.0,
+                    saldo: 17712.3,
+                    cek: true,
+                    setoranMatch: {
+                      matched: true,
+                      labelNetto: 2160.0,
+                      selisih: 0,
+                      sumber: 'INTEGRASI DATA SETORAN CENGKEH',
+                      detailBlend: { '153 - BK': 2160.0 },
+                      tujuan: '153 - BK (2.160,0 Kg)'
+                    }
+                  },
+                  {
+                    id: 'cengkeh-penyiapan-MANADOGRADEA2024-2026-11-02',
+                    tanggal: '2026-11-02T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'Selisih Lebih Penyiapan',
+                    masuk: 0.5,
+                    keluar: 0,
+                    saldo: 19872.3,
+                    cek: true
+                  },
+                  {
+                    id: 'cengkeh-bspp-MANADOGRADEA2024-2026-11-02',
+                    tanggal: '2026-11-02T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'BSPP Lebih',
+                    masuk: 9.6,
+                    keluar: 0,
+                    saldo: 19871.8,
+                    cek: true
+                  }
+                ];
+                k.mutasiTerbaru = [...nov2Entries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+
+              // Update saldo MANADO GRADE A (2024) ke 17.712,3
+              (k.kodeList || []).forEach((item: any) => {
+                if (item.nama === 'MANADO GRADE A (2024)' && item.saldo > 17712.3) {
+                  item.saldo = 17712.3;
+                  item.tanggalTerakhir = '2026-11-02T00:00:00.000Z';
+                  migrated = true;
+                }
+              });
+
               // Pastikan entri mutasi 29 Oktober 2026 ada di mutasi Cengkeh
               const hasOct29 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-10-29'));
               if (!hasOct29) {
@@ -1958,6 +2019,34 @@ export class GasService {
             }
 
             if ((k.komoditas || '').toLowerCase().includes('blend')) {
+              const hasNov2 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-02'));
+              if (!hasNov2) {
+                const nov2Entries = [
+                  {
+                    id: 'tembakau-blend-dhp-FRLNAVE-2026-11-02',
+                    tanggal: '2026-11-02T00:00:00.000Z',
+                    kode: 'F REGULER (LN, AVE)',
+                    jenisMutasi: 'Pemasukan Hasil Blend',
+                    masuk: 311.1,
+                    keluar: 0,
+                    saldo: 311.1,
+                    cek: true
+                  },
+                  {
+                    id: 'tembakau-blend-dhp-153BK-2026-11-02',
+                    tanggal: '2026-11-02T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pemasukan Hasil Blend',
+                    masuk: 7251.5,
+                    keluar: 0,
+                    saldo: 7251.5,
+                    cek: true
+                  }
+                ];
+                k.mutasiTerbaru = [...nov2Entries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+
               const hasOct30 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-10-30'));
               if (!hasOct30) {
                 const oct30Entries = [
@@ -1983,6 +2072,26 @@ export class GasService {
                   }
                 ];
                 k.mutasiTerbaru = [...oct30Entries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+            }
+
+            if ((k.komoditas || '').toLowerCase().includes('rajang ii')) {
+              const hasNov2 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-02'));
+              if (!hasNov2) {
+                const nov2RajangEntries = [
+                  { id: 'tembakau---krosok--rajang-ii--dhp-BRAZIL2025BOA-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'BRAZIL 2025 (BOA)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 784.0, keluar: 0, saldo: 784.0, masukSKT: 784.0, masukSKM: 0, cek: true },
+                  { id: 'tembakau---krosok--rajang-ii--dhp-ZIMBABWE2025HRL1OF-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'ZIMBABWE 2025 (HR) L1OF', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 968.1, keluar: 0, saldo: 968.1, masukSKT: 968.1, masukSKM: 0, cek: true },
+                  { id: 'tembakau---krosok--rajang-ii--dhp-ZIMBABWEM1L2023-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'ZIMBABWE M1L (2023)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 526.7, keluar: 0, saldo: 526.7, masukSKT: 526.7, masukSKM: 0, cek: true },
+                  { id: 'tembakau---krosok--rajang-ii--dhp-ZIMBABWEB1L2023-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'ZIMBABWE B1L (2023)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 814.3, keluar: 0, saldo: 814.3, masukSKT: 814.3, masukSKM: 0, cek: true },
+                  { id: 'tembakau---krosok--rajang-ii--dhp-BESUKI2025ZN-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'Besuki 2025 (ZN)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 99.9, keluar: 0, saldo: 99.9, masukSKT: 99.9, masukSKM: 0, cek: true },
+                  { id: 'tembakau---krosok--rajang-ii--dhp-BERINGIN2024HS-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'BERINGIN 2024 (HS)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 507.7, keluar: 0, saldo: 507.7, masukSKT: 507.7, masukSKM: 0, cek: true },
+                  { id: 'tembakau---krosok--rajang-ii--dhp-SAPUDI2024GF-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'SAPUDI 2024 (GF)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 292.0, keluar: 0, saldo: 292.0, masukSKT: 292.0, masukSKM: 0, cek: true },
+                  { id: 'tembakau---krosok--rajang-ii--dhp-GARUT2025FR-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'GARUT 2025 (FR)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 256.7, keluar: 0, saldo: 256.7, masukSKT: 256.7, masukSKM: 0, cek: true },
+                  { id: 'tembakau---krosok--rajang-ii--dhp-PLOSO2024MYN-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'PLOSO 2024 (MYN)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 1177.3, keluar: 0, saldo: 1177.3, masukSKT: 1177.3, masukSKM: 0, cek: true },
+                  { id: 'tembakau---krosok--rajang-ii--dhp-HANGMADURA2024BAT-2026-11-02', tanggal: '2026-11-02T00:00:00.000Z', kode: 'HANG MADURA 2024 (BAT)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 87.0, keluar: 0, saldo: 87.0, masukSKT: 0, masukSKM: 87.0, cek: true }
+                ];
+                k.mutasiTerbaru = [...nov2RajangEntries, ...(k.mutasiTerbaru || [])];
                 migrated = true;
               }
             }
@@ -2258,6 +2367,80 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 02 NOVEMBER 2026 (Live Worksheet DHP Krosok & DHP Tembakau - Kolom I Hasil Proses) ===
+    // 6 Bahan dari DHP Tembakau (Senin, 02 November 2026)
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Hang Madura 2024 (BAT)',
+      nettoKg: 87.0,
+      jalur: 'SKM',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Ploso 2024 (MYN)',
+      nettoKg: 1177.3,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Garut 2025 (FR)',
+      nettoKg: 256.7,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Sapudi 2024 (GF)',
+      nettoKg: 292.0,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Beringin 2024 (HS)',
+      nettoKg: 507.7,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Besuki 2025 (ZN)',
+      nettoKg: 99.9,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    // 4 Bahan dari DHP Krosok (Senin, 02 November 2026)
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Zimbabwe B1L (2023)',
+      nettoKg: 814.3,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Zimbabwe M1L (2023)',
+      nettoKg: 526.7,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Zimbabwe 2025 (HR) L1OF',
+      nettoKg: 968.1,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'Brazil 2025 (BOA)',
+      nettoKg: 784.0,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+
     // === DATA 29 OKTOBER 2026 (Live Worksheet DHP Krosok - Kolom I Hasil Proses) ===
     {
       tanggal: '2026-10-29T00:00:00.000Z',
@@ -2836,6 +3019,35 @@ export class GasService {
 
   // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---
   public static readonly DEFAULT_DHP_BLEND_ENTRIES: DHPEntry[] = [
+    // === DATA 02 NOVEMBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi) ===
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: '153 - BK',
+      nettoKg: 7251.5,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: '153 - BK 01', nettoKg: 907.6 },
+        { no: 2, namaMolen: '153 - BK 02', nettoKg: 905.9 },
+        { no: 3, namaMolen: '153 - BK 03', nettoKg: 907.4 },
+        { no: 4, namaMolen: '153 - BK 04', nettoKg: 906.5 },
+        { no: 5, namaMolen: '153 - BK 05', nettoKg: 907.0 },
+        { no: 6, namaMolen: '153 - BK 06', nettoKg: 906.0 },
+        { no: 7, namaMolen: '153 - BK 07', nettoKg: 905.7 },
+        { no: 8, namaMolen: '153 - BK 08', nettoKg: 905.4 }
+      ]
+    },
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'FR LN - AVE',
+      nettoKg: 311.1,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: 'FR LN - AVE 01', nettoKg: 311.1 }
+      ]
+    },
+
     // === DATA 30 OKTOBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi) ===
     {
       tanggal: '2026-10-30T00:00:00.000Z',
@@ -3290,6 +3502,17 @@ export class GasService {
 
   // --- Rekonsiliasi Pengeluaran Setoran Cengkeh (INTEGRASI DATA SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ---
   public static readonly DEFAULT_SETORAN_CENGKEH_ENTRIES: SetoranCengkehEntry[] = [
+    // === DATA 02 NOVEMBER 2026 (Live Worksheet SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ===
+    {
+      tanggal: '2026-11-02T00:00:00.000Z',
+      nama: 'MANADO GRADE A (2024)',
+      totalKg: 2160.0,
+      detailBlend: {
+        '153 - BK': 2160.0
+      },
+      sumber: 'INTEGRASI DATA SETORAN CENGKEH'
+    },
+    // === DATA 27 OKTOBER 2026 ===
     {
       tanggal: '2026-10-27T00:00:00.000Z',
       nama: 'MANADO GRADE A (2024)',
@@ -3323,7 +3546,7 @@ export class GasService {
         return !isNaN(total) && total > 0;
       })
       .map(item => ({
-        tanggal: item.tanggal ? normalizeDateToIso(item.tanggal, '2026-10-27T00:00:00.000Z') : '2026-10-27T00:00:00.000Z',
+        tanggal: item.tanggal ? normalizeDateToIso(item.tanggal, '2026-11-02T00:00:00.000Z') : '2026-11-02T00:00:00.000Z',
         nama: String(item.nama).trim(),
         totalKg: Math.round((Number(item.totalKg) || 0) * 10) / 10,
         detailBlend: item.detailBlend || {},
@@ -3340,19 +3563,27 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const has27Okt = parsed.some((p: any) => {
-            const dt = getTanggalKey(p.tanggal);
-            return dt === '2026-10-27' && (p.nama || '').includes('MANADO');
+          const existingKeys = new Set(
+            parsed.map((p: any) => `${getTanggalKey(p.tanggal)}_${String(p.nama || '').trim().toUpperCase()}`)
+          );
+          const missingDefaults = this.DEFAULT_SETORAN_CENGKEH_ENTRIES.filter(d => {
+            const k = `${getTanggalKey(d.tanggal)}_${String(d.nama || '').trim().toUpperCase()}`;
+            return !existingKeys.has(k);
           });
-          if (!has27Okt) {
-            const merged = [...parsed, ...this.DEFAULT_SETORAN_CENGKEH_ENTRIES];
-            localStorage.setItem(STORAGE_KEYS.SETORAN_CENGKEH_RECONCILIATION, JSON.stringify(merged));
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
+            try {
+              localStorage.setItem(STORAGE_KEYS.SETORAN_CENGKEH_RECONCILIATION, JSON.stringify(merged));
+            } catch {}
             return this.cleanSetoranCengkehEntries(merged);
           }
           return this.cleanSetoranCengkehEntries(parsed);
         }
       } catch (e) {}
     }
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETORAN_CENGKEH_RECONCILIATION, JSON.stringify(this.DEFAULT_SETORAN_CENGKEH_ENTRIES));
+    } catch {}
     return this.DEFAULT_SETORAN_CENGKEH_ENTRIES;
   }
 
@@ -3378,7 +3609,7 @@ export class GasService {
     try {
       const spreadsheetId = '1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A';
       const sheetName = 'INTEGRASI DATA SETORAN CENGKEH';
-      const range = 'B12:H17';
+      const range = 'B12:H35';
       const encodedSheet = encodeURIComponent(sheetName);
       const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodedSheet}&range=${range}&t=${Date.now()}`;
 
