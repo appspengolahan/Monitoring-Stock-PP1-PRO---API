@@ -34,7 +34,8 @@ import {
   getEpochTime, 
   getLatestDateString, 
   formatTanggalIndo, 
-  formatDateTimeIndo 
+  formatDateTimeIndo,
+  getTodayKey 
 } from '../../utils/dateUtils';
 
 interface MutasiPanelProps {
@@ -63,13 +64,15 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   onToggleCek,
   initialCommodity = 'all'
 }) => {
-  // Filters state
+  const todayKey = useMemo(() => getTodayKey(), []);
+
+  // Filters state (Default filter tanggal adalah hari atau tanggal bulan tahun berjalan)
   const [filterKomoditas, setFilterKomoditas] = useState<string>(initialCommodity);
   const [filterKode, setFilterKode] = useState<string>('all');
   const [filterJenis, setFilterJenis] = useState<string>('all');
   const [filterProduksi, setFilterProduksi] = useState<'all' | 'SKT' | 'SKM' | 'Gabungan'>('all');
-  const [filterFrom, setFilterFrom] = useState<string>('');
-  const [filterTo, setFilterTo] = useState<string>('');
+  const [filterFrom, setFilterFrom] = useState<string>(() => getTodayKey());
+  const [filterTo, setFilterTo] = useState<string>(() => getTodayKey());
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterHideZero, setFilterHideZero] = useState<boolean>(false);
   const [showAllDates, setShowAllDates] = useState<boolean>(false);
@@ -261,11 +264,24 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
     setShowAllDates(showAll);
   }, []);
 
-  const handleResetToLatest = useCallback(() => {
-    setFilterFrom('');
-    setFilterTo('');
+  const handleResetToToday = useCallback(() => {
+    const tk = getTodayKey();
+    setFilterFrom(tk);
+    setFilterTo(tk);
     setShowAllDates(false);
   }, []);
+
+  const handleResetToLatest = useCallback(() => {
+    if (latestTanggal) {
+      setFilterFrom(latestTanggal);
+      setFilterTo(latestTanggal);
+    } else {
+      const tk = getTodayKey();
+      setFilterFrom(tk);
+      setFilterTo(tk);
+    }
+    setShowAllDates(false);
+  }, [latestTanggal]);
 
   // Available Kode options based on selected Komoditas
   const kodeOptions = useMemo(() => {
@@ -1164,6 +1180,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
             totalFilteredCount={filteredEntries.length}
             onApplyDateFilter={handleApplyDateFilter}
             onResetToLatest={handleResetToLatest}
+            onResetToToday={handleResetToToday}
           />
         </div>
 
@@ -1189,7 +1206,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
               <span>{filterOnlyReconciled ? '✓ Mode Rekonsiliasi Aktif' : `Filter Badge Rekonsiliasi (${totalReconciledCount})`}</span>
             </button>
 
-            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero || filterOnlyReconciled || filterFrom || filterTo || showAllDates) && (
+            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero || filterOnlyReconciled || filterFrom !== todayKey || filterTo !== todayKey || showAllDates) && (
               <button
                 type="button"
                 onClick={() => {
@@ -1199,12 +1216,12 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   setSearchQuery('');
                   setFilterHideZero(false);
                   setFilterOnlyReconciled(false);
-                  setFilterFrom('');
-                  setFilterTo('');
+                  setFilterFrom(todayKey);
+                  setFilterTo(todayKey);
                   setShowAllDates(false);
                 }}
                 className="text-[10.5px] text-slate-500 hover:text-slate-800 underline px-1 font-medium flex items-center gap-0.5 cursor-pointer"
-                title="Reset semua filter ke default"
+                title="Reset semua filter ke default (Hari Ini / Tanggal Berjalan)"
               >
                 Reset Semua Filter
               </button>
@@ -1276,7 +1293,9 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
 
         <span className="text-[11px] text-slate-500 font-mono">
           {filterFrom || filterTo 
-            ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}` 
+            ? (filterFrom === filterTo 
+                ? (filterFrom === todayKey ? `Hari Ini: ${formatTanggalIndo(filterFrom)}` : `Tanggal: ${formatTanggalIndo(filterFrom)}`)
+                : `${filterFrom || 'Awal'} s/d ${filterTo || 'Hari ini'}`) 
             : filterOnlyReconciled
               ? `Mode Rekonsiliasi (${currentFilteredReconciledCount} entri)`
               : !showAllDates && filterKomoditas !== 'all' && latestTanggal 

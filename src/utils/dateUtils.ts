@@ -152,6 +152,28 @@ export function getTanggalKey(input: unknown): string {
 }
 
 /**
+ * Mengembalikan tanggal hari ini (hari/tanggal bulan tahun berjalan) dalam format 'YYYY-MM-DD'
+ * Menggunakan zona waktu Asia/Jakarta (WIB) yang merupakan acuan waktu operasional PT Batu Karang
+ */
+export function getTodayKey(): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(new Date());
+  } catch {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+}
+
+/**
  * Normalisasi ke ISO String standar (UTC): 'YYYY-MM-DDTHH:mm:ss.000Z'
  */
 export function normalizeDateToIso(input: unknown, defaultFallback: string = ''): string {

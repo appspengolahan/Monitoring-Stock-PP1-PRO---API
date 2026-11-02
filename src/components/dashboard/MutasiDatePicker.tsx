@@ -12,7 +12,7 @@ import {
   SlidersHorizontal,
   X
 } from 'lucide-react';
-import { formatTanggalIndo } from '../../utils/dateUtils';
+import { formatTanggalIndo, getTodayKey } from '../../utils/dateUtils';
 
 export type DateFilterMode = 'latest' | 'daily' | 'weekly' | 'monthly' | 'custom' | 'all';
 
@@ -25,6 +25,7 @@ interface MutasiDatePickerProps {
   totalFilteredCount: number;
   onApplyDateFilter: (from: string, to: string, showAll: boolean, mode: DateFilterMode) => void;
   onResetToLatest: () => void;
+  onResetToToday?: () => void;
 }
 
 export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
@@ -35,13 +36,21 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
   availableDates,
   totalFilteredCount,
   onApplyDateFilter,
-  onResetToLatest
+  onResetToLatest,
+  onResetToToday
 }) => {
+  const todayKey = useMemo(() => getTodayKey(), []);
+
   // Determine current active mode
   const initialMode = useMemo<DateFilterMode>(() => {
     if (showAllDates && !filterFrom && !filterTo) return 'all';
-    if (!filterFrom && !filterTo) return 'latest';
-    if (filterFrom && filterTo && filterFrom === filterTo) return 'daily';
+    if (!filterFrom && !filterTo) return 'daily'; // Default hari ini (tanggal berjalan)
+    if (filterFrom && filterTo && filterFrom === filterTo) {
+      if (latestTanggal && filterFrom === latestTanggal && latestTanggal !== todayKey) {
+        return 'latest';
+      }
+      return 'daily';
+    }
     if (filterFrom && filterTo) {
       // Check if it corresponds to an exact full month
       const fromMatch = filterFrom.match(/^(\d{4})-(\d{2})-01$/);
@@ -60,17 +69,17 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
       return 'custom';
     }
     return 'custom';
-  }, [filterFrom, filterTo, showAllDates]);
+  }, [filterFrom, filterTo, showAllDates, todayKey, latestTanggal]);
 
   const [activeMode, setActiveMode] = useState<DateFilterMode>(initialMode);
-  const [selectedSingleDate, setSelectedSingleDate] = useState<string>(() => filterFrom || latestTanggal || new Date().toISOString().slice(0, 10));
-  const [customFrom, setCustomFrom] = useState<string>(() => filterFrom || latestTanggal || '');
-  const [customTo, setCustomTo] = useState<string>(() => filterTo || latestTanggal || '');
+  const [selectedSingleDate, setSelectedSingleDate] = useState<string>(() => filterFrom || todayKey);
+  const [customFrom, setCustomFrom] = useState<string>(() => filterFrom || todayKey);
+  const [customTo, setCustomTo] = useState<string>(() => filterTo || todayKey);
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const base = filterFrom || latestTanggal || new Date().toISOString().slice(0, 10);
+    const base = filterFrom || todayKey;
     return base.slice(0, 7); // 'YYYY-MM'
   });
-  const [selectedWeekDate, setSelectedWeekDate] = useState<string>(() => filterTo || latestTanggal || new Date().toISOString().slice(0, 10));
+  const [selectedWeekDate, setSelectedWeekDate] = useState<string>(() => filterTo || todayKey);
 
   // Sync internal mode when external props change
   useEffect(() => {
@@ -131,23 +140,28 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
     setActiveMode(mode);
 
     if (mode === 'latest') {
-      onResetToLatest();
+      if (latestTanggal) {
+        setSelectedSingleDate(latestTanggal);
+        onApplyDateFilter(latestTanggal, latestTanggal, false, 'latest');
+      } else {
+        onResetToLatest();
+      }
     } else if (mode === 'all') {
       onApplyDateFilter('', '', true, 'all');
     } else if (mode === 'daily') {
-      const target = selectedSingleDate || latestTanggal || new Date().toISOString().slice(0, 10);
+      const target = selectedSingleDate || todayKey;
       onApplyDateFilter(target, target, false, 'daily');
     } else if (mode === 'weekly') {
-      const target = selectedWeekDate || latestTanggal || new Date().toISOString().slice(0, 10);
+      const target = selectedWeekDate || todayKey;
       const { from, to } = computeWeekRange(target);
       onApplyDateFilter(from, to, false, 'weekly');
     } else if (mode === 'monthly') {
-      const targetM = selectedMonth || (latestTanggal ? latestTanggal.slice(0, 7) : new Date().toISOString().slice(0, 7));
+      const targetM = selectedMonth || todayKey.slice(0, 7);
       const { from, to } = computeMonthRange(targetM);
       onApplyDateFilter(from, to, false, 'monthly');
     } else if (mode === 'custom') {
-      const f = customFrom || latestTanggal || '';
-      const t = customTo || latestTanggal || '';
+      const f = customFrom || todayKey;
+      const t = customTo || todayKey;
       if (f || t) {
         onApplyDateFilter(f, t, false, 'custom');
       }
@@ -196,11 +210,14 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
     }
     if (activeMode === 'latest') {
       return latestTanggal 
-        ? `Transaksi Terkini: ${formatTanggalIndo(latestTanggal)}`
+        ? `Data Terkini / Rencana: ${formatTanggalIndo(latestTanggal)}`
         : 'Transaksi Terkini Lintas Bahan';
     }
     if (activeMode === 'daily') {
-      return `Harian: ${formatTanggalIndo(selectedSingleDate)}`;
+      const isToday = selectedSingleDate === todayKey;
+      return isToday
+        ? `Hari Ini (Tanggal Berjalan): ${formatTanggalIndo(selectedSingleDate)}`
+        : `Harian: ${formatTanggalIndo(selectedSingleDate)}`;
     }
     if (activeMode === 'weekly') {
       return `Mingguan (7 Hari): ${formatTanggalIndo(filterFrom)} s/d ${formatTanggalIndo(filterTo)}`;
@@ -216,7 +233,7 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
       if (filterTo) return `Sampai ${formatTanggalIndo(filterTo)}`;
     }
     return '';
-  }, [activeMode, filterFrom, filterTo, latestTanggal, selectedSingleDate, selectedMonth]);
+  }, [activeMode, filterFrom, filterTo, latestTanggal, selectedSingleDate, selectedMonth, todayKey]);
 
   return (
     <div className="bg-white border border-slate-200/90 rounded-xl p-3 shadow-2xs space-y-2.5">
@@ -239,8 +256,40 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
           </div>
         </div>
 
-        {/* Mode Selector Buttons (Harian, Mingguan, Bulanan, Custom, Semua) */}
+        {/* Mode Selector Buttons (Default: Hari Ini / Berjalan, Terkini, Mingguan, Bulanan, Custom, Semua) */}
         <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-semibold overflow-x-auto max-w-full">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedSingleDate(todayKey);
+              onApplyDateFilter(todayKey, todayKey, false, 'daily');
+              setActiveMode('daily');
+            }}
+            className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+              activeMode === 'daily' && selectedSingleDate === todayKey
+                ? 'bg-white text-blue-700 shadow-2xs font-bold' 
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+            title="Tampilkan transaksi hari ini (hari/tanggal bulan tahun berjalan)"
+          >
+            <Clock className="w-3 h-3 text-blue-600" />
+            <span>Hari Ini</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSelectMode('daily')}
+            className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+              activeMode === 'daily' && selectedSingleDate !== todayKey
+                ? 'bg-white text-blue-700 shadow-2xs font-bold' 
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+            title="Pilih tanggal harian spesifik"
+          >
+            <Calendar className="w-3 h-3 text-indigo-600" />
+            <span>Harian</span>
+          </button>
+
           <button
             type="button"
             onClick={() => handleSelectMode('latest')}
@@ -249,23 +298,10 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
                 ? 'bg-white text-blue-700 shadow-2xs font-bold' 
                 : 'text-slate-600 hover:text-slate-900'
             }`}
-            title="Tampilkan transaksi hari/tanggal terbaru di sistem"
+            title="Tampilkan transaksi data terkini atau rencana masa depan yang sudah dicicil inputnya"
           >
             <Sparkles className="w-3 h-3 text-amber-500" />
-            <span>Terkini</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSelectMode('daily')}
-            className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer ${
-              activeMode === 'daily' 
-                ? 'bg-white text-blue-700 shadow-2xs font-bold' 
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Clock className="w-3 h-3 text-blue-600" />
-            <span>Harian</span>
+            <span>Terkini (Rencana)</span>
           </button>
 
           <button
@@ -351,20 +387,39 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
                   <option value="" disabled>-- Pilih Hari Terdata --</option>
                   {availableDates.slice(0, 15).map(dateStr => (
                     <option key={dateStr} value={dateStr}>
-                      {formatTanggalIndo(dateStr)} {dateStr === latestTanggal ? '★ (Terbaru)' : ''}
+                      {formatTanggalIndo(dateStr)} {dateStr === todayKey ? '★ (Hari Ini)' : (dateStr === latestTanggal ? '(Data Rencana Terbaru)' : '')}
                     </option>
                   ))}
                 </select>
               </div>
             )}
 
-            {latestTanggal && selectedSingleDate !== latestTanggal && (
+            {/* Tombol kembali ke Hari Ini jika sedang memilih tanggal lain */}
+            {selectedSingleDate !== todayKey && (
               <button
                 type="button"
-                onClick={() => handleDailyDateChange(latestTanggal)}
-                className="px-2 py-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[11px] font-semibold cursor-pointer"
+                onClick={() => handleDailyDateChange(todayKey)}
+                className="px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-semibold cursor-pointer flex items-center gap-1"
+                title="Kembali ke hari atau tanggal bulan tahun berjalan"
               >
-                Ke Tanggal Terbaru ({formatTanggalIndo(latestTanggal)})
+                <Clock className="w-3 h-3 text-emerald-600" />
+                <span>Ke Hari Ini ({formatTanggalIndo(todayKey)})</span>
+              </button>
+            )}
+
+            {/* Tombol ke Data Terkini / Rencana jika ada data masa depan */}
+            {latestTanggal && latestTanggal !== todayKey && selectedSingleDate !== latestTanggal && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMode('latest');
+                  handleDailyDateChange(latestTanggal);
+                }}
+                className="px-2 py-1 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-semibold cursor-pointer flex items-center gap-1"
+                title="Lihat data yang sudah diinput/direncanakan terlebih dahulu"
+              >
+                <Sparkles className="w-3 h-3 text-amber-600" />
+                <span>Ke Data Terkini / Rencana ({formatTanggalIndo(latestTanggal)})</span>
               </button>
             )}
           </div>
@@ -501,16 +556,36 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
         )}
 
         {/* Reset Action */}
-        <div className="flex items-center gap-1 ml-auto">
-          {(filterFrom || filterTo || showAllDates) && (
+        <div className="flex items-center gap-1.5 ml-auto">
+          {/* Tombol Reset ke Hari Ini (Tanggal Berjalan) */}
+          {(selectedSingleDate !== todayKey || filterFrom !== todayKey || filterTo !== todayKey || showAllDates) && (
             <button
               type="button"
-              onClick={onResetToLatest}
-              className="inline-flex items-center gap-1 text-[11px] text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded-lg font-semibold transition-all cursor-pointer"
-              title="Kembali ke tampilan transaksi tanggal terbaru"
+              onClick={() => {
+                if (onResetToToday) {
+                  onResetToToday();
+                } else {
+                  handleDailyDateChange(todayKey);
+                }
+              }}
+              className="inline-flex items-center gap-1 text-[11px] text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer shadow-2xs"
+              title="Reset tampilan kembali ke hari/tanggal berjalan saat ini"
             >
-              <RotateCcw className="w-3 h-3" />
-              <span>Reset ke Terkini</span>
+              <RotateCcw className="w-3 h-3 text-emerald-600" />
+              <span>Reset ke Hari Ini</span>
+            </button>
+          )}
+
+          {/* Tombol pintas ke Data Terkini jika ada data rencana di masa depan */}
+          {latestTanggal && latestTanggal !== todayKey && selectedSingleDate !== latestTanggal && (
+            <button
+              type="button"
+              onClick={() => handleSelectMode('latest')}
+              className="inline-flex items-center gap-1 text-[11px] text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-1 rounded-lg font-semibold transition-all cursor-pointer shadow-2xs"
+              title="Lihat data yang sudah dicicil/diinput terlebih dahulu"
+            >
+              <Sparkles className="w-3 h-3 text-amber-600" />
+              <span>Ke Data Terkini ({formatTanggalIndo(latestTanggal)})</span>
             </button>
           )}
         </div>
