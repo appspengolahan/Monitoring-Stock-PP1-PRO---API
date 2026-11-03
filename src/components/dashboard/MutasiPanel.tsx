@@ -2675,9 +2675,9 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                               {m.dhpMatch.molenList.length} Batch Molen
                             </span>
                           </div>
-                          <div className="max-h-36 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                          <div className="max-h-60 sm:max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-inner">
                             <table className="w-full text-left text-xs">
-                              <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-600 border-b border-slate-200 sticky top-0">
+                              <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-600 border-b border-slate-200 sticky top-0 z-10">
                                 <tr>
                                   <th className="py-1 px-2.5 text-center w-8">No</th>
                                   <th className="py-1 px-2.5">Batch Molen</th>
@@ -2686,13 +2686,26 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                               </thead>
                               <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
                                 {m.dhpMatch.molenList.map((ml, mIdx) => (
-                                  <tr key={mIdx} className="hover:bg-slate-50">
-                                    <td className="py-1 px-2.5 text-center text-slate-400 font-sans">{ml.no || mIdx + 1}</td>
-                                    <td className="py-1 px-2.5 font-sans font-semibold text-slate-800">{ml.namaMolen}</td>
-                                    <td className="py-1 px-2.5 text-right font-bold text-emerald-700">{formatNumber(ml.nettoKg)} Kg</td>
+                                  <tr key={mIdx} className="hover:bg-slate-50 transition-colors">
+                                    <td className="py-1.5 px-2.5 text-center text-slate-400 font-sans">{ml.no || mIdx + 1}</td>
+                                    <td className="py-1.5 px-2.5 font-sans font-semibold text-slate-800 flex items-center gap-1.5">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                      <span>{ml.namaMolen}</span>
+                                    </td>
+                                    <td className="py-1.5 px-2.5 text-right font-bold text-emerald-700">{formatNumber(ml.nettoKg)} Kg</td>
                                   </tr>
                                 ))}
                               </tbody>
+                              <tfoot className="bg-slate-100/95 font-semibold text-slate-700 border-t-2 border-slate-200 sticky bottom-0 z-10 backdrop-blur-sm">
+                                <tr>
+                                  <td colSpan={2} className="py-1.5 px-2.5 font-sans text-slate-600 text-[11px]">
+                                    Total Akumulasi ({m.dhpMatch.molenList.length} Batch Molen)
+                                  </td>
+                                  <td className="py-1.5 px-2.5 text-right font-mono text-xs font-bold text-emerald-700">
+                                    {formatNumber(m.dhpMatch.molenList.reduce((acc, b) => acc + (Number(b.nettoKg) || 0), 0))} Kg
+                                  </td>
+                                </tr>
+                              </tfoot>
                             </table>
                           </div>
                         </div>
@@ -2718,7 +2731,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                         </div>
                         <div className="text-right shrink-0 pl-3">
                           <span className="text-[10px] uppercase font-semibold block opacity-80">Selisih Netto</span>
-                          <span className="font-mono font-extrabold text-base text-emerald-800">
+                          <span className={`font-mono font-extrabold text-base ${m.dhpMatch.selisih === 0 ? 'text-emerald-800' : 'text-amber-800'}`}>
                             {m.dhpMatch.selisih > 0 ? '+' : ''}
                             {formatNumber(m.dhpMatch.selisih)} Kg
                           </span>
