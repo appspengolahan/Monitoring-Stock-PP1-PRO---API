@@ -485,7 +485,7 @@ export default function App() {
                   currentTab === 'kode' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600'
                 }`}
               >
-                Saldo Kode
+                Saldo Bahan
               </button>
             )}
             {(!isPublicView ? hasBsppAccess : publicConfig.showBspp) && (

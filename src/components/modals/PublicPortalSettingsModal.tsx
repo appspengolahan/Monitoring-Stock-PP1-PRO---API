@@ -194,14 +194,14 @@ export const PublicPortalSettingsModal: React.FC<Props> = ({ isOpen, onClose }) 
                 />
               </label>
 
-              {/* Menu 3: Saldo Kode / Grade */}
+              {/* Menu 3: Saldo Bahan */}
               <label className="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
                     <Layers className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="font-bold text-slate-900">Saldo Kode / Grade</div>
+                    <div className="font-bold text-slate-900">Saldo Bahan</div>
                     <div className="text-[11px] text-slate-500">Daftar saldo stok riil per grade/kode kartu persediaan</div>
                   </div>
                 </div>

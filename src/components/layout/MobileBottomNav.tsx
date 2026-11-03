@@ -46,7 +46,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         list.push({ id: 'mutasi', label: 'Mutasi', icon: ArrowLeftRight });
       }
       if (!publicConfig || publicConfig.showSaldoKode) {
-        list.push({ id: 'kode', label: 'Saldo Kode', icon: Layers });
+        list.push({ id: 'kode', label: 'Saldo Bahan', icon: Layers });
       }
       if (publicConfig?.showBspp) {
         list.push({ id: 'bspp', label: 'BSPP', icon: Scale });
@@ -60,7 +60,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     return [
       { id: 'ringkasan', label: 'Ringkasan', icon: LayoutDashboard },
       { id: 'mutasi', label: 'Mutasi', icon: ArrowLeftRight },
-      { id: 'kode', label: 'Saldo Kode', icon: Layers },
+      { id: 'kode', label: 'Saldo Bahan', icon: Layers },
       ...(hasBsppAccess ? [{ id: 'bspp', label: 'BSPP', icon: Scale }] : []),
     ];
   }, [isPublicView, publicConfig, hasBsppAccess]);

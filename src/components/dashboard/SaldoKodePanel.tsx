@@ -50,7 +50,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSnapshotMode, setIsSnapshotMode] = useState<boolean>(false);
   const [snapshotDate, setSnapshotDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [hideZero, setHideZero] = useState<boolean>(false);
+  const [hideZero, setHideZero] = useState<boolean>(true);
   const [isSktSkmModalOpen, setIsSktSkmModalOpen] = useState<boolean>(false);
   const [subTab, setSubTab] = useState<'saldo_list' | 'kalkulator'>('saldo_list');
   const [sktSkmVersion, setSktSkmVersion] = useState<number>(0);
@@ -274,7 +274,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Kartu Saldo per Kode / Grade</span>
+              <span>Kartu Saldo Bahan</span>
             </button>
             <button
               onClick={() => setSubTab('kalkulator')}
@@ -304,7 +304,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
           <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-            {isSnapshotMode ? 'Saldo per Kode / Grade (Snapshot Historis)' : 'Saldo Terkini per Kode / Grade'}
+            {isSnapshotMode ? 'Saldo Bahan (Snapshot Historis)' : 'Saldo Bahan Terkini'}
           </h2>
           <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
             {isSnapshotMode 

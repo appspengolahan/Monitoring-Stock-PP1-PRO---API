@@ -95,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
     },
     {
       id: 'kode',
-      label: 'Saldo Kode / Grade',
+      label: 'Saldo Bahan',
       desc: 'Live & Snapshot Tanggal',
       icon: Layers
     },

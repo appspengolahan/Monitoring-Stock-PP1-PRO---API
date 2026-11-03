@@ -82,7 +82,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 <strong>Kelola Jenis Mutasi Tambahan (Aman &amp; Non-Destruktif):</strong> Anda dapat menambah opsi jenis mutasi kustom langsung di web app (seperti <em>Sample Laboratorium / QC</em>, <em>Retur Pemakaian Produksi</em>, <em>Koreksi Fisik Stock Opname</em>, dll) dan memberi label pada transaksi. Fitur ini bekerja pada lapisan aplikasi sehingga <strong>100% aman dan tidak merusak rumus ataupun data Google Spreadsheet asli</strong>.
               </li>
               <li>
-                <strong>Tab Saldo Kode / Grade:</strong> Memiliki dua mode: mode <em>Saldo Terkini</em> dan mode <em>Saldo Snapshot per Tanggal Tertentu</em> untuk audit dan rekonsiliasi data historis.
+                <strong>Tab Saldo Bahan:</strong> Memiliki dua mode: mode <em>Saldo Terkini</em> dan mode <em>Saldo Snapshot per Tanggal Tertentu</em> untuk audit dan rekonsiliasi data historis.
               </li>
               <li>
                 <strong>Tab BSPP:</strong> Rekap Bukti Selisih Persediaan (Cengkeh &amp; Rajang II), membandingkan berat menurut label vendor vs timbang ulang gudang dengan rumus berbobot standar.
