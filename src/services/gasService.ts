@@ -1632,6 +1632,7 @@ export class GasService {
         });
 
         const cleanSaldoTotal = Math.round(cleanKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
+        finalEnrichedMutasi.sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
         return {
           ...k,
           saldoTotal: cleanSaldoTotal,
@@ -1836,6 +1837,7 @@ export class GasService {
         });
 
         const cleanSaldoTotal = Math.round(cleanKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
+        fullyEnrichedMutasi.sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
         return {
           ...k,
           saldoTotal: cleanSaldoTotal,
@@ -1863,6 +1865,7 @@ export class GasService {
         };
       });
 
+      finalMutasi.sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
       return {
         ...k,
         saldoTotal: cleanSaldoTotal,
@@ -2019,31 +2022,109 @@ export class GasService {
             }
 
             if ((k.komoditas || '').toLowerCase().includes('blend')) {
-              const hasNov2 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-02'));
-              if (!hasNov2) {
-                const nov2Entries = [
+              // Pastikan saldo & tanggal mutasi terakhir 153 - BK & KARANG - BK terupdate persis sesuai fisik sheet
+              (k.kodeList || []).forEach((item: any) => {
+                if (item.nama === '153 - BK') {
+                  if (item.saldo !== 3414.5 || item.tanggalTerakhir !== '2026-11-02T00:00:00.000Z') {
+                    item.saldo = 3414.5;
+                    item.tanggalTerakhir = '2026-11-02T00:00:00.000Z';
+                    migrated = true;
+                  }
+                }
+                if (item.nama === 'KARANG - BK') {
+                  if (item.saldo !== 884.9 || item.tanggalTerakhir !== '2026-10-31T00:00:00.000Z') {
+                    item.saldo = 884.9;
+                    item.tanggalTerakhir = '2026-10-31T00:00:00.000Z';
+                    migrated = true;
+                  }
+                }
+              });
+
+              // Pastikan entri mutasi 2 November 2026 (153 - BK) ada lengkap
+              const hasNov2_153_Final = (k.mutasiTerbaru || []).some((m: any) => m.kode === '153 - BK' && (m.tanggal || '').includes('2026-11-02') && m.saldo === 3414.5);
+              if (!hasNov2_153_Final) {
+                const latest153 = [
                   {
-                    id: 'tembakau-blend-dhp-FRLNAVE-2026-11-02',
+                    id: 'tembakau-blend-153BK-2026-11-02-final',
                     tanggal: '2026-11-02T00:00:00.000Z',
-                    kode: 'F REGULER (LN, AVE)',
-                    jenisMutasi: 'Pemasukan Hasil Blend',
-                    masuk: 311.1,
-                    keluar: 0,
-                    saldo: 311.1,
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - Wagir 2',
+                    masuk: 0,
+                    keluar: 315.8,
+                    saldo: 3414.5,
                     cek: true
                   },
                   {
-                    id: 'tembakau-blend-dhp-153BK-2026-11-02',
+                    id: 'tembakau-blend-153BK-2026-11-02-wagir13c',
+                    tanggal: '2026-11-02T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - Wagir 1 & 3',
+                    masuk: 0,
+                    keluar: 2760.0,
+                    saldo: 3730.3,
+                    cek: true
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-02-wagir13b',
+                    tanggal: '2026-11-02T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - Wagir 1 & 3',
+                    masuk: 0,
+                    keluar: 3450.0,
+                    saldo: 6490.3,
+                    cek: true
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-02-wagir13a',
+                    tanggal: '2026-11-02T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - Wagir 1 & 3',
+                    masuk: 0,
+                    keluar: 4830.0,
+                    saldo: 9940.3,
+                    cek: true
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-02-bspp',
+                    tanggal: '2026-11-02T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'BSPP Lebih',
+                    masuk: 0.1,
+                    keluar: 0,
+                    saldo: 14770.3,
+                    cek: true
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-02-hasilblend',
                     tanggal: '2026-11-02T00:00:00.000Z',
                     kode: '153 - BK',
                     jenisMutasi: 'Pemasukan Hasil Blend',
                     masuk: 7251.5,
                     keluar: 0,
-                    saldo: 7251.5,
+                    saldo: 14770.2,
                     cek: true
                   }
                 ];
-                k.mutasiTerbaru = [...nov2Entries, ...(k.mutasiTerbaru || [])];
+                k.mutasiTerbaru = [...latest153, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+
+              // Pastikan entri mutasi 31 Oktober 2026 (KARANG - BK) ada
+              const hasOct31_Karang = (k.mutasiTerbaru || []).some((m: any) => m.kode === 'KARANG - BK' && (m.tanggal || '').includes('2026-10-31'));
+              if (!hasOct31_Karang) {
+                const oct31Karang = [
+                  {
+                    id: 'tembakau-blend-karang-2026-10-31',
+                    tanggal: '2026-10-31T00:00:00.000Z',
+                    kode: 'KARANG - BK',
+                    jenisMutasi: 'Pengiriman - Wagir 1 & 3',
+                    masuk: 0,
+                    keluar: 690.0,
+                    saldo: 884.9,
+                    cek: true
+                  }
+                ];
+                k.mutasiTerbaru = [...oct31Karang, ...(k.mutasiTerbaru || [])];
                 migrated = true;
               }
 
@@ -2072,6 +2153,18 @@ export class GasService {
                   }
                 ];
                 k.mutasiTerbaru = [...oct30Entries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+
+              // Urutkan mutasiTerbaru blend descending
+              if (Array.isArray(k.mutasiTerbaru)) {
+                k.mutasiTerbaru.sort((a: any, b: any) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
+              }
+
+              // Hitung ulang saldo total komoditas Blend
+              const computedSaldoTotal = Math.round((k.kodeList || []).reduce((acc: number, curr: any) => acc + (Number(curr.saldo) || 0), 0) * 10) / 10;
+              if (computedSaldoTotal > 0 && k.saldoTotal !== computedSaldoTotal) {
+                k.saldoTotal = computedSaldoTotal;
                 migrated = true;
               }
             }

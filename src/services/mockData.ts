@@ -13,8 +13,8 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     "kodeList": [
       {
         "nama": "153 - BK",
-        "saldo": 5615.3,
-        "tanggalTerakhir": "2026-10-01T00:00:00.000Z"
+        "saldo": 3414.5,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "AIR BERSIH",
@@ -68,8 +68,8 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "KARANG - BK",
-        "saldo": 2003.4,
-        "tanggalTerakhir": "2026-10-01T00:00:00.000Z"
+        "saldo": 884.9,
+        "tanggalTerakhir": "2026-10-31T00:00:00.000Z"
       },
       {
         "nama": "PLASTIK",
@@ -93,6 +93,66 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       }
     ],
     "mutasiTerbaru": [
+      {
+        "id": "tembakau-blend-153BK-2026-11-02-final",
+        "tanggal": "2026-11-02T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - Wagir 2",
+        "masuk": 0,
+        "keluar": 315.8,
+        "saldo": 3414.5,
+        "cek": true
+      },
+      {
+        "id": "tembakau-blend-153BK-2026-11-02-wagir13c",
+        "tanggal": "2026-11-02T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - Wagir 1 & 3",
+        "masuk": 0,
+        "keluar": 2760.0,
+        "saldo": 3730.3,
+        "cek": true
+      },
+      {
+        "id": "tembakau-blend-153BK-2026-11-02-wagir13b",
+        "tanggal": "2026-11-02T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - Wagir 1 & 3",
+        "masuk": 0,
+        "keluar": 3450.0,
+        "saldo": 6490.3,
+        "cek": true
+      },
+      {
+        "id": "tembakau-blend-153BK-2026-11-02-wagir13a",
+        "tanggal": "2026-11-02T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - Wagir 1 & 3",
+        "masuk": 0,
+        "keluar": 4830.0,
+        "saldo": 9940.3,
+        "cek": true
+      },
+      {
+        "id": "tembakau-blend-153BK-2026-11-02-bspp",
+        "tanggal": "2026-11-02T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 0.1,
+        "keluar": 0,
+        "saldo": 14770.3,
+        "cek": true
+      },
+      {
+        "id": "tembakau-blend-karang-2026-10-31",
+        "tanggal": "2026-10-31T00:00:00.000Z",
+        "kode": "KARANG - BK",
+        "jenisMutasi": "Pengiriman - Wagir 1 & 3",
+        "masuk": 0,
+        "keluar": 690.0,
+        "saldo": 884.9,
+        "cek": true
+      },
       {
         "id": "tembakau-blend-20261102-1",
         "tanggal": "2026-11-02T00:00:00.000Z",

@@ -105,8 +105,22 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
       } else {
         // Standard live running saldo
         k.kodeList.forEach(item => {
-          // find last mutasi date for this code
-          const lastMutasi = k.mutasiTerbaru.find(m => m.kode === item.nama);
+          // Cari mutasi paling baru yang sesuai dengan kode ini
+          const matchedMutasi = (k.mutasiTerbaru || []).filter(m => m.kode === item.nama && m.tanggal);
+          let latestMutasiDate: string | undefined = undefined;
+          if (matchedMutasi.length > 0) {
+            const sortedMutasi = [...matchedMutasi].sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
+            latestMutasiDate = sortedMutasi[0]?.tanggal || undefined;
+          }
+
+          // Prioritaskan tanggal mutasi terbaru jika lebih baru atau sama dengan item.tanggalTerakhir
+          let computedDate: string | undefined = item.tanggalTerakhir || undefined;
+          if (latestMutasiDate) {
+            if (!computedDate || new Date(latestMutasiDate).getTime() >= new Date(computedDate).getTime()) {
+              computedDate = latestMutasiDate;
+            }
+          }
+
           list.push({
             komoditas: k.komoditas,
             satuan: k.satuan,
@@ -115,7 +129,7 @@ export const SaldoKodePanel: React.FC<SaldoKodePanelProps> = ({
             saldoSKT: item.saldoSKT,
             saldoSKM: item.saldoSKM,
             kategoriProduksi: item.kategoriProduksi,
-            tanggalTerakhir: lastMutasi?.tanggal || item.tanggalTerakhir || undefined
+            tanggalTerakhir: computedDate || undefined
           });
         });
       }
