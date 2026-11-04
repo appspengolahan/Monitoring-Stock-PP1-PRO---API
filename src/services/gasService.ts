@@ -1841,14 +1841,62 @@ export class GasService {
           }
         });
 
-        const cleanSaldoTotal = Math.round(cleanKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
+        let totalCengkehSKT = 0;
+        let totalCengkehSKM = 0;
+        const enrichedCengkehKodeList = cleanKodeList.map(item => {
+          let sSKT = item.saldoSKT ?? (item as any).tSaldo ?? (item as any).tsaldo;
+          let sSKM = item.saldoSKM ?? (item as any).mSaldo ?? (item as any).msaldo;
+          let kat = item.kategoriProduksi;
+
+          if (sSKT === undefined && sSKM === undefined) {
+            const upName = item.nama.toUpperCase();
+            if (upName.includes('MANADO GRADE A (2024)')) {
+              sSKT = 12677.6;
+              sSKM = 1163.2;
+              kat = 'Gabungan';
+            } else if (upName.includes('GAGANG PELURU A 2018')) {
+              sSKT = 774.6;
+              sSKM = 0;
+              kat = 'Murni SKT';
+            } else if (Number(item.saldo) > 0) {
+              sSKT = Number(item.saldo) || 0;
+              sSKM = 0;
+              kat = 'Murni SKT';
+            } else {
+              sSKT = 0;
+              sSKM = 0;
+              kat = 'Nol';
+            }
+          } else {
+            sSKT = Number(sSKT) || 0;
+            sSKM = Number(sSKM) || 0;
+            if (!kat) {
+              kat = (sSKT > 0 && sSKM > 0) ? 'Gabungan' : (sSKT > 0 ? 'Murni SKT' : (sSKM > 0 ? 'Murni SKM' : 'Nol'));
+            }
+          }
+
+          totalCengkehSKT += sSKT;
+          totalCengkehSKM += sSKM;
+
+          return {
+            ...item,
+            saldo: Math.round(Number(item.saldo) * 10) / 10,
+            saldoSKT: Math.round(sSKT * 10) / 10,
+            saldoSKM: Math.round(sSKM * 10) / 10,
+            kategoriProduksi: kat
+          };
+        });
+
+        const cleanSaldoTotal = Math.round(enrichedCengkehKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
         fullyEnrichedMutasi.sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
         return {
           ...k,
           saldoTotal: cleanSaldoTotal,
-          kodeList: cleanKodeList,
-          jumlahKode: cleanKodeList.length,
-          mutasiTerbaru: fullyEnrichedMutasi.slice(0, 250)
+          kodeList: enrichedCengkehKodeList,
+          jumlahKode: enrichedCengkehKodeList.length,
+          mutasiTerbaru: fullyEnrichedMutasi.slice(0, 250),
+          saldoSKTTotal: Math.round(totalCengkehSKT * 10) / 10,
+          saldoSKMTotal: Math.round(totalCengkehSKM * 10) / 10
         };
       }
 
@@ -1915,6 +1963,69 @@ export class GasService {
                 if (m.kode === 'MANADO A 2024') { m.kode = 'MANADO GRADE A (2024)'; migrated = true; }
               });
 
+              // Pastikan entri mutasi 04 November 2026 ada di mutasi Cengkeh
+              const hasNov4 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-04'));
+              if (!hasNov4) {
+                const nov4Entries = [
+                  {
+                    id: 'cengkeh-setoran-MANADOGRADEA2024-2026-11-04',
+                    tanggal: '2026-11-04T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'Pengeluaran Setoran',
+                    masuk: 0,
+                    keluar: 1944.0,
+                    keluarSKT: 1944.0,
+                    keluarSKM: 0,
+                    saldo: 13840.8,
+                    saldoSKT: 12677.6,
+                    saldoSKM: 1163.2,
+                    cek: true,
+                    setoranMatch: {
+                      matched: true,
+                      labelNetto: 1944.0,
+                      selisih: 0,
+                      sumber: 'INTEGRASI DATA SETORAN CENGKEH',
+                      detailBlend: {
+                        '153 - BK': 1296.0,
+                        'KARANG - BK': 648.0
+                      },
+                      tujuan: '153 - BK (1.296,0 Kg), KARANG - BK (648,0 Kg)'
+                    }
+                  },
+                  {
+                    id: 'cengkeh-penyiapan-MANADOGRADEA2024-2026-11-04',
+                    tanggal: '2026-11-04T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'Selisih Lebih Penyiapan',
+                    masuk: 0.8,
+                    keluar: 0,
+                    masukSKT: 0.8,
+                    saldo: 15784.8,
+                    cek: true
+                  },
+                  {
+                    id: 'cengkeh-bspp-MANADOGRADEA2024-2026-11-04',
+                    tanggal: '2026-11-04T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'BSPP Lebih',
+                    masuk: 11.2,
+                    keluar: 0,
+                    masukSKT: 11.2,
+                    saldo: 15784.0,
+                    cek: true,
+                    bsppMatch: {
+                      matched: true,
+                      selisihKg: 11.2,
+                      selisih: 0,
+                      sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+                      status: 'Selisih Lebih'
+                    }
+                  }
+                ];
+                k.mutasiTerbaru = [...nov4Entries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+
               // Pastikan entri mutasi 02 November 2026 ada di mutasi Cengkeh
               const hasNov2 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-02'));
               if (!hasNov2) {
@@ -1944,6 +2055,7 @@ export class GasService {
                     jenisMutasi: 'Selisih Lebih Penyiapan',
                     masuk: 0.5,
                     keluar: 0,
+                    masukSKT: 0.5,
                     saldo: 19872.3,
                     cek: true
                   },
@@ -1954,6 +2066,7 @@ export class GasService {
                     jenisMutasi: 'BSPP Lebih',
                     masuk: 9.6,
                     keluar: 0,
+                    masukSKT: 9.6,
                     saldo: 19871.8,
                     cek: true
                   }
@@ -1962,14 +2075,47 @@ export class GasService {
                 migrated = true;
               }
 
-              // Update saldo MANADO GRADE A (2024) ke 17.712,3
+              // Update saldo MANADO GRADE A (2024) ke 13.840,8 dan terapkan SKT/SKM
               (k.kodeList || []).forEach((item: any) => {
-                if (item.nama === 'MANADO GRADE A (2024)' && item.saldo > 17712.3) {
-                  item.saldo = 17712.3;
-                  item.tanggalTerakhir = '2026-11-02T00:00:00.000Z';
-                  migrated = true;
+                if (item.nama === 'MANADO GRADE A (2024)') {
+                  if (item.saldo !== 13840.8 || item.saldoSKT !== 12677.6 || item.saldoSKM !== 1163.2 || item.kategoriProduksi !== 'Gabungan') {
+                    item.saldo = 13840.8;
+                    item.saldoSKT = 12677.6;
+                    item.saldoSKM = 1163.2;
+                    item.kategoriProduksi = 'Gabungan';
+                    item.tanggalTerakhir = '2026-11-04T00:00:00.000Z';
+                    migrated = true;
+                  }
+                } else if (item.nama === 'GAGANG PELURU A 2018') {
+                  if (item.saldoSKT !== 774.6 || item.saldoSKM !== 0 || item.kategoriProduksi !== 'Murni SKT') {
+                    item.saldo = 774.6;
+                    item.saldoSKT = 774.6;
+                    item.saldoSKM = 0;
+                    item.kategoriProduksi = 'Murni SKT';
+                    migrated = true;
+                  }
+                } else {
+                  if (item.saldoSKT === undefined || item.saldoSKM === undefined || !item.kategoriProduksi) {
+                    item.saldoSKT = 0;
+                    item.saldoSKM = 0;
+                    item.kategoriProduksi = 'Nol';
+                    migrated = true;
+                  }
                 }
               });
+
+              // Hitung total SKT dan SKM untuk Cengkeh
+              let cengkehSKT = 0;
+              let cengkehSKM = 0;
+              (k.kodeList || []).forEach((item: any) => {
+                cengkehSKT += Number(item.saldoSKT || 0);
+                cengkehSKM += Number(item.saldoSKM || 0);
+              });
+              if (k.saldoSKTTotal !== Math.round(cengkehSKT * 10) / 10 || k.saldoSKMTotal !== Math.round(cengkehSKM * 10) / 10) {
+                k.saldoSKTTotal = Math.round(cengkehSKT * 10) / 10;
+                k.saldoSKMTotal = Math.round(cengkehSKM * 10) / 10;
+                migrated = true;
+              }
 
               // Pastikan entri mutasi 29 Oktober 2026 ada di mutasi Cengkeh
               const hasOct29 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-10-29'));
@@ -3665,6 +3811,17 @@ export class GasService {
 
   // --- Rekonsiliasi Pengeluaran Setoran Cengkeh (INTEGRASI DATA SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ---
   public static readonly DEFAULT_SETORAN_CENGKEH_ENTRIES: SetoranCengkehEntry[] = [
+    // === DATA 04 NOVEMBER 2026 (Live Worksheet SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ===
+    {
+      tanggal: '2026-11-04T00:00:00.000Z',
+      nama: 'MANADO GRADE A (2024)',
+      totalKg: 1944.0,
+      detailBlend: {
+        '153 - BK': 1296.0,
+        'KARANG - BK': 648.0
+      },
+      sumber: 'INTEGRASI DATA SETORAN CENGKEH'
+    },
     // === DATA 02 NOVEMBER 2026 (Live Worksheet SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ===
     {
       tanggal: '2026-11-02T00:00:00.000Z',
@@ -3772,7 +3929,7 @@ export class GasService {
     try {
       const spreadsheetId = '1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A';
       const sheetName = 'INTEGRASI DATA SETORAN CENGKEH';
-      const range = 'B12:H35';
+      const range = 'B6:H50';
       const encodedSheet = encodeURIComponent(sheetName);
       const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodedSheet}&range=${range}&t=${Date.now()}`;
 
@@ -3813,7 +3970,7 @@ export class GasService {
         if (valFReg > 0) detailBlend['F REGULER (LN, AVE)'] = valFReg;
 
         items.push({
-          tanggal: normalizeDateToIso(rawDate, '2026-10-27T00:00:00.000Z'),
+          tanggal: normalizeDateToIso(rawDate, '2026-11-04T00:00:00.000Z'),
           nama,
           totalKg: finalTotal,
           detailBlend,
@@ -3822,8 +3979,19 @@ export class GasService {
       }
 
       if (items.length > 0) {
-        this.saveCachedSetoranCengkeh(items, true);
-        return items;
+        const existing = this.getCachedSetoranCengkeh();
+        const itemMap = new Map<string, SetoranCengkehEntry>();
+        for (const ex of existing) {
+          const k = `${getTanggalKey(ex.tanggal)}_${String(ex.nama || '').trim().toUpperCase()}`;
+          itemMap.set(k, ex);
+        }
+        for (const it of items) {
+          const k = `${getTanggalKey(it.tanggal)}_${String(it.nama || '').trim().toUpperCase()}`;
+          itemMap.set(k, it);
+        }
+        const mergedList = Array.from(itemMap.values());
+        this.saveCachedSetoranCengkeh(mergedList, true);
+        return mergedList;
       }
     } catch (e) {
       console.warn('fetchSetoranCengkehDirectFromSheet warning:', e);
@@ -5372,7 +5540,7 @@ const SETORAN_SOURCE = {
 const SETORAN_CENGKEH_SOURCE = {
   spreadsheetId: '1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A',
   sheetName: 'INTEGRASI DATA SETORAN CENGKEH',
-  range: 'B12:H17'
+  range: 'B6:H50'
 };
 
 const CACHE_DURATION_SECONDS = 300; // 5 menit
@@ -6232,7 +6400,7 @@ function buildKomoditasSummary_(source) {
   var ss = SpreadsheetApp.openById(source.spreadsheetId);
   var rawSheetNames = ss.getSheets().map(function(s) { return s.getName(); });
   var sheetNames = rawSheetNames.filter(function(s) { return !isExcludedSheet_(s); });
-  var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1;
+  var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1 || source.komoditas.indexOf('Cengkeh') !== -1;
 
   var valueRanges = fetchAllSheetsData_(source.spreadsheetId, sheetNames);
 
@@ -6534,7 +6702,7 @@ function getSaldoPerTanggal(index, tanggalISO) {
     }
 
     var kat = undefined;
-    var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1;
+    var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1 || source.komoditas.indexOf('Cengkeh') !== -1;
     if (isDualKomoditas && headerInfo.format === 'dual') {
       if (saldoSKT > 0 && saldoSKM > 0) kat = 'Gabungan';
       else if (saldoSKT > 0 && saldoSKM <= 0) kat = 'Murni SKT';

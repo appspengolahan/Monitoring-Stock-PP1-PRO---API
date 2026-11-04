@@ -40,9 +40,9 @@ const COMMODITY_METADATA: { name: string; desc: string; defaultActive: boolean; 
   },
   {
     name: 'Cengkeh',
-    desc: 'Format kartu stok alur tunggal persediaan gudang cengkeh murni.',
+    desc: 'Memiliki 2 jalur mutasi di Google Sheets (Kolom D: T Masuk/Keluar/Saldo & Kolom G: M Masuk/Keluar/Saldo).',
     defaultActive: false,
-    statusLabel: 'Format Standar (Single-Lane)'
+    statusLabel: 'Mendukung Dual-Lane (SKT & SKM)'
   }
 ];
 

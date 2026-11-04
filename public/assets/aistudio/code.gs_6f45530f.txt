@@ -1,0 +1,274 @@
+// ====== KONFIGURASI ======
+var SHEET_TARGET = [
+  "HANG MADURA GRADE B (2021)",
+  "MADURA 2024 (BAT) R",
+  "HANG MADURA 2024 (BAT)",
+  "MAESAN 2024 (HS)",
+  "MAESAN GRADE C (2021)",
+  "PAITON 2024 (BWN)",
+  "PAITON 2023 (DM)",
+  "PAITON 2023 (ZN)",
+  "MRANGGEN 2024 (LL)",
+  "WELERI 2024 (HK)",
+  "WELERI GRADE B (2021)",
+  "SAPUDI 2024 (GF)",
+  "BESUKI 2024 (ZN)",
+  "BERINGIN 2024 (HS)",
+  "TBK ESCOT 2024 (BE)",
+  "AMERIKA 2025 (BO1)",
+  "ZIMBABWE B1L (2023)",
+  "ZIMBABWE 2025 (L2OF/P)",
+  "ZIMBABWE 2025 (HR) L1OF",
+  "ZIMBABWE M1L (2023)",
+  "LOMBOK 2024 (FS) - 1",
+  "LOMBOK 2024 (BE) - 1",
+  "ZAMBIA M1L (2023)",
+  "BRAZIL GRADE B (2022)",
+  "BRAZIL 2025 (BOA)",
+  "EXPANDED STEM - 1B GRADE B (2023)",
+  "DIET TRIAL - 1 (2025)",
+  "DIET TRIAL - 3 (2026)",
+  "FCV DIET TOBACCO SGI (2024)",
+  "KASTURI GRADE C (2019)",
+  "KASTURI 2023 (ST)",
+  "KASTURI 2023 (SN)",
+  "HANG BOYOLALI 2024 (FS)",
+  "KRS. GARUT 2024 (MYN)",
+  "JANTURAN JOMBANG 2024 (MYN)",
+  "JANTURAN GRADE B (2020)",
+  "JANTURAN BOYOLALI 2024 (VJI)",
+  "JONING 2024 (AR)",
+  "GARUT 2024 (FR)",
+  "PAKPIE GRADE C (2022)",
+  "PLOSO 2024 (MYN)"
+];
+var KOLOM_TANGGAL = 2; // kolom B
+var KOLOM_PEMICU = 3;  // kolom C
+var BARIS_MULAI_DATA = 8;
+var BARIS_PROTEKSI = 8;
+var BATAS_HARI_HIDE = 6;
+
+var NAMA_HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+var NAMA_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+var PETA_BULAN = {
+  "Januari": 0, "Februari": 1, "Maret": 2, "April": 3, "Mei": 4, "Juni": 5,
+  "Juli": 6, "Agustus": 7, "September": 8, "Oktober": 9, "November": 10, "Desember": 11
+};
+
+// ====== 1. Isi tanggal otomatis saat kolom C diedit (versi cepat) ======
+function onEdit(e) {
+  var sheet = e.range.getSheet();
+  if (SHEET_TARGET.indexOf(sheet.getName()) === -1) return;
+
+  var baris = e.range.getRow();
+  var kolom = e.range.getColumn();
+
+  if (baris < BARIS_MULAI_DATA) return;
+  if (kolom !== KOLOM_PEMICU) return;
+
+  var nilaiC = e.value;
+  if (nilaiC === undefined || nilaiC === "") return;
+
+  var selTanggal = sheet.getRange(baris, KOLOM_TANGGAL);
+  if (selTanggal.getValue() !== "") return;
+
+  var sekarang = new Date();
+  var teksTanggal = NAMA_HARI[sekarang.getDay()] + ", " + sekarang.getDate() + " " + NAMA_BULAN[sekarang.getMonth()] + " " + sekarang.getFullYear();
+
+  selTanggal.setValue(teksTanggal);
+  SpreadsheetApp.flush();
+}
+
+// ====== 2. Jaring pengaman AMAN: hanya proses baris BARU sejak terakhir dicek ======
+function perbaikanTanggalOtomatis() {
+  var props = PropertiesService.getScriptProperties();
+
+  SHEET_TARGET.forEach(function (namaSheet) {
+    try {
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(namaSheet);
+      if (!sheet) return;
+
+      var lastRow = sheet.getLastRow();
+      if (lastRow < BARIS_MULAI_DATA) return;
+
+      var keyProp = "batasBaris_" + namaSheet;
+      var batasSebelumnya = parseInt(props.getProperty(keyProp), 10);
+
+      if (isNaN(batasSebelumnya)) {
+        props.setProperty(keyProp, String(lastRow));
+        Logger.log("Sheet '" + namaSheet + "': baseline diset ke baris " + lastRow + " (belum ada baris diproses).");
+        return;
+      }
+
+      if (lastRow <= batasSebelumnya) return;
+
+      var mulai = batasSebelumnya + 1;
+      var jumlahBaris = lastRow - batasSebelumnya;
+
+      var nilaiB = sheet.getRange(mulai, KOLOM_TANGGAL, jumlahBaris, 1).getValues();
+      var nilaiC = sheet.getRange(mulai, KOLOM_PEMICU, jumlahBaris, 1).getValues();
+
+      var sekarang = new Date();
+      var teksTanggal = NAMA_HARI[sekarang.getDay()] + ", " + sekarang.getDate() + " " + NAMA_BULAN[sekarang.getMonth()] + " " + sekarang.getFullYear();
+      var jumlahDiperbaiki = 0;
+
+      for (var i = 0; i < nilaiC.length; i++) {
+        var baris = mulai + i;
+        var adaC = nilaiC[i][0] !== "" && nilaiC[i][0] !== null;
+        var kosongB = nilaiB[i][0] === "" || nilaiB[i][0] === null;
+
+        if (adaC && kosongB) {
+          sheet.getRange(baris, KOLOM_TANGGAL).setValue(teksTanggal);
+          jumlahDiperbaiki++;
+        }
+      }
+
+      props.setProperty(keyProp, String(lastRow));
+
+      if (jumlahDiperbaiki > 0) {
+        Logger.log("Sheet '" + namaSheet + "': " + jumlahDiperbaiki + " baris BARU diperbaiki (baris " + mulai + " s/d " + lastRow + ").");
+      }
+    } catch (err) {
+      Logger.log("Gagal memproses sheet '" + namaSheet + "': " + err.message);
+    }
+  });
+}
+
+// ====== 2b. Jalankan SEKALI SAJA sebelum trigger perbaikanTanggalOtomatis diaktifkan ======
+function inisialisasiBatasBaris() {
+  var props = PropertiesService.getScriptProperties();
+  SHEET_TARGET.forEach(function (namaSheet) {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(namaSheet);
+    if (!sheet) return;
+    var lastRow = sheet.getLastRow();
+    props.setProperty("batasBaris_" + namaSheet, String(lastRow));
+    Logger.log("Sheet '" + namaSheet + "': baseline diset ke baris " + lastRow);
+  });
+  Logger.log("Inisialisasi selesai. Baris di atas ini tidak akan pernah disentuh lagi oleh perbaikanTanggalOtomatis.");
+}
+
+// ====== 3. Hide otomatis baris lebih dari 6 hari ======
+function hideBarisLama() {
+  var sheetGagal = [];
+
+  SHEET_TARGET.forEach(function (namaSheet) {
+    try {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheet = ss.getSheetByName(namaSheet);
+      if (!sheet) {
+        Logger.log("Sheet '" + namaSheet + "' tidak ditemukan, dilewati.");
+        return;
+      }
+
+      var lastRow = sheet.getLastRow();
+      var lastRowSheet = sheet.getMaxRows();
+      if (lastRowSheet <= BARIS_PROTEKSI) return;
+
+      sheet.showRows(BARIS_PROTEKSI + 1, lastRowSheet - BARIS_PROTEKSI);
+
+      if (lastRow <= BARIS_MULAI_DATA) return;
+
+      var nilaiB = sheet.getRange(BARIS_MULAI_DATA, KOLOM_TANGGAL, lastRow - BARIS_MULAI_DATA + 1, 1).getValues();
+      var nilaiC = sheet.getRange(BARIS_MULAI_DATA, KOLOM_PEMICU, lastRow - BARIS_MULAI_DATA + 1, 1).getValues();
+      var sekarang = new Date();
+      var tanggalBerjalan = null;
+      var barisUntukHide = [];
+
+      for (var i = 0; i < nilaiB.length; i++) {
+        var baris = BARIS_MULAI_DATA + i;
+        var tanggalDariBaris = ambilTanggalDariNilai(nilaiB[i][0]);
+        if (tanggalDariBaris) tanggalBerjalan = tanggalDariBaris;
+
+        var adaDataBaris = nilaiC[i][0] !== "" && nilaiC[i][0] !== null;
+        if (!adaDataBaris) continue;
+        if (!tanggalBerjalan) continue;
+        if (baris <= BARIS_PROTEKSI) continue;
+
+        var selisihHari = Math.floor((sekarang - tanggalBerjalan) / (1000 * 60 * 60 * 24));
+        if (selisihHari > BATAS_HARI_HIDE) {
+          barisUntukHide.push(baris);
+        }
+      }
+
+      var jumlahHide = hideBarisBatch(sheet, barisUntukHide);
+      Logger.log("Sheet '" + namaSheet + "' selesai diproses. " + jumlahHide + " baris disembunyikan.");
+
+    } catch (err) {
+      sheetGagal.push(namaSheet);
+      Logger.log("GAGAL memproses sheet '" + namaSheet + "': " + err.message);
+    }
+  });
+
+  if (sheetGagal.length > 0) {
+    Logger.log("=== Sheet yang GAGAL (perlu di-run ulang): " + sheetGagal.join(", ") + " ===");
+  }
+
+  Logger.log("Hide baris lama selesai pada " + new Date());
+}
+
+function hideBarisBatch(sheet, daftarBaris) {
+  if (daftarBaris.length === 0) return 0;
+
+  var totalHide = 0;
+  var awal = daftarBaris[0];
+  var sebelumnya = daftarBaris[0];
+
+  for (var i = 1; i <= daftarBaris.length; i++) {
+    var barisSekarang = daftarBaris[i];
+    if (barisSekarang === sebelumnya + 1) {
+      sebelumnya = barisSekarang;
+      continue;
+    }
+    sheet.hideRows(awal, sebelumnya - awal + 1);
+    totalHide += (sebelumnya - awal + 1);
+
+    awal = barisSekarang;
+    sebelumnya = barisSekarang;
+  }
+
+  return totalHide;
+}
+
+// ====== 4. Fungsi bantu pembacaan tanggal ======
+function ambilTanggalDariNilai(nilai) {
+  if (nilai === "" || nilai === null || nilai === undefined) return null;
+  if (nilai instanceof Date) {
+    return new Date(nilai.getFullYear(), nilai.getMonth(), nilai.getDate());
+  }
+  if (typeof nilai === "string" && nilai.trim() !== "") {
+    return parseTanggalIndo(nilai);
+  }
+  return null;
+}
+
+function parseTanggalIndo(teks) {
+  var bagian = teks.split(",");
+  if (bagian.length < 2) return null;
+  var sisa = bagian[1].trim().split(" ");
+  if (sisa.length < 3) return null;
+  var tanggal = parseInt(sisa[0], 10);
+  var bulan = PETA_BULAN[sisa[1]];
+  var tahun = parseInt(sisa[2], 10);
+  if (isNaN(tanggal) || bulan === undefined || isNaN(tahun)) return null;
+  return new Date(tahun, bulan, tanggal);
+}
+
+// ====== 5. Menu manual ======
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("Auto Hide")
+    .addItem("Tampilkan Semua Baris (Unhide)", "tampilkanSemuaBaris")
+    .addToUi();
+}
+
+function tampilkanSemuaBaris() {
+  SHEET_TARGET.forEach(function (namaSheet) {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(namaSheet);
+    if (!sheet) return;
+    var lastRow = sheet.getMaxRows();
+    if (lastRow > BARIS_PROTEKSI) {
+      sheet.showRows(BARIS_PROTEKSI + 1, lastRow - BARIS_PROTEKSI);
+    }
+  });
+  SpreadsheetApp.getUi().alert("Semua baris (kecuali baris 1-8) sudah ditampilkan kembali.");
+}
