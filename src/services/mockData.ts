@@ -1485,6 +1485,76 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     ],
     "mutasiTerbaru": [
       {
+        "id": "tembakau---krosok--rajang-ii--dhp-MADURA2024BATR-2026-11-04",
+        "tanggal": "2026-11-04T00:00:00.000Z",
+        "kode": "MADURA 2024 (BAT) R",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 6774.4,
+        "keluar": 0,
+        "saldo": 6774.4,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-ZIMBABWE2025L2OFP-2026-11-04",
+        "tanggal": "2026-11-04T00:00:00.000Z",
+        "kode": "ZIMBABWE 2025 (L2OF/P)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 546.3,
+        "keluar": 0,
+        "saldo": 546.3,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-ZAMBIAM1L2023-2026-11-04",
+        "tanggal": "2026-11-04T00:00:00.000Z",
+        "kode": "ZAMBIA M1L (2023)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 524.4,
+        "keluar": 0,
+        "saldo": 524.4,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-BRAZILGRADEB2022-2026-11-04",
+        "tanggal": "2026-11-04T00:00:00.000Z",
+        "kode": "BRAZIL GRADE B (2022)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 263.3,
+        "keluar": 0,
+        "saldo": 263.3,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-DIETTRIAL3PLUS2026-2026-11-04",
+        "tanggal": "2026-11-04T00:00:00.000Z",
+        "kode": "DIET TRIAL - 3 PLUS (2026)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 241.9,
+        "keluar": 0,
+        "saldo": 241.9,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-KASTURI2024BE1-2026-11-04",
+        "tanggal": "2026-11-04T00:00:00.000Z",
+        "kode": "KASTURI 2024 (BE) - 1",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 1003.2,
+        "keluar": 0,
+        "saldo": 1003.2,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-ii--dhp-JANTURANBOYOLALI2024VJI-2026-11-04",
+        "tanggal": "2026-11-04T00:00:00.000Z",
+        "kode": "JANTURAN BOYOLALI 2024 (VJI)",
+        "jenisMutasi": "Pemasukan Hasil Proses",
+        "masuk": 290.4,
+        "keluar": 0,
+        "saldo": 290.4,
+        "cek": true
+      },
+      {
         "id": "tembakau---krosok--rajang-ii--20261029-hang-madura",
         "tanggal": "2026-10-29T00:00:00.000Z",
         "kode": "HANG MADURA 2024 (BAT)",

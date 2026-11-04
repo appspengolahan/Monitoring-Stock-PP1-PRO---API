@@ -2351,6 +2351,55 @@ export class GasService {
             }
 
             if ((k.komoditas || '').toLowerCase().includes('rajang ii')) {
+              const hasNov4 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-04'));
+              const nov4RajangEntries = [
+                { id: 'tembakau---krosok--rajang-ii--dhp-MADURA2024BATR-2026-11-04', tanggal: '2026-11-04T00:00:00.000Z', kode: 'MADURA 2024 (BAT) R', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 6774.4, keluar: 0, saldo: 6774.4, masukSKT: 6774.4, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 6774.4, selisih: 0, sumber: 'DHP Tembakau', jalur: 'SKT' } },
+                { id: 'tembakau---krosok--rajang-ii--dhp-ZIMBABWE2025L2OFP-2026-11-04', tanggal: '2026-11-04T00:00:00.000Z', kode: 'ZIMBABWE 2025 (L2OF/P)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 546.3, keluar: 0, saldo: 546.3, masukSKT: 546.3, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 546.3, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } },
+                { id: 'tembakau---krosok--rajang-ii--dhp-ZAMBIAM1L2023-2026-11-04', tanggal: '2026-11-04T00:00:00.000Z', kode: 'ZAMBIA M1L (2023)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 524.4, keluar: 0, saldo: 524.4, masukSKT: 524.4, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 524.4, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } },
+                { id: 'tembakau---krosok--rajang-ii--dhp-BRAZILGRADEB2022-2026-11-04', tanggal: '2026-11-04T00:00:00.000Z', kode: 'BRAZIL GRADE B (2022)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 263.3, keluar: 0, saldo: 263.3, masukSKT: 263.3, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 263.3, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } },
+                { id: 'tembakau---krosok--rajang-ii--dhp-DIETTRIAL3PLUS2026-2026-11-04', tanggal: '2026-11-04T00:00:00.000Z', kode: 'DIET TRIAL - 3 PLUS (2026)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 241.9, keluar: 0, saldo: 241.9, masukSKT: 241.9, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 241.9, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } },
+                { id: 'tembakau---krosok--rajang-ii--dhp-KASTURI2024BE1-2026-11-04', tanggal: '2026-11-04T00:00:00.000Z', kode: 'KASTURI 2024 (BE) - 1', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 1003.2, keluar: 0, saldo: 1003.2, masukSKT: 1003.2, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 1003.2, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } },
+                { id: 'tembakau---krosok--rajang-ii--dhp-JANTURANBOYOLALI2024VJI-2026-11-04', tanggal: '2026-11-04T00:00:00.000Z', kode: 'JANTURAN BOYOLALI 2024 (VJI)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 290.4, keluar: 0, saldo: 290.4, masukSKT: 290.4, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 290.4, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } }
+              ];
+              if (!hasNov4) {
+                k.mutasiTerbaru = [...nov4RajangEntries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              } else {
+                (k.mutasiTerbaru || []).forEach((m: any) => {
+                  if ((m.tanggal || '').includes('2026-11-04')) {
+                    if (m.kode?.includes('MADURA 2024 (BAT) R')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 6774.4, selisih: 0, sumber: 'DHP Tembakau', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    } else if (m.kode?.includes('ZIMBABWE 2025 (L2OF/P)')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 546.3, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    } else if (m.kode?.includes('ZAMBIA M1L (2023)')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 524.4, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    } else if (m.kode?.includes('BRAZIL GRADE B (2022)')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 263.3, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    } else if (m.kode?.includes('DIET TRIAL - 3 PLUS (2026)')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 241.9, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    } else if (m.kode?.includes('KASTURI 2024 (BE) - 1')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 1003.2, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    } else if (m.kode?.includes('JANTURAN BOYOLALI 2024 (VJI)')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 290.4, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    }
+                  }
+                });
+              }
+
               const hasNov2 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-02'));
               if (!hasNov2) {
                 const nov2RajangEntries = [
@@ -2641,6 +2690,59 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 04 NOVEMBER 2026 (Live Worksheet DHP Krosok & DHP Tembakau - Kolom I Hasil Proses) ===
+    // 1 Bahan dari DHP Tembakau (Rabu, 04 November 2026)
+    {
+      tanggal: '2026-11-04T00:00:00.000Z',
+      nama: 'Madura 2024 (BAT) R',
+      nettoKg: 6774.4,
+      jalur: 'SKT',
+      sumber: 'DHP Tembakau'
+    },
+    // 6 Bahan dari DHP Krosok (Rabu, 04 November 2026)
+    {
+      tanggal: '2026-11-04T00:00:00.000Z',
+      nama: 'Zimbabwe 2025 (L2OF/P)',
+      nettoKg: 546.3,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-04T00:00:00.000Z',
+      nama: 'Zambia M1L (2023)',
+      nettoKg: 524.4,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-04T00:00:00.000Z',
+      nama: 'Brazil Grade B (2022)',
+      nettoKg: 263.3,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-04T00:00:00.000Z',
+      nama: 'Diet Trial - 3 Plus (2026)',
+      nettoKg: 241.9,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-04T00:00:00.000Z',
+      nama: 'Kasturi 2024 (BE) - 1',
+      nettoKg: 1003.2,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-04T00:00:00.000Z',
+      nama: 'Janturan Boyolali 2024 (VJI)',
+      nettoKg: 290.4,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+
     // === DATA 02 NOVEMBER 2026 (Live Worksheet DHP Krosok & DHP Tembakau - Kolom I Hasil Proses) ===
     // 6 Bahan dari DHP Tembakau (Senin, 02 November 2026)
     {
@@ -5751,11 +5853,14 @@ function getDHPReconciliation_() {
     var shKrosok = ssKrosok.getSheetByName(DHP_KROSOK_SOURCE.sheetName);
     if (shKrosok) {
       var dataK = shKrosok.getDataRange().getValues();
+      var lastKnownTanggalK = '2026-11-04T00:00:00.000Z';
       for (var r = 1; r < dataK.length; r++) {
         var row = dataK[r];
         var nama = String(row[DHP_KROSOK_SOURCE.colNama] || '').trim();
         var rawHasil = row[DHP_KROSOK_SOURCE.colHasil];
         var tglRaw = row[DHP_KROSOK_SOURCE.colTanggal];
+        var parsedDateK = safeDateValue_(tglRaw);
+        if (parsedDateK) lastKnownTanggalK = parsedDateK;
         if (!nama || nama === 'JENIS TEMBAKAU' || nama === '-') continue;
         if (rawHasil === false || rawHasil === 'FALSE' || rawHasil === '' || rawHasil === '-') continue;
         var netto = 0;
@@ -5766,7 +5871,7 @@ function getDHPReconciliation_() {
         }
         if (netto > 0) {
           items.push({
-            tanggal: tglRaw ? String(tglRaw) : '2026-10-14T00:00:00.000Z',
+            tanggal: parsedDateK || lastKnownTanggalK,
             nama: nama,
             nettoKg: Math.round(netto * 10) / 10,
             jalur: 'SKT',
@@ -5781,11 +5886,14 @@ function getDHPReconciliation_() {
     var shTbk = ssTbk.getSheetByName(DHP_TEMBAKAU_SOURCE.sheetName);
     if (shTbk) {
       var dataT = shTbk.getDataRange().getValues();
+      var lastKnownTanggalT = '2026-11-04T00:00:00.000Z';
       for (var r = 1; r < dataT.length; r++) {
         var row = dataT[r];
         var nama = String(row[DHP_TEMBAKAU_SOURCE.colNama] || '').trim();
         var rawHasil = row[DHP_TEMBAKAU_SOURCE.colHasil];
         var tglRaw = row[DHP_TEMBAKAU_SOURCE.colTanggal];
+        var parsedDateT = safeDateValue_(tglRaw);
+        if (parsedDateT) lastKnownTanggalT = parsedDateT;
         if (!nama || nama === 'JENIS TEMBAKAU' || nama === '-') continue;
         if (rawHasil === false || rawHasil === 'FALSE' || rawHasil === '' || rawHasil === '-') continue;
         var netto = 0;
@@ -5796,7 +5904,7 @@ function getDHPReconciliation_() {
         }
         if (netto > 0) {
           items.push({
-            tanggal: tglRaw ? String(tglRaw) : '2026-10-14T00:00:00.000Z',
+            tanggal: parsedDateT || lastKnownTanggalT,
             nama: nama,
             nettoKg: Math.round(netto * 10) / 10,
             jalur: 'SKT',
