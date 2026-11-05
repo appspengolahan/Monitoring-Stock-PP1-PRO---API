@@ -6267,20 +6267,21 @@ function getSetoranReconciliation_() {
     if (!sh) return [];
     var data = sh.getDataRange().getValues();
     var items = [];
-    var defaultDate = '2026-10-08T00:00:00.000Z';
+    var defaultDate = '2026-11-05T00:00:00.000Z';
     
-    // Cari tanggal di lembar kerja
+    // Cari tanggal di lembar kerja menggunakan safeDateValue_ universal
+    var foundDate = false;
     for (var d = 0; d < Math.min(data.length, 5); d++) {
       var dRow = data[d];
       for (var c = 0; c < dRow.length; c++) {
-        var strC = String(dRow[c] || '');
-        var mMatch = strC.match(/(\d{1,2})\s*[-/ ]\s*(Okt|Oktober|Oct|October)\s*[-/ ]\s*(\d{4})/i);
-        if (mMatch) {
-          var dayStr = ('0' + mMatch[1]).slice(-2);
-          defaultDate = mMatch[3] + '-10-' + dayStr + 'T00:00:00.000Z';
+        var parsedHeaderDate = safeDateValue_(dRow[c]);
+        if (parsedHeaderDate) {
+          defaultDate = parsedHeaderDate;
+          foundDate = true;
           break;
         }
       }
+      if (foundDate) break;
     }
 
     for (var r = 5; r < data.length; r++) {
@@ -6307,14 +6308,9 @@ function getSetoranReconciliation_() {
       if (netto > 0) {
         var itemDate = defaultDate;
         var rawTgl = row[SETORAN_SOURCE.colTanggal];
-        if (rawTgl instanceof Date) {
-          itemDate = rawTgl.toISOString();
-        } else if (rawTgl) {
-          var tglStr = String(rawTgl);
-          var matchRowTgl = tglStr.match(/(\d{1,2})\s*[-/ ]\s*(Okt|Oktober|Oct|October)\s*[-/ ]\s*(\d{4})/i);
-          if (matchRowTgl) {
-            itemDate = matchRowTgl[3] + '-10-' + ('0' + matchRowTgl[1]).slice(-2) + 'T00:00:00.000Z';
-          }
+        var parsedRowDate = safeDateValue_(rawTgl);
+        if (parsedRowDate) {
+          itemDate = parsedRowDate;
         }
 
         items.push({
