@@ -102,6 +102,7 @@ export interface EstimationConfig {
   customBatchPlan?: Partial<BatchPlanInfo>; // Opsi jika user ingin simulasi custom jumlah campur
   trackingMode?: 'plan_awal' | 'realisasi_berjalan';
   completedDays?: DayOfWeek[];
+  autoDhpRealisasi?: boolean; // Jika aktif, otomatis menghitung realisasi batch yang sudah selesai dari DHP Blend
 }
 
 export interface CalculatedStockItem {

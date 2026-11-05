@@ -88,8 +88,22 @@ export class StockEstimationService {
   public static async refreshFromGoogleSheets(): Promise<{ ok: boolean; data?: DatabasePrufData; message: string }> {
     try {
       const fetchTab = async (sheetName: string): Promise<string> => {
-        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
-        const res = await fetch(url, { cache: 'no-store' });
+        const targetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+        
+        // 1. Coba via Express server proxy (/api/gas-proxy) untuk menghindari pemblokiran CORS di browser operator
+        try {
+          const proxyRes = await fetch(`/api/gas-proxy?noCache=true&url=${encodeURIComponent(targetUrl)}`);
+          if (proxyRes.ok) {
+            const data = await proxyRes.json();
+            if (typeof data === 'string' && data.trim().length > 0) return data;
+            if (typeof data === 'object' && data && typeof (data as any).data === 'string') return (data as any).data;
+          }
+        } catch (proxyErr) {
+          console.warn(`Proxy fetch gagal untuk ${sheetName}, mencoba direct fetch...`, proxyErr);
+        }
+
+        // 2. Direct fetch fallback
+        const res = await fetch(targetUrl, { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status} gagal memuat tab ${sheetName}`);
         return await res.text();
       };
@@ -370,13 +384,28 @@ export class StockEstimationService {
       ...cleanCengkeh
     ];
 
-    const basePlan = { ...data.planInfo };
-    const totalWeeklyPlanBatches = basePlan.campurTotalSemua || 47;
+    const hasCustomPlan = !!activeConfig.customBatchPlan;
+    const basePlan: BatchPlanInfo = {
+      campur153: activeConfig.customBatchPlan?.campur153 ?? data.planInfo.campur153 ?? 0,
+      campurKarang: activeConfig.customBatchPlan?.campurKarang ?? data.planInfo.campurKarang ?? 0,
+      campurSP: activeConfig.customBatchPlan?.campurSP ?? data.planInfo.campurSP ?? 0,
+      campurTIS: activeConfig.customBatchPlan?.campurTIS ?? data.planInfo.campurTIS ?? 0,
+      campurTotalSKT: 0,
+      campurFReguler: activeConfig.customBatchPlan?.campurFReguler ?? data.planInfo.campurFReguler ?? 0,
+      campurFRLABold: activeConfig.customBatchPlan?.campurFRLABold ?? data.planInfo.campurFRLABold ?? 0,
+      campurTotalSKM: 0,
+      campurTotalSemua: 0
+    };
+    basePlan.campurTotalSKT = basePlan.campur153 + basePlan.campurKarang + basePlan.campurSP + basePlan.campurTIS;
+    basePlan.campurTotalSKM = basePlan.campurFReguler + basePlan.campurFRLABold;
+    basePlan.campurTotalSemua = basePlan.campurTotalSKT + basePlan.campurTotalSKM;
+
+    const totalWeeklyPlanBatches = basePlan.campurTotalSemua;
 
     const isTrackingActive = activeConfig.trackingMode === 'realisasi_berjalan';
     const completedDays = isTrackingActive ? (activeConfig.completedDays || []) : [];
 
-    // 1. Hitung batch yang sudah terealisasi berdasarkan hari kerja yang dipilih
+    // 1. Hitung batch yang sudah terealisasi berdasarkan hari kerja atau auto-sync DHP Blend
     const completedBatches = {
       campur153: 0,
       campurKarang: 0,
@@ -387,7 +416,35 @@ export class StockEstimationService {
       total: 0
     };
 
-    if (completedDays.length > 0 && data.weeklyPlan?.schedules) {
+    if (activeConfig.autoDhpRealisasi) {
+      try {
+        const dhpEntries = GasService.getCachedDHPBlend();
+        for (const entry of dhpEntries) {
+          const tgl = (entry.tanggal || '');
+          if (tgl.includes('2026-11') || tgl.includes('Nov 2026') || !tgl) {
+            const count = Array.isArray(entry.molenList) && entry.molenList.length > 0 
+              ? entry.molenList.length 
+              : 1;
+            const name = (entry.nama || '').toUpperCase();
+            if (name.includes('SP 153')) completedBatches.campurSP += count;
+            else if (name.includes('153')) completedBatches.campur153 += count;
+            else if (name.includes('KARANG')) completedBatches.campurKarang += count;
+            else if (name.includes('TIS')) completedBatches.campurTIS += count;
+            else if (name.includes('LA BOLD')) completedBatches.campurFRLABold += count;
+            else if (name.includes('F REGULER') || name.includes('AVE') || name.includes('FR LN')) completedBatches.campurFReguler += count;
+          }
+        }
+        completedBatches.total = 
+          completedBatches.campur153 + 
+          completedBatches.campurKarang + 
+          completedBatches.campurSP + 
+          completedBatches.campurTIS + 
+          completedBatches.campurFReguler + 
+          completedBatches.campurFRLABold;
+      } catch (e) {
+        console.warn('Gagal membaca realisasi DHP Blend:', e);
+      }
+    } else if (completedDays.length > 0 && data.weeklyPlan?.schedules) {
       for (const schedule of data.weeklyPlan.schedules) {
         const name = schedule.blendName.toUpperCase();
         let daySum = 0;
@@ -431,9 +488,9 @@ export class StockEstimationService {
       remainingBatches.campurFRLABold;
 
     // Tentukan batch yang aktif dihitung saat ini
-    const activeBatchPlan = (isTrackingActive && completedDays.length > 0)
-      ? remainingBatches.total
-      : totalWeeklyPlanBatches;
+    const isUsingRemaining = (isTrackingActive && completedDays.length > 0) || (activeConfig.autoDhpRealisasi && completedBatches.total > 0);
+    const activeBatchPlan = isUsingRemaining ? remainingBatches.total : totalWeeklyPlanBatches;
+    const targetBatches = isUsingRemaining ? remainingBatches : basePlan;
 
     const calculatedItems: CalculatedStockItem[] = allPrufItems.map(pruf => {
       const { saldo, matchedName } = findStockBalance(pruf.nama, pruf.kodeIntern, pruf.kategori);
@@ -442,18 +499,18 @@ export class StockEstimationService {
       let kebutuhanSKM = pruf.kebutuhanPlan.totalSKM;     // Kolom W
       let totalKebutuhan = pruf.kebutuhanPlan.totalSemua; // Kolom X (Acuan Utama)
 
-      // Jika mode realisasi berjalan aktif dan ada hari yang sudah diselesaikan:
-      // Hitung ulang secara dinamis kebutuhan bahan berdasarkan sisa batch masing-masing blend
-      if (isTrackingActive && completedDays.length > 0) {
-        const dynReq153 = (pruf.resep.kg153 || 0) * remainingBatches.campur153;
-        const dynReqKarang = (pruf.resep.kgKarang || 0) * remainingBatches.campurKarang;
-        const dynReqSP = (pruf.resep.kgSP || 0) * remainingBatches.campurSP;
-        const dynReqTIS = (pruf.resep.kgTIS || 0) * remainingBatches.campurTIS;
+      // Jika menggunakan sisa batch atau pengguna mengatur customBatchPlan:
+      // Hitung ulang secara dinamis kebutuhan bahan berdasarkan resep per batch
+      if (isUsingRemaining || hasCustomPlan) {
+        const dynReq153 = (pruf.resep.kg153 || 0) * targetBatches.campur153;
+        const dynReqKarang = (pruf.resep.kgKarang || 0) * targetBatches.campurKarang;
+        const dynReqSP = (pruf.resep.kgSP || 0) * targetBatches.campurSP;
+        const dynReqTIS = (pruf.resep.kgTIS || 0) * targetBatches.campurTIS;
         kebutuhanSKT = Math.round((dynReq153 + dynReqKarang + dynReqSP + dynReqTIS) * 10) / 10;
 
-        const dynReqFReguler = (pruf.resep.kgFReguler || 0) * remainingBatches.campurFReguler;
-        const dynReqFRLABold = (basePlan.campurFRLABold > 0 && pruf.kebutuhanPlan.reqFRLABold) 
-          ? (pruf.kebutuhanPlan.reqFRLABold / basePlan.campurFRLABold) * remainingBatches.campurFRLABold 
+        const dynReqFReguler = (pruf.resep.kgFReguler || 0) * targetBatches.campurFReguler;
+        const dynReqFRLABold = (data.planInfo.campurFRLABold > 0 && pruf.kebutuhanPlan.reqFRLABold) 
+          ? (pruf.kebutuhanPlan.reqFRLABold / data.planInfo.campurFRLABold) * targetBatches.campurFRLABold 
           : 0;
         kebutuhanSKM = Math.round((dynReqFReguler + dynReqFRLABold) * 10) / 10;
 
