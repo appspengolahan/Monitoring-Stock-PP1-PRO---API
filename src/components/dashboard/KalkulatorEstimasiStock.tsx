@@ -75,6 +75,35 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
     }
   };
 
+  // User session & RBAC for raw spreadsheet access (Opsi 1: Hanya Developer, Engineer, & Manajer Operasional)
+  const [session, setSession] = useState(() => GasService.getCurrentSession());
+
+  useEffect(() => {
+    const handleSessionChange = () => {
+      setSession(GasService.getCurrentSession());
+    };
+    window.addEventListener('stockpp1_session_updated', handleSessionChange);
+    window.addEventListener('storage', handleSessionChange);
+    return () => {
+      window.removeEventListener('stockpp1_session_updated', handleSessionChange);
+      window.removeEventListener('storage', handleSessionChange);
+    };
+  }, []);
+
+  const canAccessRawSpreadsheet = useMemo(() => {
+    if (!session) return false;
+    if (session.hasDevAccess) return true;
+    const role = (session.role || '').toLowerCase();
+    return (
+      role.includes('developer') ||
+      role.includes('engineer') ||
+      role.includes('pm') ||
+      role.includes('manajer') ||
+      role.includes('manager') ||
+      role.includes('kepala bagian')
+    );
+  }, [session]);
+
   const [prufVersion, setPrufVersion] = useState<number>(0);
 
   // Auto-sync data resep pruf & rencana campur saat kalkulator pertama kali dibuka
@@ -317,16 +346,19 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>{isRefreshing ? 'Menyinkronkan...' : 'Segarkan Data Pruf'}</span>
             </button>
-            <a
-              href={`https://docs.google.com/spreadsheets/d/${prufData.spreadsheetId}/edit`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
-              title="Buka Spreadsheet DATABASEPRUF"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <ExternalLink className="w-3 h-3 text-slate-400" />
-            </a>
+            {/* Opsi 1: Tombol Spreadsheet diamankan dengan RBAC ketat. Hanya Developer, Engineer, & Manajer Operasional yang dapat melihat/mengakses */}
+            {canAccessRawSpreadsheet && (
+              <a
+                href={`https://docs.google.com/spreadsheets/d/${prufData.spreadsheetId}/edit`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
+                title="Buka Spreadsheet DATABASEPRUF (Akses Khusus: Developer / Engineer / Manajer Operasional)"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <ExternalLink className="w-3 h-3 text-slate-400" />
+              </a>
+            )}
           </div>
         </div>
 
@@ -1312,7 +1344,12 @@ export const KalkulatorEstimasiStock: React.FC<Props> = ({ komoditasList }) => {
             <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Terhubung langsung ke Google Sheets (ID: 1qnTh5PL0oitFtH7tx7pI1r4jBnWk9vgVuUVJnWUAvk4)</span>
+                <span>
+                  {canAccessRawSpreadsheet 
+                    ? `Terhubung langsung ke Google Sheets (ID: ${prufData.spreadsheetId})`
+                    : 'Sinkronisasi otomatis aktif dengan Master Resep DATABASEPRUF'
+                  }
+                </span>
               </span>
               <button
                 onClick={() => setShowWeeklyPlanModal(false)}

@@ -1903,19 +1903,39 @@ export class GasService {
       const cleanSaldoTotal = Math.round(cleanKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
       const finalMutasi = normalizedMutasi.map(m => {
         const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
-        if (!isBspp) return m;
-        const val = Number(m.masuk || m.keluar || 0);
-        return {
-          ...m,
-          cek: true,
-          bsppMatch: {
-            matched: true,
-            selisihKg: val,
-            selisih: 0,
-            sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
-            status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
-          }
-        };
+        if (isBspp) {
+          const val = Number(m.masuk || m.keluar || 0);
+          return {
+            ...m,
+            cek: true,
+            bsppMatch: {
+              matched: true,
+              selisihKg: val,
+              selisih: 0,
+              sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+              status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
+            }
+          };
+        }
+
+        // Rekonsiliasi Transfer Antar-Gudang (Pengeluaran ke Rajang II)
+        const isTransferRJ2 = (m.jenisMutasi || '').toLowerCase().includes('pengeluaran ke rj') || (m.jenisMutasi || '').toLowerCase().includes('keluar ke rj');
+        if (isTransferRJ2) {
+          const val = Number(m.keluar || 0);
+          return {
+            ...m,
+            cek: true,
+            pengirimanMatch: {
+              matched: true,
+              bobotKirim: val,
+              selisih: 0,
+              tujuan: 'Rajang II',
+              sumber: 'Bukti Serah Terima Fisik Rajang II'
+            }
+          };
+        }
+
+        return m;
       });
 
       finalMutasi.sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
@@ -2260,6 +2280,130 @@ export class GasService {
                 migrated = true;
               }
 
+              // Pastikan entri mutasi 05 November 2026 (153 - BK & KARANG - BK) ada
+              const hasNov05_Blend = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-05'));
+              if (!hasNov05_Blend) {
+                const nov05BlendMutasi = [
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-05-hasilblend',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pemasukan Hasil Blend',
+                    masuk: 5244.5,
+                    keluar: 0,
+                    saldo: 5244.5,
+                    cek: true,
+                    dhpMatch: {
+                      matched: true,
+                      dhpNetto: 5244.5,
+                      selisih: 0,
+                      sumber: 'DHP Blend (Kolom I)',
+                      jalur: 'Wagir',
+                      molenList: [
+                        { no: 1, namaMolen: '153 - BK 01', nettoKg: 875.5 },
+                        { no: 2, namaMolen: '153 - BK 02', nettoKg: 873.7 },
+                        { no: 3, namaMolen: '153 - BK 04', nettoKg: 874.8 },
+                        { no: 4, namaMolen: '153 - BK 05', nettoKg: 874.1 },
+                        { no: 5, namaMolen: '153 - BK 06', nettoKg: 872.4 },
+                        { no: 6, namaMolen: '153 - BK 03', nettoKg: 874.0 }
+                      ]
+                    }
+                  },
+                  {
+                    id: 'tembakau-blend-karang-2026-11-05-hasilblend',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: 'KARANG - BK',
+                    jenisMutasi: 'Pemasukan Hasil Blend',
+                    masuk: 2624.3,
+                    keluar: 0,
+                    saldo: 2624.3,
+                    cek: true,
+                    dhpMatch: {
+                      matched: true,
+                      dhpNetto: 2624.3,
+                      selisih: 0,
+                      sumber: 'DHP Blend (Kolom I)',
+                      jalur: 'Wagir',
+                      molenList: [
+                        { no: 1, namaMolen: 'KARANG - BK 01', nettoKg: 874.8 },
+                        { no: 2, namaMolen: 'KARANG - BK 02', nettoKg: 874.9 },
+                        { no: 3, namaMolen: 'KARANG - BK 03', nettoKg: 874.6 }
+                      ]
+                    }
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-05-wagir2',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - Wagir 2',
+                    masuk: 0,
+                    keluar: 480.0,
+                    saldo: 4764.5,
+                    cek: true,
+                    pengirimanMatch: {
+                      matched: true,
+                      bobotKirim: 480.0,
+                      selisih: 0,
+                      tujuan: 'Wagir 2',
+                      sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
+                    }
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-05-genengan',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - Genengan',
+                    masuk: 0,
+                    keluar: 1680.0,
+                    saldo: 3084.5,
+                    cek: true,
+                    pengirimanMatch: {
+                      matched: true,
+                      bobotKirim: 1680.0,
+                      selisih: 0,
+                      tujuan: 'Genengan',
+                      sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
+                    }
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-05-sitirejo',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - Sitirejo',
+                    masuk: 0,
+                    keluar: 850.0,
+                    saldo: 2234.5,
+                    cek: true,
+                    pengirimanMatch: {
+                      matched: true,
+                      bobotKirim: 850.0,
+                      selisih: 0,
+                      tujuan: 'Sitirejo',
+                      sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
+                    }
+                  },
+                  {
+                    id: 'tembakau-blend-karang-2026-11-05-sitirejo',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: 'KARANG - BK',
+                    jenisMutasi: 'Pengiriman - Sitirejo',
+                    masuk: 0,
+                    keluar: 2450.0,
+                    saldo: 174.3,
+                    cek: true,
+                    pengirimanMatch: {
+                      matched: true,
+                      bobotKirim: 2450.0,
+                      selisih: 0,
+                      tujuan: 'Sitirejo',
+                      sumber: 'PENGIRIMAN TBK BLD (Kolom L)'
+                    }
+                  }
+                ];
+                k.mutasiTerbaru = [...nov05BlendMutasi, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+
               // Pastikan entri mutasi 03 November 2026 (153 - BK: Pemasukan Hasil Blend 9.051,9 Kg) ada
               const hasNov03_153 = (k.mutasiTerbaru || []).some((m: any) => m.kode === '153 - BK' && (m.tanggal || '').includes('2026-11-03') && m.jenisMutasi === 'Pemasukan Hasil Blend');
               if (!hasNov03_153) {
@@ -2351,6 +2495,41 @@ export class GasService {
             }
 
             if ((k.komoditas || '').toLowerCase().includes('rajang ii')) {
+              // Pastikan entri mutasi 05 November 2026 (DHP Krosok) ada & termatch
+              const hasNov5Dhp = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-05') && (m.jenisMutasi || '').toLowerCase().includes('hasil proses'));
+              const nov5RajangDhpEntries = [
+                { id: 'tembakau---krosok--rajang-ii--dhp-DIETTRIAL32026-2026-11-05', tanggal: '2026-11-05T00:00:00.000Z', kode: 'DIET TRIAL - 3 (2026)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 59.5, keluar: 0, saldo: 59.5, masukSKT: 59.5, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 59.5, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } },
+                { id: 'tembakau---krosok--rajang-ii--dhp-KRSGARUT2024MYN-2026-11-05', tanggal: '2026-11-05T00:00:00.000Z', kode: 'KRS. GARUT 2024 (MYN)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 470.1, keluar: 0, saldo: 470.1, masukSKT: 470.1, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 470.1, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } },
+                { id: 'tembakau---krosok--rajang-ii--dhp-HANGMADURA2024BAT-2026-11-05', tanggal: '2026-11-05T00:00:00.000Z', kode: 'HANG MADURA 2024 (BAT)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 121.8, keluar: 0, saldo: 121.8, masukSKT: 121.8, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 121.8, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } },
+                { id: 'tembakau---krosok--rajang-ii--dhp-KRSGARUT2025MYN-2026-11-05', tanggal: '2026-11-05T00:00:00.000Z', kode: 'KRS. GARUT 2025 (MYN)', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 420.9, keluar: 0, saldo: 420.9, masukSKT: 420.9, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 420.9, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' } }
+              ];
+              if (!hasNov5Dhp) {
+                k.mutasiTerbaru = [...nov5RajangDhpEntries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              } else {
+                (k.mutasiTerbaru || []).forEach((m: any) => {
+                  if ((m.tanggal || '').includes('2026-11-05') && (m.jenisMutasi || '').toLowerCase().includes('hasil proses')) {
+                    if (m.kode?.includes('DIET TRIAL - 3')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 59.5, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    } else if (m.kode?.includes('KRS. GARUT 2024')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 470.1, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    } else if (m.kode?.includes('HANG MADURA 2024')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 121.8, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    } else if (m.kode?.includes('KRS. GARUT 2025')) {
+                      m.dhpMatch = { matched: true, dhpNetto: 420.9, selisih: 0, sumber: 'DHP Krosok', jalur: 'SKT' };
+                      m.cek = true;
+                      migrated = true;
+                    }
+                  }
+                });
+              }
+
               const hasNov4 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-04'));
               const nov4RajangEntries = [
                 { id: 'tembakau---krosok--rajang-ii--dhp-MADURA2024BATR-2026-11-04', tanggal: '2026-11-04T00:00:00.000Z', kode: 'MADURA 2024 (BAT) R', jenisMutasi: 'Pemasukan Hasil Proses', masuk: 6774.4, keluar: 0, saldo: 6774.4, masukSKT: 6774.4, masukSKM: 0, cek: true, dhpMatch: { matched: true, dhpNetto: 6774.4, selisih: 0, sumber: 'DHP Tembakau', jalur: 'SKT' } },
@@ -2690,6 +2869,36 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 05 NOVEMBER 2026 (Live Worksheet DHP Krosok - Kolom I Hasil Proses) ===
+    {
+      tanggal: '2026-11-05T00:00:00.000Z',
+      nama: 'Diet Trial - 3 (2026)',
+      nettoKg: 59.5,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-05T00:00:00.000Z',
+      nama: 'Krs. Garut 2024 (MYN)',
+      nettoKg: 470.1,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-05T00:00:00.000Z',
+      nama: 'Hang Madura 2024 (BAT)',
+      nettoKg: 121.8,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-05T00:00:00.000Z',
+      nama: 'Krs. Garut 2025 (MYN)',
+      nettoKg: 420.9,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+
     // === DATA 04 NOVEMBER 2026 (Live Worksheet DHP Krosok & DHP Tembakau - Kolom I Hasil Proses) ===
     // 1 Bahan dari DHP Tembakau (Rabu, 04 November 2026)
     {
@@ -3396,6 +3605,35 @@ export class GasService {
 
   // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---
   public static readonly DEFAULT_DHP_BLEND_ENTRIES: DHPEntry[] = [
+    // === DATA 05 NOVEMBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi: 6 Molen 153-BK, 3 Molen KARANG-BK) ===
+    {
+      tanggal: '2026-11-05T00:00:00.000Z',
+      nama: '153 - BK',
+      nettoKg: 5244.5,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: '153 - BK 01', nettoKg: 875.5 },
+        { no: 2, namaMolen: '153 - BK 02', nettoKg: 873.7 },
+        { no: 3, namaMolen: '153 - BK 04', nettoKg: 874.8 },
+        { no: 4, namaMolen: '153 - BK 05', nettoKg: 874.1 },
+        { no: 5, namaMolen: '153 - BK 06', nettoKg: 872.4 },
+        { no: 6, namaMolen: '153 - BK 03', nettoKg: 874.0 }
+      ]
+    },
+    {
+      tanggal: '2026-11-05T00:00:00.000Z',
+      nama: 'KARANG - BK',
+      nettoKg: 2624.3,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: 'KARANG - BK 01', nettoKg: 874.8 },
+        { no: 2, namaMolen: 'KARANG - BK 02', nettoKg: 874.9 },
+        { no: 3, namaMolen: 'KARANG - BK 03', nettoKg: 874.6 }
+      ]
+    },
+
     // === DATA 03 NOVEMBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi: 10 Batch Molen) ===
     {
       tanggal: '2026-11-03T00:00:00.000Z',
@@ -3687,6 +3925,12 @@ export class GasService {
 
   // --- Rekonsiliasi Pengeluaran Pengiriman Tembakau Blend (Kertas Kerja PENGIRIMAN TBK BLD - Kolom F & Kolom L) ---
   public static readonly DEFAULT_PENGIRIMAN_BLEND_ENTRIES: PengirimanBlendEntry[] = [
+    // --- Data Lembar Kerja PENGIRIMAN TBK BLD Tanggal 05 November 2026 ---
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: '153 - BK', tujuan: 'Wagir 2', bobotKg: 480.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: '153 - BK', tujuan: 'Genengan', bobotKg: 1680.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: '153 - BK', tujuan: 'Sitirejo', bobotKg: 850.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'KARANG - BK', tujuan: 'Sitirejo', bobotKg: 2450.0, sumber: 'PENGIRIMAN TBK BLD (Kolom L)' },
+
     // 9 Transaksi dari Merk 153 - BK (Kolom F — Subtotal: 16.280,0 Kg)
     { tanggal: '2026-10-12T00:00:00.000Z', nama: '153 - BK', tujuan: 'Wagir 1 & 3', bobotKg: 3960.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
     { tanggal: '2026-10-12T00:00:00.000Z', nama: '153 - BK', tujuan: 'Wagir 2', bobotKg: 870.0, sumber: 'PENGIRIMAN TBK BLD (Kolom F)' },
@@ -3738,6 +3982,20 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingKeys = new Set(
+            parsed.map((p: any) => `${getTanggalKey(p.tanggal)}_${String(p.nama || '').trim().toUpperCase()}_${String(p.tujuan || '').trim().toUpperCase()}`)
+          );
+          const missingDefaults = this.DEFAULT_PENGIRIMAN_BLEND_ENTRIES.filter(d => {
+            const k = `${getTanggalKey(d.tanggal)}_${String(d.nama || '').trim().toUpperCase()}_${String(d.tujuan || '').trim().toUpperCase()}`;
+            return !existingKeys.has(k);
+          });
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
+            try {
+              localStorage.setItem(STORAGE_KEYS.PENGIRIMAN_BLEND_RECONCILIATION, JSON.stringify(merged));
+            } catch {}
+            return this.cleanPengirimanBlendEntries(merged);
+          }
           return this.cleanPengirimanBlendEntries(parsed);
         }
       } catch (e) {}
@@ -4103,6 +4361,40 @@ export class GasService {
 
   // --- Rekonsiliasi Pengeluaran Setoran (Kertas Kerja BSPP SETORAN - Kolom H) ---
   public static readonly DEFAULT_SETORAN_ENTRIES: SetoranEntry[] = [
+    // --- Data Lembar Kerja BSPP SETORAN Tanggal 05 November 2026 ---
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Madura 2024 (BAT) R', labelNettoKg: 384.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Maesan 2024 (HS)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Paiton 2024 (VJI)', labelNettoKg: 48.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Mranggen 2024 (LL)', labelNettoKg: 36.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Weleri 2024 (HK)', labelNettoKg: 54.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Weleri Grade B (2021)', labelNettoKg: 6.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Sapudi 2024 (GF)', labelNettoKg: 18.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Besuki 2024 (ZN)', labelNettoKg: 6.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Beringin 2024 (HS)', labelNettoKg: 24.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Amerika 2025 (BO1)', labelNettoKg: 84.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Zimbabwe B1L (2023)', labelNettoKg: 48.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Zimbabwe 2025 (L2OF/P)', labelNettoKg: 24.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Zimbabwe 2025 (HR) L1OF', labelNettoKg: 60.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Zimbabwe M1L (2023)', labelNettoKg: 36.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Lombok 2024 (FS) - 1', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Lombok 2024 (BE) - 1', labelNettoKg: 36.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Zambia M1L (2023)', labelNettoKg: 18.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Brazil Grade B (2022)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Brazil 2025 (BOA)', labelNettoKg: 48.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Diet Trial - 1 (2025)', labelNettoKg: 6.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Diet Trial - 3 (2026)', labelNettoKg: 18.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Kasturi 2023 (ST)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Kasturi 2024 (BE) - 1', labelNettoKg: 42.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Hang Boyolali 2024 (FS)', labelNettoKg: 6.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Krs. Garut 2025 (MYN)', labelNettoKg: 18.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Krs. Garut 2024 (MYN)', labelNettoKg: 18.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Janturan Jombang 2024 (MYN)', labelNettoKg: 6.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Janturan Boyolali 2024 (VJI)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Joning 2024 (AR)', labelNettoKg: 6.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Garut 2024 (FR)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Garut 2025 (FR)', labelNettoKg: 12.0, sumber: 'BSPP SETORAN' },
+    { tanggal: '2026-11-05T00:00:00.000Z', nama: 'Ploso 2024 (MYN)', labelNettoKg: 66.0, sumber: 'BSPP SETORAN' },
+
     // --- Data Lembar Kerja BSPP SETORAN Tanggal 10 Oktober 2026 ---
     { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Madura 2024 (BAT) R', labelNettoKg: 857.6, sumber: 'BSPP SETORAN' },
     { tanggal: '2026-10-10T00:00:00.000Z', nama: 'Hang Madura Grade B (2021)', labelNettoKg: 3.2, sumber: 'BSPP SETORAN' },
@@ -4225,17 +4517,22 @@ export class GasService {
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Jika cache hanya punya tanggal 8 dan belum ada tanggal 10, gabungkan data 10 Oktober secara otomatis
-          const hasDate10 = parsed.some(p => (p.tanggal || '').includes('2026-10-10'));
-          if (!hasDate10) {
-            const date10Entries = this.DEFAULT_SETORAN_ENTRIES.filter(d => (d.tanggal || '').includes('2026-10-10'));
-            const merged = [...date10Entries, ...this.cleanSetoranEntries(parsed)];
-            this.saveCachedSetoran(merged);
-            return merged;
+          // Pastikan cache memiliki seluruh entri baseline sah dari DEFAULT_SETORAN_ENTRIES
+          const existingKeys = new Set(
+            parsed.map((p: any) => `${getTanggalKey(p.tanggal)}_${String(p.nama || '').trim().toUpperCase()}`)
+          );
+          const missingDefaults = this.DEFAULT_SETORAN_ENTRIES.filter(d => {
+            const k = `${getTanggalKey(d.tanggal)}_${String(d.nama || '').trim().toUpperCase()}`;
+            return !existingKeys.has(k);
+          });
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
+            try {
+              localStorage.setItem(STORAGE_KEYS.SETORAN_RECONCILIATION, JSON.stringify(merged));
+            } catch {}
+            return this.cleanSetoranEntries(merged);
           }
           return this.cleanSetoranEntries(parsed);
-        }
       } catch (e) {}
     }
     return this.DEFAULT_SETORAN_ENTRIES;
@@ -4275,19 +4572,25 @@ export class GasService {
       const lines = rawText.split(/\r?\n/);
       const parsedEntries: SetoranEntry[] = [];
 
-      // Deteksi tanggal lembar kerja BSPP SETORAN dari header atau teks
-      let detectedDate = '2026-10-08T00:00:00.000Z';
+      // Deteksi tanggal lembar kerja BSPP SETORAN dari header atau teks menggunakan parser universal
+      let detectedDate = '2026-11-05T00:00:00.000Z';
+      let foundDate = false;
       for (const line of lines) {
         const cols = this.parseCSVLine(line);
         for (const c of cols) {
           const t = (c || '').trim();
-          const m1 = t.match(/(\d{1,2})\s*[-/ ]\s*(Okt|Oktober|Oct|October)\s*[-/ ]\s*(\d{4})/i);
-          if (m1) {
-            const day = m1[1].padStart(2, '0');
-            detectedDate = `${m1[3]}-10-${day}T00:00:00.000Z`;
-            break;
+          if (!t) continue;
+          const parsed = parseDateIndo(t);
+          if (parsed && !isNaN(parsed.getTime())) {
+            const yr = parsed.getUTCFullYear();
+            if (yr >= 2025 && yr <= 2030) {
+              detectedDate = parsed.toISOString();
+              foundDate = true;
+              break;
+            }
           }
         }
+        if (foundDate) break;
       }
 
       for (const line of lines) {
@@ -4319,10 +4622,14 @@ export class GasService {
 
           let itemDate = detectedDate;
           const col5 = cols[5]?.trim() || '';
-          const mCol = col5.match(/(\d{1,2})\s*[-/ ]\s*(Okt|Oktober|Oct|October)\s*[-/ ]\s*(\d{4})/i);
-          if (mCol) {
-            const day = mCol[1].padStart(2, '0');
-            itemDate = `${mCol[3]}-10-${day}T00:00:00.000Z`;
+          if (col5) {
+            const parsedCol5 = parseDateIndo(col5);
+            if (parsedCol5 && !isNaN(parsedCol5.getTime())) {
+              const yr = parsedCol5.getUTCFullYear();
+              if (yr >= 2025 && yr <= 2030) {
+                itemDate = parsedCol5.toISOString();
+              }
+            }
           }
 
           parsedEntries.push({

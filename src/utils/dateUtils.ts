@@ -5,20 +5,20 @@
  * normalisasi tanggal kanonikal YYYY-MM-DD, dan penentuan Tanggal Terbaru presisi berbasis epoch time.
  */
 
-// Peta nama bulan Indonesia (lengkap & singkatan) ke nomor bulan 1-12
+// Peta nama bulan Indonesia & Inggris (lengkap & singkatan) ke nomor bulan 1-12
 const BULAN_INDO_MAP: Record<string, number> = {
-  januari: 1, jan: 1,
-  februari: 2, feb: 2,
-  maret: 3, mar: 3,
+  januari: 1, jan: 1, january: 1,
+  februari: 2, feb: 2, february: 2,
+  maret: 3, mar: 3, march: 3,
   april: 4, apr: 4,
-  mei: 5,
-  juni: 6, jun: 6,
-  juli: 7, jul: 7,
-  agustus: 8, ags: 8, agu: 8, aug: 8,
+  mei: 5, may: 5,
+  juni: 6, jun: 6, june: 6,
+  juli: 7, jul: 7, july: 7,
+  agustus: 8, ags: 8, agu: 8, aug: 8, august: 8,
   september: 9, sep: 9, sept: 9,
-  oktober: 10, okt: 10, oct: 10,
-  november: 11, nov: 11,
-  desember: 12, des: 12, dec: 12
+  oktober: 10, okt: 10, oct: 10, october: 10,
+  november: 11, nov: 11, nop: 11, nopember: 11,
+  desember: 12, des: 12, dec: 12, december: 12
 };
 
 /**
