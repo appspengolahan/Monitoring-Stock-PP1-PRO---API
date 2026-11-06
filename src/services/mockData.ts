@@ -4,12 +4,12 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
   {
     "komoditas": "Tembakau Blend",
     "satuan": "Kg",
-    "saldoTotal": 12834.9,
+    "saldoTotal": 15378.1,
     "masukTotal": 3929402.3,
     "keluarTotal": 3929488.5,
     "entriTotal": 2679,
     "entriTervalidasi": 33.7,
-    "jumlahKode": 16,
+    "jumlahKode": 10,
     "kodeList": [
       {
         "nama": "153 - BK",
@@ -18,28 +18,13 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "AIR BERSIH",
-        "saldo": 340.0,
-        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
-      },
-      {
-        "nama": "DEBU",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 260.0,
+        "tanggalTerakhir": "2026-11-06T00:00:00.000Z"
       },
       {
         "nama": "F MILD STAR - BK",
         "saldo": 364.2,
         "tanggalTerakhir": "2026-04-10T00:00:00.000Z"
-      },
-      {
-        "nama": "F REG 153 HIJAU - BK (kode B)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-08-22T00:00:00.000Z"
-      },
-      {
-        "nama": "F REG LA BOLD - BK (kode B)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-08-20T00:00:00.000Z"
       },
       {
         "nama": "F REGULER (LN, AVE)",
@@ -52,33 +37,18 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
         "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
-        "nama": "FR 153 HIJAU - BK",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-05-18T00:00:00.000Z"
-      },
-      {
-        "nama": "FR LA BOLD - BK",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-06-11T00:00:00.000Z"
-      },
-      {
-        "nama": "FR LA BOLD REFRESH",
-        "saldo": 0,
-        "tanggalTerakhir": "2025-01-24T00:00:00.000Z"
-      },
-      {
         "nama": "KARANG - BK",
-        "saldo": 1059.3,
-        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
+        "saldo": 2809.5,
+        "tanggalTerakhir": "2026-11-06T00:00:00.000Z"
       },
       {
         "nama": "PLASTIK",
-        "saldo": 2125.0,
-        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
+        "saldo": 2998.0,
+        "tanggalTerakhir": "2026-10-10T00:00:00.000Z"
       },
       {
         "nama": "SAPON",
-        "saldo": 2,
+        "saldo": 2.0,
         "tanggalTerakhir": "2026-06-30T00:00:00.000Z"
       },
       {

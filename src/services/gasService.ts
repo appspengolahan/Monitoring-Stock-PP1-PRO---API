@@ -7110,16 +7110,23 @@ function buildKomoditasSummary_(source) {
     var trimmedRows = lastRealIndex === -1 ? [] : dataRows.slice(0, lastRealIndex + 1);
     var rows = parseDataRows_(trimmedRows, headerInfo.format);
 
-    // Prioritas 1 (Fast-Lane): Cek Metadata Header Baris 1 (B1:J1)
+    // Prioritas 1 (Fast-Lane): Cek Metadata Header Baris 1
     var row1 = values[0] || [];
-    var isFastLane = (row1.length >= 10) && 
-      (String(row1[4] || '').toUpperCase().indexOf('SKT') !== -1 || String(row1[7] || '').toUpperCase().indexOf('SKM') !== -1) &&
-      (row1[1] && String(row1[1]).trim().length > 0);
+    var hasRow1Date = (row1.length >= 2) && (row1[1] && String(row1[1]).trim().length > 0);
+    var isDualFastLane = hasRow1Date && (row1.length >= 9) && (
+      String(row1[4] || '').toUpperCase().indexOf('SKT') !== -1 || 
+      String(row1[7] || '').toUpperCase().indexOf('SKM') !== -1
+    );
+    var isSingleFastLane = hasRow1Date && !isDualFastLane && (
+      headerInfo.format === 'single' || !isDualKomoditas
+    ) && (row1.length >= 6 && row1[5] !== undefined && String(row1[5]).trim() !== '');
+
+    var isFastLane = isDualFastLane || isSingleFastLane;
 
     var saldoObj;
     var tanggalTerakhir = null;
 
-    if (isFastLane) {
+    if (isDualFastLane) {
       var fTgl = safeDateValue_(row1[1]);
       var fSKT = cleanNumber_(row1[5]);
       var fSKM = cleanNumber_(row1[8]);
@@ -7139,6 +7146,17 @@ function buildKomoditasSummary_(source) {
         kategoriProduksi: kat
       };
       if (fTgl) tanggalTerakhir = fTgl;
+    } else if (isSingleFastLane) {
+      var fTglSingle = safeDateValue_(row1[1]);
+      var fTotSingle = cleanNumber_(row1[5]);
+
+      saldoObj = {
+        saldo: round1_(fTotSingle),
+        saldoSKT: undefined,
+        saldoSKM: undefined,
+        kategoriProduksi: undefined
+      };
+      if (fTglSingle) tanggalTerakhir = fTglSingle;
     } else {
       // Prioritas 2 (Fallback): Pemindaian Baris Bawah (Bottom-Up)
       saldoObj = getSaldoTerkiniObj_(rows, headerInfo.format);
@@ -7148,9 +7166,9 @@ function buildKomoditasSummary_(source) {
     }
 
     saldoTotal += saldoObj.saldo;
-    if (isDualKomoditas && (headerInfo.format === 'dual' || isFastLane)) {
-      saldoSKTTotal += saldoObj.saldoSKT;
-      saldoSKMTotal += saldoObj.saldoSKM;
+    if (isDualKomoditas && (headerInfo.format === 'dual' || isDualFastLane)) {
+      saldoSKTTotal += (saldoObj.saldoSKT || 0);
+      saldoSKMTotal += (saldoObj.saldoSKM || 0);
     }
 
     rows.forEach(function(item) {
@@ -7165,9 +7183,9 @@ function buildKomoditasSummary_(source) {
     kodeList.push({
       nama: sheetNames[idx],
       saldo: saldoObj.saldo,
-      saldoSKT: (isDualKomoditas && (headerInfo.format === 'dual' || isFastLane)) ? saldoObj.saldoSKT : undefined,
-      saldoSKM: (isDualKomoditas && (headerInfo.format === 'dual' || isFastLane)) ? saldoObj.saldoSKM : undefined,
-      kategoriProduksi: (isDualKomoditas && (headerInfo.format === 'dual' || isFastLane)) ? saldoObj.kategoriProduksi : undefined,
+      saldoSKT: (isDualKomoditas && (headerInfo.format === 'dual' || isDualFastLane)) ? saldoObj.saldoSKT : undefined,
+      saldoSKM: (isDualKomoditas && (headerInfo.format === 'dual' || isDualFastLane)) ? saldoObj.saldoSKM : undefined,
+      kategoriProduksi: (isDualKomoditas && (headerInfo.format === 'dual' || isDualFastLane)) ? saldoObj.kategoriProduksi : undefined,
       tanggalTerakhir: tanggalTerakhir
     });
 
