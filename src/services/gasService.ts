@@ -2260,19 +2260,26 @@ export class GasService {
             }
 
             if ((k.komoditas || '').toLowerCase().includes('blend')) {
-              // Pastikan saldo & tanggal mutasi terakhir 153 - BK & KARANG - BK terupdate persis sesuai fisik sheet
+              // Pastikan saldo & tanggal mutasi terakhir 153 - BK, KARANG - BK, dan PLASTIK terupdate persis sesuai fisik sheet
               (k.kodeList || []).forEach((item: any) => {
                 if (item.nama === '153 - BK') {
-                  if (item.saldo !== 3414.5 || item.tanggalTerakhir !== '2026-11-02T00:00:00.000Z') {
-                    item.saldo = 3414.5;
-                    item.tanggalTerakhir = '2026-11-02T00:00:00.000Z';
+                  if (item.saldo === 3414.5 || !item.tanggalTerakhir || item.tanggalTerakhir.includes('2026-11-02') || item.saldo === undefined) {
+                    item.saldo = 7252.7;
+                    item.tanggalTerakhir = '2026-11-05T00:00:00.000Z';
                     migrated = true;
                   }
                 }
                 if (item.nama === 'KARANG - BK') {
-                  if (item.saldo !== 884.9 || item.tanggalTerakhir !== '2026-10-31T00:00:00.000Z') {
-                    item.saldo = 884.9;
-                    item.tanggalTerakhir = '2026-10-31T00:00:00.000Z';
+                  if (item.saldo === 884.9 || !item.tanggalTerakhir || item.tanggalTerakhir.includes('2026-10-31') || item.saldo === undefined) {
+                    item.saldo = 1059.3;
+                    item.tanggalTerakhir = '2026-11-05T00:00:00.000Z';
+                    migrated = true;
+                  }
+                }
+                if (item.nama === 'PLASTIK') {
+                  if (item.saldo === 2998.0 || item.saldo === 250) {
+                    item.saldo = 2125.0;
+                    item.tanggalTerakhir = '2026-11-05T00:00:00.000Z';
                     migrated = true;
                   }
                 }
@@ -2347,10 +2354,81 @@ export class GasService {
                 migrated = true;
               }
 
-              // Pastikan entri mutasi 05 November 2026 (153 - BK & KARANG - BK) ada
-              const hasNov05_Blend = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-05'));
-              if (!hasNov05_Blend) {
+              // Pastikan entri mutasi 05 November 2026 (153 - BK & KARANG - BK) ada & akurat sesuai sheet sumber
+              const hasNov05_153_Final = (k.mutasiTerbaru || []).some((m: any) => m.kode === '153 - BK' && (m.tanggal || '').includes('2026-11-05') && m.saldo === 7252.7);
+              if (!hasNov05_153_Final) {
+                // Bersihkan entri draft lama 05 Nov blend yang saldonya masih draft/belum final
+                k.mutasiTerbaru = (k.mutasiTerbaru || []).filter((m: any) => !((m.tanggal || '').includes('2026-11-05') && ((m.kode === '153 - BK' && m.saldo !== 7252.7) || (m.kode === 'KARANG - BK' && m.saldo !== 1059.3))));
+
                 const nov05BlendMutasi = [
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-05-bspp',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'BSPP Lebih',
+                    masuk: 0.6,
+                    keluar: 0,
+                    saldo: 7252.7,
+                    cek: true,
+                    bsppMatch: {
+                      matched: true,
+                      selisihKg: 0.6,
+                      selisih: 0,
+                      sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+                      status: 'Selisih Lebih'
+                    }
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-05-psm',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - PSM',
+                    masuk: 0,
+                    keluar: 850.0,
+                    saldo: 7252.1,
+                    cek: true,
+                    pengirimanMatch: {
+                      matched: true,
+                      bobotKirim: 850.0,
+                      selisih: 0,
+                      tujuan: 'PSM',
+                      sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
+                    }
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-05-genengan',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - Genengan',
+                    masuk: 0,
+                    keluar: 1680.0,
+                    saldo: 8102.1,
+                    cek: true,
+                    pengirimanMatch: {
+                      matched: true,
+                      bobotKirim: 1680.0,
+                      selisih: 0,
+                      tujuan: 'Genengan',
+                      sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
+                    }
+                  },
+                  {
+                    id: 'tembakau-blend-153BK-2026-11-05-wagir2',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: '153 - BK',
+                    jenisMutasi: 'Pengiriman - Wagir 2',
+                    masuk: 0,
+                    keluar: 480.0,
+                    saldo: 9782.1,
+                    cek: true,
+                    pengirimanMatch: {
+                      matched: true,
+                      bobotKirim: 480.0,
+                      selisih: 0,
+                      tujuan: 'Wagir 2',
+                      sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
+                    }
+                  },
                   {
                     id: 'tembakau-blend-153BK-2026-11-05-hasilblend',
                     tanggal: '2026-11-05T00:00:00.000Z',
@@ -2358,7 +2436,7 @@ export class GasService {
                     jenisMutasi: 'Pemasukan Hasil Blend',
                     masuk: 5244.5,
                     keluar: 0,
-                    saldo: 5244.5,
+                    saldo: 10262.1,
                     cek: true,
                     dhpMatch: {
                       matched: true,
@@ -2377,13 +2455,47 @@ export class GasService {
                     }
                   },
                   {
+                    id: 'tembakau-blend-karang-2026-11-05-bspp',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: 'KARANG - BK',
+                    jenisMutasi: 'BSPP Lebih',
+                    masuk: 0.1,
+                    keluar: 0,
+                    saldo: 1059.3,
+                    cek: true,
+                    bsppMatch: {
+                      matched: true,
+                      selisihKg: 0.1,
+                      selisih: 0,
+                      sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+                      status: 'Selisih Lebih'
+                    }
+                  },
+                  {
+                    id: 'tembakau-blend-karang-2026-11-05-psm',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: 'KARANG - BK',
+                    jenisMutasi: 'Pengiriman - PSM',
+                    masuk: 0,
+                    keluar: 2450.0,
+                    saldo: 1059.2,
+                    cek: true,
+                    pengirimanMatch: {
+                      matched: true,
+                      bobotKirim: 2450.0,
+                      selisih: 0,
+                      tujuan: 'PSM',
+                      sumber: 'PENGIRIMAN TBK BLD (Kolom L)'
+                    }
+                  },
+                  {
                     id: 'tembakau-blend-karang-2026-11-05-hasilblend',
                     tanggal: '2026-11-05T00:00:00.000Z',
                     kode: 'KARANG - BK',
                     jenisMutasi: 'Pemasukan Hasil Blend',
                     masuk: 2624.3,
                     keluar: 0,
-                    saldo: 2624.3,
+                    saldo: 3509.2,
                     cek: true,
                     dhpMatch: {
                       matched: true,
@@ -2396,74 +2508,6 @@ export class GasService {
                         { no: 2, namaMolen: 'KARANG - BK 02', nettoKg: 874.9 },
                         { no: 3, namaMolen: 'KARANG - BK 03', nettoKg: 874.6 }
                       ]
-                    }
-                  },
-                  {
-                    id: 'tembakau-blend-153BK-2026-11-05-wagir2',
-                    tanggal: '2026-11-05T00:00:00.000Z',
-                    kode: '153 - BK',
-                    jenisMutasi: 'Pengiriman - Wagir 2',
-                    masuk: 0,
-                    keluar: 480.0,
-                    saldo: 4764.5,
-                    cek: true,
-                    pengirimanMatch: {
-                      matched: true,
-                      bobotKirim: 480.0,
-                      selisih: 0,
-                      tujuan: 'Wagir 2',
-                      sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
-                    }
-                  },
-                  {
-                    id: 'tembakau-blend-153BK-2026-11-05-genengan',
-                    tanggal: '2026-11-05T00:00:00.000Z',
-                    kode: '153 - BK',
-                    jenisMutasi: 'Pengiriman - Genengan',
-                    masuk: 0,
-                    keluar: 1680.0,
-                    saldo: 3084.5,
-                    cek: true,
-                    pengirimanMatch: {
-                      matched: true,
-                      bobotKirim: 1680.0,
-                      selisih: 0,
-                      tujuan: 'Genengan',
-                      sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
-                    }
-                  },
-                  {
-                    id: 'tembakau-blend-153BK-2026-11-05-sitirejo',
-                    tanggal: '2026-11-05T00:00:00.000Z',
-                    kode: '153 - BK',
-                    jenisMutasi: 'Pengiriman - Sitirejo',
-                    masuk: 0,
-                    keluar: 850.0,
-                    saldo: 2234.5,
-                    cek: true,
-                    pengirimanMatch: {
-                      matched: true,
-                      bobotKirim: 850.0,
-                      selisih: 0,
-                      tujuan: 'Sitirejo',
-                      sumber: 'PENGIRIMAN TBK BLD (Kolom F)'
-                    }
-                  },
-                  {
-                    id: 'tembakau-blend-karang-2026-11-05-sitirejo',
-                    tanggal: '2026-11-05T00:00:00.000Z',
-                    kode: 'KARANG - BK',
-                    jenisMutasi: 'Pengiriman - Sitirejo',
-                    masuk: 0,
-                    keluar: 2450.0,
-                    saldo: 174.3,
-                    cek: true,
-                    pengirimanMatch: {
-                      matched: true,
-                      bobotKirim: 2450.0,
-                      selisih: 0,
-                      tujuan: 'Sitirejo',
-                      sumber: 'PENGIRIMAN TBK BLD (Kolom L)'
                     }
                   }
                 ];
@@ -6794,7 +6838,15 @@ function parseDataRows_(values, format) {
     if (!jenisMutasi && !tanggalCell) continue;
 
     // Lewati jika jenisMutasi berupa angka, desimal selisih, newline, atau format kode numerik
-    if (!jenisMutasi || !isNaN(Number(jenisMutasi.replace(',', '.'))) || jenisMutasi.indexOf('\\n') !== -1) {
+    if (!jenisMutasi) {
+      var rawMsk = cleanNumber_(row[2]);
+      var rawKlr = cleanNumber_(row[3]);
+      if (rawMsk > 0 || rawKlr > 0) {
+        jenisMutasi = rawKlr > 0 ? 'Pengeluaran Bahan' : 'Pemasukan Bahan';
+      } else {
+        continue;
+      }
+    } else if (!isNaN(Number(jenisMutasi.replace(',', '.'))) || jenisMutasi.indexOf('\\n') !== -1) {
       continue;
     }
     if (/^[-+]?[\\d.,]+[A-Za-z]?$/.test(jenisMutasi) && jenisMutasi.length > 2) continue;

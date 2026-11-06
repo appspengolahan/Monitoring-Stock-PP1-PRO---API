@@ -4,22 +4,22 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
   {
     "komoditas": "Tembakau Blend",
     "satuan": "Kg",
-    "saldoTotal": 10054.3,
+    "saldoTotal": 12834.9,
     "masukTotal": 3929402.3,
     "keluarTotal": 3929488.5,
-    "entriTotal": 2671,
+    "entriTotal": 2679,
     "entriTervalidasi": 33.7,
     "jumlahKode": 16,
     "kodeList": [
       {
         "nama": "153 - BK",
-        "saldo": 3414.5,
-        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
+        "saldo": 7252.7,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "AIR BERSIH",
-        "saldo": 100,
-        "tanggalTerakhir": "2026-10-01T00:00:00.000Z"
+        "saldo": 340.0,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "DEBU",
@@ -43,13 +43,13 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "F REGULER (LN, AVE)",
-        "saldo": 39.3,
-        "tanggalTerakhir": "2026-09-28T00:00:00.000Z"
+        "saldo": 19.8,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "F REGULER (LN, AVE) KODE B",
-        "saldo": 129.5,
-        "tanggalTerakhir": "2026-09-28T00:00:00.000Z"
+        "saldo": 114.7,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "FR 153 HIJAU - BK",
@@ -68,13 +68,13 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "KARANG - BK",
-        "saldo": 884.9,
-        "tanggalTerakhir": "2026-10-31T00:00:00.000Z"
+        "saldo": 1059.3,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "PLASTIK",
-        "saldo": 250,
-        "tanggalTerakhir": "2026-09-15T00:00:00.000Z"
+        "saldo": 2125.0,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "SAPON",
@@ -88,11 +88,160 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "TIS KBT24",
-        "saldo": 14.8,
-        "tanggalTerakhir": "2026-08-18T00:00:00.000Z"
+        "saldo": 21.4,
+        "tanggalTerakhir": "2026-10-20T00:00:00.000Z"
       }
     ],
     "mutasiTerbaru": [
+      {
+        "id": "tembakau-blend-153BK-2026-11-05-bspp",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 0.6,
+        "keluar": 0,
+        "saldo": 7252.7,
+        "cek": true,
+        "bsppMatch": {
+          "matched": true,
+          "selisihKg": 0.6,
+          "selisih": 0,
+          "sumber": "Kertas Kerja BSPP (Penimbangan Ulang)",
+          "status": "Selisih Lebih"
+        }
+      },
+      {
+        "id": "tembakau-blend-153BK-2026-11-05-psm",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - PSM",
+        "masuk": 0,
+        "keluar": 850.0,
+        "saldo": 7252.1,
+        "cek": true,
+        "pengirimanMatch": {
+          "matched": true,
+          "bobotKirim": 850.0,
+          "selisih": 0,
+          "tujuan": "PSM",
+          "sumber": "PENGIRIMAN TBK BLD (Kolom F)"
+        }
+      },
+      {
+        "id": "tembakau-blend-153BK-2026-11-05-genengan",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - Genengan",
+        "masuk": 0,
+        "keluar": 1680.0,
+        "saldo": 8102.1,
+        "cek": true,
+        "pengirimanMatch": {
+          "matched": true,
+          "bobotKirim": 1680.0,
+          "selisih": 0,
+          "tujuan": "Genengan",
+          "sumber": "PENGIRIMAN TBK BLD (Kolom F)"
+        }
+      },
+      {
+        "id": "tembakau-blend-153BK-2026-11-05-wagir2",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pengiriman - Wagir 2",
+        "masuk": 0,
+        "keluar": 480.0,
+        "saldo": 9782.1,
+        "cek": true,
+        "pengirimanMatch": {
+          "matched": true,
+          "bobotKirim": 480.0,
+          "selisih": 0,
+          "tujuan": "Wagir 2",
+          "sumber": "PENGIRIMAN TBK BLD (Kolom F)"
+        }
+      },
+      {
+        "id": "tembakau-blend-153BK-2026-11-05-hasilblend",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "153 - BK",
+        "jenisMutasi": "Pemasukan Hasil Blend",
+        "masuk": 5244.5,
+        "keluar": 0,
+        "saldo": 10262.1,
+        "cek": true,
+        "dhpMatch": {
+          "matched": true,
+          "dhpNetto": 5244.5,
+          "selisih": 0,
+          "sumber": "DHP Blend (Kolom I)",
+          "jalur": "Wagir",
+          "molenList": [
+            { "no": 1, "namaMolen": "153 - BK 01", "nettoKg": 875.5 },
+            { "no": 2, "namaMolen": "153 - BK 02", "nettoKg": 873.7 },
+            { "no": 3, "namaMolen": "153 - BK 04", "nettoKg": 874.8 },
+            { "no": 4, "namaMolen": "153 - BK 05", "nettoKg": 874.1 },
+            { "no": 5, "namaMolen": "153 - BK 06", "nettoKg": 872.4 },
+            { "no": 6, "namaMolen": "153 - BK 03", "nettoKg": 874.0 }
+          ]
+        }
+      },
+      {
+        "id": "tembakau-blend-karang-2026-11-05-bspp",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "KARANG - BK",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 0.1,
+        "keluar": 0,
+        "saldo": 1059.3,
+        "cek": true,
+        "bsppMatch": {
+          "matched": true,
+          "selisihKg": 0.1,
+          "selisih": 0,
+          "sumber": "Kertas Kerja BSPP (Penimbangan Ulang)",
+          "status": "Selisih Lebih"
+        }
+      },
+      {
+        "id": "tembakau-blend-karang-2026-11-05-psm",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "KARANG - BK",
+        "jenisMutasi": "Pengiriman - PSM",
+        "masuk": 0,
+        "keluar": 2450.0,
+        "saldo": 1059.2,
+        "cek": true,
+        "pengirimanMatch": {
+          "matched": true,
+          "bobotKirim": 2450.0,
+          "selisih": 0,
+          "tujuan": "PSM",
+          "sumber": "PENGIRIMAN TBK BLD (Kolom L)"
+        }
+      },
+      {
+        "id": "tembakau-blend-karang-2026-11-05-hasilblend",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "KARANG - BK",
+        "jenisMutasi": "Pemasukan Hasil Blend",
+        "masuk": 2624.3,
+        "keluar": 0,
+        "saldo": 3509.2,
+        "cek": true,
+        "dhpMatch": {
+          "matched": true,
+          "dhpNetto": 2624.3,
+          "selisih": 0,
+          "sumber": "DHP Blend (Kolom I)",
+          "jalur": "Wagir",
+          "molenList": [
+            { "no": 1, "namaMolen": "KARANG - BK 01", "nettoKg": 874.8 },
+            { "no": 2, "namaMolen": "KARANG - BK 02", "nettoKg": 874.9 },
+            { "no": 3, "namaMolen": "KARANG - BK 03", "nettoKg": 874.6 }
+          ]
+        }
+      },
       {
         "id": "tembakau-blend-153BK-2026-11-02-final",
         "tanggal": "2026-11-02T00:00:00.000Z",
