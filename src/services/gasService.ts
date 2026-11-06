@@ -8020,21 +8020,14 @@ function pasangRumusBaris1Rajang2Otomatis() {
         sh.insertRowBefore(1);
       }
 
-      // Pasang rumus Baris 1
-      // B1: Tanggal mutasi terakhir
-      sh.getRange('B1').setFormula('=IFERROR(CHOOSEROWS(FILTER(B9:B, B9:B<>"", C9:C<>""), -1), "")');
-      // C1: Nama Jenis Tembakau (sama dengan nama tab)
+      // Pasang rumus Baris 1 dengan separasi titik koma (;) sesuai Locale Indonesia
+      sh.getRange('B1').setFormula('=IFERROR(CHOOSEROWS(FILTER(B9:B; B9:B<>""; C9:C<>""); -1); "")');
       sh.getRange('C1').setValue(name);
-      // E1: Label SKT
       sh.getRange('E1').setValue('SKT');
-      // F1: Saldo SKT terkini
-      sh.getRange('F1').setFormula('=IFERROR(CHOOSEROWS(FILTER(F9:F, B9:B<>"", C9:C<>""), -1), 0)');
-      // H1: Label SKM
+      sh.getRange('F1').setFormula('=IFERROR(CHOOSEROWS(FILTER(F9:F; B9:B<>""; C9:C<>""); -1); 0)');
       sh.getRange('H1').setValue('SKM');
-      // I1: Saldo SKM terkini
-      sh.getRange('I1').setFormula('=IFERROR(CHOOSEROWS(FILTER(I9:I, B9:B<>"", C9:C<>""), -1), 0)');
-      // J1: Total Saldo terkini
-      sh.getRange('J1').setFormula('=IFERROR(CHOOSEROWS(FILTER(J9:J, B9:B<>"", C9:C<>""), -1), 0)');
+      sh.getRange('I1').setFormula('=IFERROR(CHOOSEROWS(FILTER(I9:I; B9:B<>""; C9:C<>""); -1); 0)');
+      sh.getRange('J1').setFormula('=IFERROR(CHOOSEROWS(FILTER(J9:J; B9:B<>""; C9:C<>""); -1); 0)');
 
       // Format desimal untuk kolom saldo
       sh.getRange('F1').setNumberFormat('#,##0.0');
