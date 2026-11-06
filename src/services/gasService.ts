@@ -1851,7 +1851,7 @@ export class GasService {
           if (sSKT === undefined && sSKM === undefined) {
             const upName = item.nama.toUpperCase();
             if (upName.includes('MANADO GRADE A (2024)')) {
-              sSKT = 12677.6;
+              sSKT = 12245.3;
               sSKM = 1163.2;
               kat = 'Gabungan';
             } else if (upName.includes('GAGANG PELURU A 2018')) {
@@ -1983,6 +1983,73 @@ export class GasService {
                 if (m.kode === 'MANADO A 2024') { m.kode = 'MANADO GRADE A (2024)'; migrated = true; }
               });
 
+              // Pastikan entri mutasi 05 November 2026 ada di mutasi Cengkeh
+              const hasNov5 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-05'));
+              if (!hasNov5) {
+                const nov5Entries = [
+                  {
+                    id: 'cengkeh-setoran-MANADOGRADEA2024-2026-11-05',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'Pengeluaran Setoran',
+                    masuk: 0,
+                    keluar: 432.0,
+                    keluarSKT: 432.0,
+                    keluarSKM: 0,
+                    saldo: 13408.5,
+                    saldoSKT: 12245.3,
+                    saldoSKM: 1163.2,
+                    cek: true,
+                    setoranMatch: {
+                      matched: true,
+                      labelNetto: 432.0,
+                      selisih: 0,
+                      sumber: 'INTEGRASI DATA SETORAN CENGKEH',
+                      detailBlend: {
+                        'KARANG - BK': 432.0
+                      },
+                      tujuan: 'KARANG - BK (432,0 Kg)'
+                    }
+                  },
+                  {
+                    id: 'cengkeh-penyiapan-MANADOGRADEA2024-2026-11-05',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'Selisih Lebih Penyiapan',
+                    masuk: 0.3,
+                    keluar: 0,
+                    masukSKT: 0.3,
+                    saldo: 13840.5,
+                    saldoSKT: 12677.3,
+                    saldoSKM: 1163.2,
+                    cek: true
+                  },
+                  {
+                    id: 'cengkeh-bspp-MANADOGRADEA2024-2026-11-05',
+                    tanggal: '2026-11-05T00:00:00.000Z',
+                    kode: 'MANADO GRADE A (2024)',
+                    jenisMutasi: 'BSPP Kurang',
+                    masuk: 0,
+                    keluar: 0.6,
+                    keluarSKT: 0.6,
+                    keluarSKM: 0,
+                    saldo: 13840.2,
+                    saldoSKT: 12677.0,
+                    saldoSKM: 1163.2,
+                    cek: true,
+                    bsppMatch: {
+                      matched: true,
+                      selisihKg: 0.6,
+                      selisih: 0,
+                      sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+                      status: 'Selisih Kurang'
+                    }
+                  }
+                ];
+                k.mutasiTerbaru = [...nov5Entries, ...(k.mutasiTerbaru || [])];
+                migrated = true;
+              }
+
               // Pastikan entri mutasi 04 November 2026 ada di mutasi Cengkeh
               const hasNov4 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-04'));
               if (!hasNov4) {
@@ -2095,15 +2162,15 @@ export class GasService {
                 migrated = true;
               }
 
-              // Update saldo MANADO GRADE A (2024) ke 13.840,8 dan terapkan SKT/SKM
+              // Update saldo MANADO GRADE A (2024) ke 13.408,5 dan terapkan SKT/SKM
               (k.kodeList || []).forEach((item: any) => {
                 if (item.nama === 'MANADO GRADE A (2024)') {
-                  if (item.saldo !== 13840.8 || item.saldoSKT !== 12677.6 || item.saldoSKM !== 1163.2 || item.kategoriProduksi !== 'Gabungan') {
-                    item.saldo = 13840.8;
-                    item.saldoSKT = 12677.6;
+                  if (item.saldo === 13840.8 || item.saldoSKT === 12677.6 || !item.kategoriProduksi || item.saldoSKT === undefined || item.saldo === undefined) {
+                    item.saldo = 13408.5;
+                    item.saldoSKT = 12245.3;
                     item.saldoSKM = 1163.2;
                     item.kategoriProduksi = 'Gabungan';
-                    item.tanggalTerakhir = '2026-11-04T00:00:00.000Z';
+                    item.tanggalTerakhir = '2026-11-05T00:00:00.000Z';
                     migrated = true;
                   }
                 } else if (item.nama === 'GAGANG PELURU A 2018') {
@@ -4171,6 +4238,16 @@ export class GasService {
 
   // --- Rekonsiliasi Pengeluaran Setoran Cengkeh (INTEGRASI DATA SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ---
   public static readonly DEFAULT_SETORAN_CENGKEH_ENTRIES: SetoranCengkehEntry[] = [
+    // === DATA 05 NOVEMBER 2026 (Live Worksheet SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ===
+    {
+      tanggal: '2026-11-05T00:00:00.000Z',
+      nama: 'MANADO GRADE A (2024)',
+      totalKg: 432.0,
+      detailBlend: {
+        'KARANG - BK': 432.0
+      },
+      sumber: 'INTEGRASI DATA SETORAN CENGKEH'
+    },
     // === DATA 04 NOVEMBER 2026 (Live Worksheet SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ===
     {
       tanggal: '2026-11-04T00:00:00.000Z',
