@@ -8029,6 +8029,12 @@ function pasangRumusBaris1Rajang2Otomatis() {
       sh.getRange('I1').setFormula('=IFERROR(CHOOSEROWS(FILTER(I9:I; B9:B<>""; C9:C<>""); -1); 0)');
       sh.getRange('J1').setFormula('=IFERROR(CHOOSEROWS(FILTER(J9:J; B9:B<>""; C9:C<>""); -1); 0)');
 
+      // Format tanggal otomatis untuk Cell B1 (Hari, Tanggal Bulan Tahun)
+      try {
+        sh.getRange('B9').copyTo(sh.getRange('B1'), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+      } catch (eFmt) {}
+      sh.getRange('B1').setNumberFormat('dddd, dd mmmm yyyy');
+
       // Format desimal untuk kolom saldo
       sh.getRange('F1').setNumberFormat('#,##0.0');
       sh.getRange('I1').setNumberFormat('#,##0.0');
