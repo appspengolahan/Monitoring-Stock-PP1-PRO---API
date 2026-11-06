@@ -1367,47 +1367,47 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
   {
     "komoditas": "Tembakau & Krosok (Rajang II)",
     "satuan": "Kg",
-    "saldoTotal": 28895.4,
+    "saldoTotal": 33613.6,
     "masukTotal": 1431656.7,
     "keluarTotal": 1404925.3,
     "entriTotal": 17273,
     "entriTervalidasi": 35.9,
-    "jumlahKode": 62,
+    "jumlahKode": 63,
     "kodeList": [
       {
         "nama": "AMERIKA 2024 (BO1)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-07-15T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "AMERIKA 2025 (BO1)",
-        "saldo": 1394.8,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 2031.6,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "BERINGIN 2023 (ZN)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-04-18T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "BERINGIN 2024 (HS)",
-        "saldo": 371.1,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 558.0,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "BERINGIN GRADE A (2023)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-06-25T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "BESUKI 2024 (ZN)",
-        "saldo": 124.3,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 61.1,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "BESUKI GRADE B (2022)",
-        "saldo": 10,
-        "tanggalTerakhir": "2026-04-17T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "BESUKI GRADE B (2023)",
@@ -1416,63 +1416,63 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "BRAZIL 2025 (BOA)",
-        "saldo": 798.3,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 989.5,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "BRAZIL GRADE B (2022)",
-        "saldo": 329.4,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 378.7,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "DIET TRIAL - 1 (2025)",
-        "saldo": 245.6,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 158.0,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "DIET TRIAL - 3 (2026)",
-        "saldo": 203.4,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 118.4,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "DIET TRIAL - 3 PLUS (2026)",
-        "saldo": 121.0,
-        "tanggalTerakhir": "2026-10-29T00:00:00.000Z"
+        "saldo": 280.2,
+        "tanggalTerakhir": "2026-11-04T00:00:00.000Z"
       },
       {
         "nama": "EXPANDED STEM - 1B GRADE B (2023)",
-        "saldo": 37,
-        "tanggalTerakhir": "2026-09-26T00:00:00.000Z"
+        "saldo": 29.2,
+        "tanggalTerakhir": "2026-10-31T00:00:00.000Z"
       },
       {
         "nama": "FCV DIET TOBACCO SGI (2024)",
-        "saldo": 37.2,
-        "tanggalTerakhir": "2026-09-26T00:00:00.000Z"
+        "saldo": 21.9,
+        "tanggalTerakhir": "2026-10-31T00:00:00.000Z"
       },
       {
         "nama": "GARUT 2024 (FR)",
-        "saldo": 200.8,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 241.3,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "GARUT 2025 (FR)",
-        "saldo": 201.7,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 262.9,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "HANG BOYOLALI 2024 (FS)",
-        "saldo": 194,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 215.2,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "HANG MADURA 2024 (BAT)",
-        "saldo": 147,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 233.6,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "HANG MADURA GRADE B (2021)",
-        "saldo": 40.4,
-        "tanggalTerakhir": "2026-09-26T00:00:00.000Z"
+        "saldo": 25.3,
+        "tanggalTerakhir": "2026-10-31T00:00:00.000Z"
       },
       {
         "nama": "IZMIR TOBACCO GRADE B (2022)",
@@ -1481,183 +1481,183 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "JANTURAN BOYOLALI 2024 (VJI)",
-        "saldo": 361.1,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 404.8,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "JANTURAN GRADE B (2020)",
-        "saldo": 134.1,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-10-31T00:00:00.000Z"
       },
       {
         "nama": "JANTURAN JOMBANG 2024 (MYN)",
-        "saldo": 171.7,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 204.6,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "JONING 2024 (AR)",
-        "saldo": 92.2,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 147.1,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "KASTURI 2023 (SN)",
-        "saldo": 545,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "KASTURI 2023 (ST)",
-        "saldo": 261,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 288.0,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "KASTURI 2024 (BE) - 1",
-        "saldo": 568.1,
-        "tanggalTerakhir": "2026-09-26T00:00:00.000Z"
+        "saldo": 1513.7,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "KASTURI GRADE C (2019)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-07-30T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "KASTURI Z - AB GRADE B (2022)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-07-07T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "KRS. GARUT 2024 (MYN)",
-        "saldo": 371.5,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 659.3,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "KRS. GARUT 2025 (MYN)",
-        "saldo": 503.9,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 574.9,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "LOMBOK 2024 (BE) - 1",
-        "saldo": 791,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 965.0,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "LOMBOK 2024 (FS) - 1",
-        "saldo": 279.1,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 361.9,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "MADURA 2023 (HL) S",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-04-14T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "MADURA 2023 HL (R)",
-        "saldo": 0,
-        "tanggalTerakhir": null
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "MADURA 2024 (BAT) R",
-        "saldo": 10252.1,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 11664.9,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "MAESAN 2023 (LIM)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-07-27T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "MAESAN 2024 (HS)",
-        "saldo": 318.9,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 485.4,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "MAESAN GRADE C (2021)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-09-10T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "MRANGGEN 2024 (LL)",
-        "saldo": 935.4,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 1075.0,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "PAITON 2023 (DM)",
-        "saldo": 288.3,
-        "tanggalTerakhir": "2026-09-26T00:00:00.000Z"
+        "saldo": 229.6,
+        "tanggalTerakhir": "2026-10-31T00:00:00.000Z"
       },
       {
         "nama": "PAITON 2023 (ZN)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-08-27T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "PAITON 2024 (BE)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-04-13T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "PAITON 2024 (BWN)",
-        "saldo": 972.4,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "PAKPIE GRADE B (2019)",
-        "saldo": 299.7,
-        "tanggalTerakhir": "2026-04-17T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "PAKPIE GRADE C (2022)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-08-29T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "PLOSO 2023 SH",
-        "saldo": 0,
+        "saldo": 1294.5,
         "tanggalTerakhir": "2025-09-13T00:00:00.000Z"
       },
       {
         "nama": "PLOSO 2024 (MYN)",
-        "saldo": 1123.9,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 1440.7,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "RAJANGAN KUNINGAN GRADE A",
-        "saldo": 168.5,
-        "tanggalTerakhir": "2026-04-17T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "SAPUDI 2024 (GF)",
-        "saldo": 267.5,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 328.9,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "TBK ESCOT 2024 (BE)",
-        "saldo": 141.6,
-        "tanggalTerakhir": "2026-09-26T00:00:00.000Z"
+        "saldo": 90.4,
+        "tanggalTerakhir": "2026-10-31T00:00:00.000Z"
       },
       {
         "nama": "TEMANGGUNG GRADE C (2017)",
-        "saldo": 187.4,
-        "tanggalTerakhir": "2026-04-17T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "TEMANGGUNG SRINTIL GRADE C (2015)",
-        "saldo": 84.3,
-        "tanggalTerakhir": "2026-04-17T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "WELERI 2023 (FN) NP",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-06-18T00:00:00.000Z"
+        "saldo": 0.0,
+        "tanggalTerakhir": "2026-11-02T00:00:00.000Z"
       },
       {
         "nama": "WELERI 2024 (HK)",
-        "saldo": 1351.8,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 1497.7,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "WELERI GRADE B (2021)",
-        "saldo": 102.5,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 145.2,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "WONOGIRI 2024 (LL)",
@@ -1666,28 +1666,28 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "ZAMBIA M1L (2023)",
-        "saldo": 689.2,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 781.5,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "ZIMBABWE 2025 (HR) L1OF",
-        "saldo": 931.2,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 1185.1,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "ZIMBABWE 2025 (L2OF/P)",
-        "saldo": 708.6,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 789.2,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "ZIMBABWE B1L (2023)",
-        "saldo": 1084.8,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 1133.2,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
         "nama": "ZIMBABWE M1L (2023)",
-        "saldo": 573.6,
-        "tanggalTerakhir": "2026-09-30T00:00:00.000Z"
+        "saldo": 748.1,
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       }
     ],
     "mutasiTerbaru": [

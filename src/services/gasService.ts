@@ -2707,6 +2707,23 @@ export class GasService {
                 k.mutasiTerbaru = [...nov2RajangEntries, ...(k.mutasiTerbaru || [])];
                 migrated = true;
               }
+
+              // Jika cache lokal Rajang II masih menggunakan baseline September (< 33.000 Kg atau Madura < 11.000 Kg),
+              // mutakhirkan ke baseline 5 November 2026 yang identik dengan sistem akuntansi
+              const initialRajang = INITIAL_KOMODITAS_DATA.find((item: any) => (item.komoditas || '').toLowerCase().includes('rajang ii'));
+              if (initialRajang && (k.saldoTotal < 33000 || (k.kodeList || []).some((item: any) => item.nama === 'MADURA 2024 (BAT) R' && item.saldo < 11000))) {
+                k.saldoTotal = initialRajang.saldoTotal;
+                k.jumlahKode = initialRajang.jumlahKode;
+                k.kodeList = JSON.parse(JSON.stringify(initialRajang.kodeList));
+                migrated = true;
+              }
+
+              // Hitung ulang saldo total komoditas Rajang II agar selalu presisi
+              const computedSaldoTotal = Math.round((k.kodeList || []).reduce((acc: number, curr: any) => acc + (Number(curr.saldo) || 0), 0) * 10) / 10;
+              if (computedSaldoTotal > 0 && k.saldoTotal !== computedSaldoTotal) {
+                k.saldoTotal = computedSaldoTotal;
+                migrated = true;
+              }
             }
           });
           if (migrated) {
