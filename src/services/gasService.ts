@@ -1900,6 +1900,103 @@ export class GasService {
         };
       }
 
+      // --- REKONSILIASI KHUSUS RAJANG I (Dual-Lane SKT vs SKM + Baris 1 Fast Lane) ---
+      if (komoditasLower.includes('rajang i') && !komoditasLower.includes('rajang ii')) {
+        let totalRajang1SKT = 0;
+        let totalRajang1SKM = 0;
+        const enrichedRajang1KodeList = cleanKodeList.map(item => {
+          let sSKT = item.saldoSKT ?? (item as any).tSaldo ?? (item as any).tsaldo;
+          let sSKM = item.saldoSKM ?? (item as any).mSaldo ?? (item as any).msaldo;
+          let kat = item.kategoriProduksi;
+
+          if (sSKT === undefined && sSKM === undefined) {
+            const up = (item.nama || '').toUpperCase();
+            if (up.includes('HANG MADURA')) {
+              sSKM = Number(item.saldo) || 0;
+              sSKT = 0;
+              kat = sSKM > 0 ? 'Murni SKM' : 'Nol';
+            } else if (up.includes('GARUT')) {
+              sSKT = Number(item.saldo) || 0;
+              sSKM = 0;
+              kat = sSKT > 0 ? 'Murni SKT' : 'Nol';
+            } else if (Number(item.saldo) > 0) {
+              sSKT = Number(item.saldo) || 0;
+              sSKM = 0;
+              kat = 'Murni SKT';
+            } else {
+              sSKT = 0;
+              sSKM = 0;
+              kat = 'Nol';
+            }
+          } else {
+            sSKT = Number(sSKT) || 0;
+            sSKM = Number(sSKM) || 0;
+            if (!kat) {
+              kat = (sSKT > 0 && sSKM > 0) ? 'Gabungan' : (sSKT > 0 ? 'Murni SKT' : (sSKM > 0 ? 'Murni SKM' : 'Nol'));
+            }
+          }
+
+          totalRajang1SKT += sSKT;
+          totalRajang1SKM += sSKM;
+
+          return {
+            ...item,
+            saldo: Math.round(Number(item.saldo) * 10) / 10,
+            saldoSKT: Math.round(sSKT * 10) / 10,
+            saldoSKM: Math.round(sSKM * 10) / 10,
+            kategoriProduksi: kat
+          };
+        });
+
+        const cleanSaldoTotal = Math.round(enrichedRajang1KodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
+        const finalMutasi = normalizedMutasi.map(m => {
+          const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
+          if (isBspp) {
+            const val = Number(m.masuk || m.keluar || 0);
+            return {
+              ...m,
+              cek: true,
+              bsppMatch: {
+                matched: true,
+                selisihKg: val,
+                selisih: 0,
+                sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
+                status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
+              }
+            };
+          }
+
+          const isTransferRJ2 = (m.jenisMutasi || '').toLowerCase().includes('pengeluaran ke rj') || (m.jenisMutasi || '').toLowerCase().includes('keluar ke rj');
+          if (isTransferRJ2) {
+            const val = Number(m.keluar || 0);
+            return {
+              ...m,
+              cek: true,
+              pengirimanMatch: {
+                matched: true,
+                bobotKirim: val,
+                selisih: 0,
+                tujuan: 'Rajang II',
+                sumber: 'Bukti Serah Terima Fisik Rajang II'
+              }
+            };
+          }
+
+          return m;
+        });
+
+        finalMutasi.sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
+        return {
+          ...k,
+          saldoTotal: cleanSaldoTotal,
+          kodeList: enrichedRajang1KodeList,
+          jumlahKode: enrichedRajang1KodeList.length,
+          mutasiTerbaru: finalMutasi.slice(0, 250),
+          saldoSKTTotal: Math.round(totalRajang1SKT * 10) / 10,
+          saldoSKMTotal: Math.round(totalRajang1SKM * 10) / 10
+        };
+      }
+
       const cleanSaldoTotal = Math.round(cleanKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
       const finalMutasi = normalizedMutasi.map(m => {
         const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
@@ -2719,6 +2816,26 @@ export class GasService {
               }
 
               // Hitung ulang saldo total komoditas Rajang II agar selalu presisi
+              const computedSaldoTotal = Math.round((k.kodeList || []).reduce((acc: number, curr: any) => acc + (Number(curr.saldo) || 0), 0) * 10) / 10;
+              if (computedSaldoTotal > 0 && k.saldoTotal !== computedSaldoTotal) {
+                k.saldoTotal = computedSaldoTotal;
+                migrated = true;
+              }
+            }
+
+            if ((k.komoditas || '').toLowerCase().includes('rajang i') && !(k.komoditas || '').toLowerCase().includes('rajang ii')) {
+              // Jika cache lokal Rajang I masih menggunakan baseline lama (> 4 kode atau > 3.000 Kg),
+              // mutakhirkan ke 4 kode aktif terverifikasi (2.385,3 Kg)
+              const initialRajang1 = INITIAL_KOMODITAS_DATA.find((item: any) => (item.komoditas || '').toLowerCase().includes('rajang i') && !(item.komoditas || '').toLowerCase().includes('rajang ii'));
+              if (initialRajang1 && (k.saldoTotal > 3000 || (k.kodeList || []).length > 4)) {
+                k.saldoTotal = initialRajang1.saldoTotal;
+                k.jumlahKode = initialRajang1.jumlahKode;
+                k.kodeList = JSON.parse(JSON.stringify(initialRajang1.kodeList));
+                k.mutasiTerbaru = JSON.parse(JSON.stringify(initialRajang1.mutasiTerbaru || []));
+                migrated = true;
+              }
+
+              // Hitung ulang saldo total komoditas Rajang I agar selalu presisi
               const computedSaldoTotal = Math.round((k.kodeList || []).reduce((acc: number, curr: any) => acc + (Number(curr.saldo) || 0), 0) * 10) / 10;
               if (computedSaldoTotal > 0 && k.saldoTotal !== computedSaldoTotal) {
                 k.saldoTotal = computedSaldoTotal;
@@ -6957,7 +7074,7 @@ function buildKomoditasSummary_(source) {
   var ss = SpreadsheetApp.openById(source.spreadsheetId);
   var rawSheetNames = ss.getSheets().map(function(s) { return s.getName(); });
   var sheetNames = rawSheetNames.filter(function(s) { return !isExcludedSheet_(s); });
-  var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1 || source.komoditas.indexOf('Cengkeh') !== -1;
+  var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1 || source.komoditas.indexOf('Rajang I') !== -1 || source.komoditas.indexOf('Cengkeh') !== -1;
 
   var valueRanges = fetchAllSheetsData_(source.spreadsheetId, sheetNames);
 
@@ -6993,16 +7110,47 @@ function buildKomoditasSummary_(source) {
     var trimmedRows = lastRealIndex === -1 ? [] : dataRows.slice(0, lastRealIndex + 1);
     var rows = parseDataRows_(trimmedRows, headerInfo.format);
 
-    var saldoObj = getSaldoTerkiniObj_(rows, headerInfo.format);
-    saldoTotal += saldoObj.saldo;
-    if (isDualKomoditas && headerInfo.format === 'dual') {
-      saldoSKTTotal += saldoObj.saldoSKT;
-      saldoSKMTotal += saldoObj.saldoSKM;
+    // Prioritas 1 (Fast-Lane): Cek Metadata Header Baris 1 (B1:J1)
+    var row1 = values[0] || [];
+    var isFastLane = (row1.length >= 10) && 
+      (String(row1[4] || '').toUpperCase().indexOf('SKT') !== -1 || String(row1[7] || '').toUpperCase().indexOf('SKM') !== -1) &&
+      (row1[1] && String(row1[1]).trim().length > 0);
+
+    var saldoObj;
+    var tanggalTerakhir = null;
+
+    if (isFastLane) {
+      var fTgl = safeDateValue_(row1[1]);
+      var fSKT = cleanNumber_(row1[5]);
+      var fSKM = cleanNumber_(row1[8]);
+      var fTot = cleanNumber_(row1[9]);
+      if (fTot === 0 && (fSKT > 0 || fSKM > 0)) fTot = fSKT + fSKM;
+
+      var kat = undefined;
+      if (fSKT > 0 && fSKM > 0) kat = 'Gabungan';
+      else if (fSKT > 0 && fSKM <= 0) kat = 'Murni SKT';
+      else if (fSKM > 0 && fSKT <= 0) kat = 'Murni SKM';
+      else kat = 'Nol';
+
+      saldoObj = {
+        saldo: round1_(fTot),
+        saldoSKT: round1_(fSKT),
+        saldoSKM: round1_(fSKM),
+        kategoriProduksi: kat
+      };
+      if (fTgl) tanggalTerakhir = fTgl;
+    } else {
+      // Prioritas 2 (Fallback): Pemindaian Baris Bawah (Bottom-Up)
+      saldoObj = getSaldoTerkiniObj_(rows, headerInfo.format);
+      for (var j = rows.length - 1; j >= 0; j--) {
+        if (rows[j].tanggal) { tanggalTerakhir = rows[j].tanggal; break; }
+      }
     }
 
-    var tanggalTerakhir = null;
-    for (var j = rows.length - 1; j >= 0; j--) {
-      if (rows[j].tanggal) { tanggalTerakhir = rows[j].tanggal; break; }
+    saldoTotal += saldoObj.saldo;
+    if (isDualKomoditas && (headerInfo.format === 'dual' || isFastLane)) {
+      saldoSKTTotal += saldoObj.saldoSKT;
+      saldoSKMTotal += saldoObj.saldoSKM;
     }
 
     rows.forEach(function(item) {
@@ -7017,9 +7165,9 @@ function buildKomoditasSummary_(source) {
     kodeList.push({
       nama: sheetNames[idx],
       saldo: saldoObj.saldo,
-      saldoSKT: (isDualKomoditas && headerInfo.format === 'dual') ? saldoObj.saldoSKT : undefined,
-      saldoSKM: (isDualKomoditas && headerInfo.format === 'dual') ? saldoObj.saldoSKM : undefined,
-      kategoriProduksi: (isDualKomoditas && headerInfo.format === 'dual') ? saldoObj.kategoriProduksi : undefined,
+      saldoSKT: (isDualKomoditas && (headerInfo.format === 'dual' || isFastLane)) ? saldoObj.saldoSKT : undefined,
+      saldoSKM: (isDualKomoditas && (headerInfo.format === 'dual' || isFastLane)) ? saldoObj.saldoSKM : undefined,
+      kategoriProduksi: (isDualKomoditas && (headerInfo.format === 'dual' || isFastLane)) ? saldoObj.kategoriProduksi : undefined,
       tanggalTerakhir: tanggalTerakhir
     });
 
@@ -7259,7 +7407,7 @@ function getSaldoPerTanggal(index, tanggalISO) {
     }
 
     var kat = undefined;
-    var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1 || source.komoditas.indexOf('Cengkeh') !== -1;
+    var isDualKomoditas = source.komoditas.indexOf('Rajang II') !== -1 || source.komoditas.indexOf('Rajang I') !== -1 || source.komoditas.indexOf('Cengkeh') !== -1;
     if (isDualKomoditas && headerInfo.format === 'dual') {
       if (saldoSKT > 0 && saldoSKM > 0) kat = 'Gabungan';
       else if (saldoSKT > 0 && saldoSKM <= 0) kat = 'Murni SKT';

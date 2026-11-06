@@ -2420,417 +2420,205 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       }
     ]
   },
-  {
+    {
     "komoditas": "Tembakau & Krosok (Rajang I)",
     "satuan": "Kg",
-    "saldoTotal": 4367.1,
+    "saldoTotal": 2385.3,
     "masukTotal": 38248,
     "keluarTotal": 35017.2,
-    "entriTotal": 316,
-    "entriTervalidasi": 32.9,
-    "jumlahKode": 20,
+    "entriTotal": 148,
+    "entriTervalidasi": 98.5,
+    "jumlahKode": 4,
+    "saldoSKTTotal": 1695.0,
+    "saldoSKMTotal": 690.3,
     "kodeList": [
       {
-        "nama": "AMERIKA 2025 (BO1)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-09-04T00:00:00.000Z"
-      },
-      {
-        "nama": "AMERIKA B 2022",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "BRAZIL 2023 BF01",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "BRAZIL A 2022",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "BRAZIL B 2022",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "CHINA A 2020",
-        "saldo": 0,
-        "tanggalTerakhir": "2024-12-17T00:00:00.000Z"
-      },
-      {
         "nama": "HANG MADURA 2024 (BAT)",
-        "saldo": 1099.7,
-        "tanggalTerakhir": "2026-09-29T00:00:00.000Z"
+        "saldo": 570.0,
+        "saldoSKT": 0.0,
+        "saldoSKM": 570.0,
+        "kategoriProduksi": "Murni SKM",
+        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
+      },
+      {
+        "nama": "KRS. GARUT 2024 (MYN)",
+        "saldo": 795.0,
+        "saldoSKT": 795.0,
+        "saldoSKM": 0.0,
+        "kategoriProduksi": "Murni SKT",
+        "tanggalTerakhir": "2026-10-29T00:00:00.000Z"
+      },
+      {
+        "nama": "KRS. GARUT 2025 (MYN)",
+        "saldo": 900.0,
+        "saldoSKT": 900.0,
+        "saldoSKM": 0.0,
+        "kategoriProduksi": "Murni SKT",
+        "tanggalTerakhir": "2026-10-29T00:00:00.000Z"
       },
       {
         "nama": "HANG MADURA GRADE B (2021)",
         "saldo": 120.3,
+        "saldoSKT": 0.0,
+        "saldoSKM": 120.3,
+        "kategoriProduksi": "Murni SKM",
         "tanggalTerakhir": "2026-06-12T00:00:00.000Z"
-      },
-      {
-        "nama": "IZMIR A 2022 AG",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "JANTURAN GRADE B (2020)",
-        "saldo": 390,
-        "tanggalTerakhir": "2026-09-28T00:00:00.000Z"
-      },
-      {
-        "nama": "JANTURAN JOMBANG 2023(SH)",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "KASTURI 2023 BE",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "KASTURI 2023 DC",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "KASTURI GRADE C (2019)",
-        "saldo": 0,
-        "tanggalTerakhir": "2026-07-10T00:00:00.000Z"
-      },
-      {
-        "nama": "KRS. GARUT 2024 (MYN)",
-        "saldo": 1254,
-        "tanggalTerakhir": "2026-09-29T00:00:00.000Z"
-      },
-      {
-        "nama": "KRS. GARUT 2025 (MYN)",
-        "saldo": 1503.1,
-        "tanggalTerakhir": "2026-09-29T00:00:00.000Z"
-      },
-      {
-        "nama": "ZAMBIA B 2022 M1L",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "ZIMBABWE 2023 L10F",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "ZIMBABWE A 2022 M1L",
-        "saldo": 0,
-        "tanggalTerakhir": null
-      },
-      {
-        "nama": "ZIMBABWE B 2022 B1L",
-        "saldo": 0,
-        "tanggalTerakhir": null
       }
     ],
     "mutasiTerbaru": [
       {
-        "id": "tembakau---krosok--rajang-i--0",
-        "tanggal": "2024-12-19T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
+        "id": "tembakau---krosok--rajang-i--hangmadura2024bat-2026-11-05-bspp",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "HANG MADURA 2024 (BAT)",
         "jenisMutasi": "BSPP Lebih",
-        "masuk": 0.3,
+        "masuk": 1.9,
         "keluar": 0,
-        "saldo": 0,
+        "saldo": 570.0,
+        "masukSKT": 0,
+        "masukSKM": 1.9,
+        "saldoSKT": 0,
+        "saldoSKM": 570.0,
         "cek": true
       },
       {
-        "id": "tembakau---krosok--rajang-i--1",
-        "tanggal": "2024-12-19T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "Pengeluaran PU",
-        "masuk": 0,
-        "keluar": 41.3,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--2",
-        "tanggal": "2025-01-21T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "BSPP Lebih",
-        "masuk": 0.5,
-        "keluar": 0,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--3",
-        "tanggal": "2025-01-21T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
+        "id": "tembakau---krosok--rajang-i--hangmadura2024bat-2026-11-05-rj2",
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "kode": "HANG MADURA 2024 (BAT)",
         "jenisMutasi": "Pengeluaran ke RJ II",
         "masuk": 0,
-        "keluar": 63,
-        "saldo": 0,
+        "keluar": 121.9,
+        "saldo": 568.1,
+        "keluarSKT": 0,
+        "keluarSKM": 121.9,
+        "saldoSKT": 0,
+        "saldoSKM": 568.1,
         "cek": true
       },
       {
-        "id": "tembakau---krosok--rajang-i--4",
-        "tanggal": "2025-02-07T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
+        "id": "tembakau---krosok--rajang-i--hangmadura2024bat-2026-11-02-bspp",
+        "tanggal": "2026-11-02T00:00:00.000Z",
+        "kode": "HANG MADURA 2024 (BAT)",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 3.1,
+        "keluar": 0,
+        "saldo": 690.0,
+        "masukSKT": 0,
+        "masukSKM": 3.1,
+        "saldoSKT": 0,
+        "saldoSKM": 690.0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-i--krsgarut2024-2026-10-29-bspp2",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "KRS. GARUT 2024 (MYN)",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 3.7,
+        "keluar": 0,
+        "saldo": 795.0,
+        "masukSKT": 3.7,
+        "masukSKM": 0,
+        "saldoSKT": 795.0,
+        "saldoSKM": 0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-i--krsgarut2024-2026-10-29-rj2",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "KRS. GARUT 2024 (MYN)",
         "jenisMutasi": "Pengeluaran ke RJ II",
         "masuk": 0,
-        "keluar": 167.4,
-        "saldo": 0,
+        "keluar": 469.0,
+        "saldo": 791.3,
+        "keluarSKT": 469.0,
+        "keluarSKM": 0,
+        "saldoSKT": 791.3,
+        "saldoSKM": 0,
         "cek": true
       },
       {
-        "id": "tembakau---krosok--rajang-i--5",
-        "tanggal": "2025-02-07T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
+        "id": "tembakau---krosok--rajang-i--krsgarut2024-2026-10-29-bspp1",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "KRS. GARUT 2024 (MYN)",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 1.8,
+        "keluar": 0,
+        "saldo": 1260.3,
+        "masukSKT": 1.8,
+        "masukSKM": 0,
+        "saldoSKT": 1260.3,
+        "saldoSKM": 0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-i--krsgarut2025-2026-10-29-bspp2",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "KRS. GARUT 2025 (MYN)",
         "jenisMutasi": "BSPP Kurang",
         "masuk": 0,
         "keluar": 0.6,
-        "saldo": 0,
+        "saldo": 900.0,
+        "keluarSKT": 0.6,
+        "keluarSKM": 0,
+        "saldoSKT": 900.0,
+        "saldoSKM": 0,
         "cek": true
       },
       {
-        "id": "tembakau---krosok--rajang-i--6",
-        "tanggal": "2025-02-15T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "Penerimaan Baku",
-        "masuk": 615.6,
-        "keluar": 0,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--7",
-        "tanggal": "2025-04-22T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "`Penyesuaian Stock Opname",
-        "masuk": 11.3,
-        "keluar": 0,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--8",
-        "tanggal": "2025-05-20T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
+        "id": "tembakau---krosok--rajang-i--krsgarut2025-2026-10-29-rj2",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "KRS. GARUT 2025 (MYN)",
         "jenisMutasi": "Pengeluaran ke RJ II",
         "masuk": 0,
-        "keluar": 153.3,
-        "saldo": 0,
+        "keluar": 419.4,
+        "saldo": 900.6,
+        "keluarSKT": 419.4,
+        "keluarSKM": 0,
+        "saldoSKT": 900.6,
+        "saldoSKM": 0,
         "cek": true
       },
       {
-        "id": "tembakau---krosok--rajang-i--9",
-        "tanggal": "2025-05-20T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "BSPP Lebih",
-        "masuk": 0.4,
-        "keluar": 0,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--10",
-        "tanggal": "2025-10-14T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "Pengeluaran ke RJ II",
-        "masuk": 0,
-        "keluar": 75.1,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--11",
-        "tanggal": "2025-10-14T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
+        "id": "tembakau---krosok--rajang-i--krsgarut2025-2026-10-29-bspp1",
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "kode": "KRS. GARUT 2025 (MYN)",
         "jenisMutasi": "BSPP Kurang",
         "masuk": 0,
-        "keluar": 1.5,
-        "saldo": 0,
+        "keluar": 0.3,
+        "saldo": 1320.0,
+        "keluarSKT": 0.3,
+        "keluarSKM": 0,
+        "saldoSKT": 1320.0,
+        "saldoSKM": 0,
         "cek": true
       },
       {
-        "id": "tembakau---krosok--rajang-i--12",
-        "tanggal": "2025-12-05T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "`Penyesuaian Stock Opname",
-        "masuk": 0,
-        "keluar": 2,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--13",
-        "tanggal": "2026-01-22T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "Pengeluaran ke RJ II",
-        "masuk": 0,
-        "keluar": 75.7,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--14",
-        "tanggal": "2026-01-22T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "BSPP Kurang",
-        "masuk": 0,
-        "keluar": 0.4,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--15",
-        "tanggal": "2026-04-09T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "Pengeluaran ke RJ II",
-        "masuk": 0,
-        "keluar": 89.7,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--16",
-        "tanggal": "2026-04-09T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "BSPP Kurang",
-        "masuk": 0,
-        "keluar": 0.7,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--17",
-        "tanggal": "2026-04-17T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "`Penyesuaian Stock Opname",
-        "masuk": 0,
-        "keluar": 2.2,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--18",
-        "tanggal": "2026-06-12T00:00:00.000Z",
-        "kode": "HANG MADURA GRADE B (2021)",
-        "jenisMutasi": "Pengeluaran ke RJ II",
-        "masuk": 0,
-        "keluar": 105,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--19",
+        "id": "tembakau---krosok--rajang-i--hangmaduragradeb-2026-06-12-bspp",
         "tanggal": "2026-06-12T00:00:00.000Z",
         "kode": "HANG MADURA GRADE B (2021)",
         "jenisMutasi": "BSPP Kurang",
         "masuk": 0,
         "keluar": 1.4,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--20",
-        "tanggal": "2025-11-15T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
-        "jenisMutasi": "Penerimaan Baku",
-        "masuk": 388,
-        "keluar": 0,
-        "saldo": 0,
+        "saldo": 120.3,
+        "keluarSKT": 0,
+        "keluarSKM": 1.4,
+        "saldoSKT": 0,
+        "saldoSKM": 120.3,
         "cek": true
       },
       {
-        "id": "tembakau---krosok--rajang-i--21",
-        "tanggal": "2025-11-18T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
+        "id": "tembakau---krosok--rajang-i--hangmaduragradeb-2026-06-12-rj2",
+        "tanggal": "2026-06-12T00:00:00.000Z",
+        "kode": "HANG MADURA GRADE B (2021)",
         "jenisMutasi": "Pengeluaran ke RJ II",
         "masuk": 0,
-        "keluar": 43.4,
-        "saldo": 0,
+        "keluar": 105.0,
+        "saldo": 121.7,
+        "keluarSKT": 0,
+        "keluarSKM": 105.0,
+        "saldoSKT": 0,
+        "saldoSKM": 121.7,
         "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--22",
-        "tanggal": "2025-11-18T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
-        "jenisMutasi": "BSPP Lebih",
-        "masuk": 0.4,
-        "keluar": 0,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--23",
-        "tanggal": "2025-11-28T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
-        "jenisMutasi": "Pengeluaran ke RJ II",
-        "masuk": 0,
-        "keluar": 90.6,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--24",
-        "tanggal": "2025-11-28T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
-        "jenisMutasi": "BSPP Lebih",
-        "masuk": 0.6,
-        "keluar": 0,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--25",
-        "tanggal": "2025-12-05T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
-        "jenisMutasi": "`Penyesuaian Stock Opname",
-        "masuk": 3.2,
-        "keluar": 0,
-        "saldo": 0,
-        "cek": true
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--26",
-        "tanggal": "2026-02-12T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
-        "jenisMutasi": "Pengeluaran ke RJ II",
-        "masuk": 0,
-        "keluar": 153.8,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--27",
-        "tanggal": "2026-02-12T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
-        "jenisMutasi": "BSPP Lebih",
-        "masuk": 2.4,
-        "keluar": 0,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--28",
-        "tanggal": "2026-04-17T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
-        "jenisMutasi": "`Penyesuaian Stock Opname",
-        "masuk": 2,
-        "keluar": 0,
-        "saldo": 0,
-        "cek": false
-      },
-      {
-        "id": "tembakau---krosok--rajang-i--29",
-        "tanggal": "2026-08-28T00:00:00.000Z",
-        "kode": "HANG MADURA 2024 (BAT)",
-        "jenisMutasi": "Pengeluaran ke RJ II",
-        "masuk": 0,
-        "keluar": 105.5,
-        "saldo": 0,
-        "cek": false
       }
     ]
   }
