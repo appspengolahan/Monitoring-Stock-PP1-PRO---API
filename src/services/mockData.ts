@@ -1338,6 +1338,8 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     "komoditas": "Tembakau & Krosok (Rajang II)",
     "satuan": "Kg",
     "saldoTotal": 33613.6,
+    "saldoSKTTotal": 27950.4,
+    "saldoSKMTotal": 5663.2,
     "masukTotal": 1431656.7,
     "keluarTotal": 1404925.3,
     "entriTotal": 17273,
@@ -1622,6 +1624,9 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       {
         "nama": "WELERI 2024 (HK)",
         "saldo": 1497.7,
+        "saldoSKT": 1381.3,
+        "saldoSKM": 116.4,
+        "kategoriProduksi": "Gabungan",
         "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
       },
       {
