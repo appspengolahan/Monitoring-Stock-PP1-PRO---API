@@ -7984,6 +7984,111 @@ function setupTelegramWebhook_() {
     muteHttpExceptions: true
   });
   return resp.getContentText();
-}`;
+}
+
+// ============================================================================
+// 7. UTILITY: OTOMATISASI PEMASANGAN BARIS 1 PADA TEMBAKAU RAJANG II
+// ============================================================================
+
+/**
+ * Jalankan fungsi ini langsung dari dropdown Editor Google Apps Script
+ * untuk memasang rumus Baris 1 secara otomatis ke seluruh tab Tembakau Rajang II.
+ */
+function pasangRumusBaris1Rajang2Otomatis() {
+  var spreadsheetId = '1CB_qQbvOB-_sUUKrewTaDInR-NN3gycRFyGGUNvkZcI';
+  var ss = SpreadsheetApp.openById(spreadsheetId);
+  var sheets = ss.getSheets();
+  var log = [];
+  var successCount = 0;
+
+  for (var i = 0; i < sheets.length; i++) {
+    var sh = sheets[i];
+    var name = sh.getName();
+
+    // Lewati lembar rekap / sistem
+    if (isExcludedSheet_(name)) {
+      log.push('Lewati sheet sistem: ' + name);
+      continue;
+    }
+
+    try {
+      // Periksa apakah Baris 1 sudah ada atau masih berupa Judul Tabel
+      var valB1 = String(sh.getRange('B1').getValue() || '').trim().toUpperCase();
+
+      // Jika Baris 1 saat ini adalah judul "MUTASI STOCK", sisipkan 1 baris baru di atas
+      if (valB1.indexOf('MUTASI STOCK') !== -1 || valB1.indexOf('SEKUP GUDANG') !== -1) {
+        sh.insertRowBefore(1);
+      }
+
+      // Pasang rumus Baris 1
+      // B1: Tanggal mutasi terakhir
+      sh.getRange('B1').setFormula('=IFERROR(CHOOSEROWS(FILTER(B9:B, B9:B<>"", C9:C<>""), -1), "")');
+      // C1: Nama Jenis Tembakau (sama dengan nama tab)
+      sh.getRange('C1').setValue(name);
+      // E1: Label SKT
+      sh.getRange('E1').setValue('SKT');
+      // F1: Saldo SKT terkini
+      sh.getRange('F1').setFormula('=IFERROR(CHOOSEROWS(FILTER(F9:F, B9:B<>"", C9:C<>""), -1), 0)');
+      // H1: Label SKM
+      sh.getRange('H1').setValue('SKM');
+      // I1: Saldo SKM terkini
+      sh.getRange('I1').setFormula('=IFERROR(CHOOSEROWS(FILTER(I9:I, B9:B<>"", C9:C<>""), -1), 0)');
+      // J1: Total Saldo terkini
+      sh.getRange('J1').setFormula('=IFERROR(CHOOSEROWS(FILTER(J9:J, B9:B<>"", C9:C<>""), -1), 0)');
+
+      // Format desimal untuk kolom saldo
+      sh.getRange('F1').setNumberFormat('#,##0.0');
+      sh.getRange('I1').setNumberFormat('#,##0.0');
+      sh.getRange('J1').setNumberFormat('#,##0.0');
+
+      successCount++;
+      log.push('Sukses pasang Baris 1: ' + name);
+    } catch (err) {
+      log.push('Gagal pada ' + name + ': ' + err.message);
+    }
+  }
+
+  Logger.log('SELESAI. Berhasil: ' + successCount + ' sheet.\\n' + log.join('\\n'));
+  return 'Berhasil memasang rumus Baris 1 pada ' + successCount + ' sheet Tembakau Rajang II.';
+}
+
+/**
+ * Jalankan fungsi ini jika ingin menyembunyikan (Hide) Baris 1 pada semua tab Rajang II
+ */
+function sembunyikanBaris1Rajang2() {
+  var spreadsheetId = '1CB_qQbvOB-_sUUKrewTaDInR-NN3gycRFyGGUNvkZcI';
+  var ss = SpreadsheetApp.openById(spreadsheetId);
+  var sheets = ss.getSheets();
+  var count = 0;
+  for (var i = 0; i < sheets.length; i++) {
+    var sh = sheets[i];
+    if (isExcludedSheet_(sh.getName())) continue;
+    try {
+      sh.hideRows(1);
+      count++;
+    } catch(e) {}
+  }
+  return 'Berhasil menyembunyikan Baris 1 pada ' + count + ' sheet.';
+}
+
+/**
+ * Jalankan fungsi ini jika ingin memunculkan kembali (Unhide) Baris 1 pada semua tab Rajang II
+ */
+function tampilkanBaris1Rajang2() {
+  var spreadsheetId = '1CB_qQbvOB-_sUUKrewTaDInR-NN3gycRFyGGUNvkZcI';
+  var ss = SpreadsheetApp.openById(spreadsheetId);
+  var sheets = ss.getSheets();
+  var count = 0;
+  for (var i = 0; i < sheets.length; i++) {
+    var sh = sheets[i];
+    if (isExcludedSheet_(sh.getName())) continue;
+    try {
+      sh.unhideRow(sh.getRange('A1'));
+      count++;
+    } catch(e) {}
+  }
+  return 'Berhasil menampilkan Baris 1 pada ' + count + ' sheet.';
+}
+`;
   }
 }
