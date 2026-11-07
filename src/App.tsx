@@ -321,7 +321,7 @@ export default function App() {
       const next = !prev;
       localStorage.setItem('monitoring_pp1_autorefresh', String(next));
       if (next) {
-        setSyncStatusNotice('Auto-Refresh Aktif: Aplikasi akan otomatis memperbarui data secara berkala.');
+        setSyncStatusNotice('Auto-Refresh Aktif: Otomatis memperbarui data tiap 60 detik saat tab aktif (Hemat Kuota).');
         setTimeout(() => setSyncStatusNotice(null), 4000);
       } else {
         setSyncStatusNotice('Auto-Refresh Dimatikan.');
@@ -331,10 +331,18 @@ export default function App() {
     });
   }, []);
 
-  // Auto-Refresh interval timer (Setiap 30 detik melakukan sync background saat aktif)
+  // Smart Auto-Refresh timer dengan Inactive Tab Detection & 60s interval hemat kuota
   useEffect(() => {
     if (!isAutoRefresh) return;
-    const intervalId = setInterval(async () => {
+
+    let isFetching = false;
+    const executeSync = async () => {
+      // Jika tab browser sedang di-minimize atau membuka aplikasi lain, jeda sync (hemat kuota)
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+      if (isFetching) return;
+      isFetching = true;
       try {
         const res = await GasService.syncFromGas();
         if (res.data) {
@@ -342,10 +350,28 @@ export default function App() {
           setBsppList(res.data.bspp);
           setLastSync(new Date().toISOString());
         }
-      } catch (e) {}
-    }, 30000);
+      } catch (e) {
+      } finally {
+        isFetching = false;
+      }
+    };
 
-    return () => clearInterval(intervalId);
+    // Jalankan background sync setiap 60 detik saat tab aktif
+    const intervalId = setInterval(executeSync, 60000);
+
+    // Saat operator kembali membuka tab ini setelah berpindah tab, lakukan sync segar langsung
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        executeSync();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [isAutoRefresh]);
 
   // 7. Optimistic Mutasi Check Toggle
