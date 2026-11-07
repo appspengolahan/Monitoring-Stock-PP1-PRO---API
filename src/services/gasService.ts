@@ -18,7 +18,7 @@ const STORAGE_KEYS = {
   DHP_BLEND_RECONCILIATION: 'stockpp1_dhp_blend_reconciliation_v2',
   PENGIRIMAN_BLEND_RECONCILIATION: 'stockpp1_pengiriman_blend_reconciliation_v1',
   SETORAN_RECONCILIATION: 'stockpp1_setoran_reconciliation_v2',
-  SETORAN_CENGKEH_RECONCILIATION: 'stockpp1_setoran_cengkeh_reconciliation_v1',
+  SETORAN_CENGKEH_RECONCILIATION: 'stockpp1_setoran_cengkeh_reconciliation_v2',
   CENGKEH_DRYER_RECONCILIATION: 'stockpp1_cengkeh_dryer_reconciliation_v1',
   RECONCILIATION_DISPLAY: 'stockpp1_reconciliation_display_config_v1',
   DELETED_USERS: 'stockpp1_deleted_users_v1',
@@ -1777,6 +1777,10 @@ export class GasService {
           if (matchedSetoran) {
             matchedSetoranCengkehSet.add(matchedSetoran.nama + '_' + (matchedSetoran.tanggal || ''));
             let keluarVal = Number(m.keluar) || 0;
+            const sumDual = (Number(m.keluarSKT) || 0) + (Number(m.keluarSKM) || 0);
+            if (sumDual > keluarVal) {
+              keluarVal = sumDual;
+            }
             const sVal = Number(matchedSetoran.totalKg) || 0;
             if (keluarVal === 0 && sVal > 0) {
               keluarVal = sVal;
@@ -4416,6 +4420,17 @@ export class GasService {
 
   // --- Rekonsiliasi Pengeluaran Setoran Cengkeh (INTEGRASI DATA SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ---
   public static readonly DEFAULT_SETORAN_CENGKEH_ENTRIES: SetoranCengkehEntry[] = [
+    // === DATA 07 NOVEMBER 2026 (Live Worksheet SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ===
+    {
+      tanggal: '2026-11-07T00:00:00.000Z',
+      nama: 'MANADO GRADE A (2024)',
+      totalKg: 1617.0,
+      detailBlend: {
+        '153 - BK': 1512.0,
+        'F REGULER (LN, AVE)': 105.0
+      },
+      sumber: 'INTEGRASI DATA SETORAN CENGKEH'
+    },
     // === DATA 05 NOVEMBER 2026 (Live Worksheet SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ===
     {
       tanggal: '2026-11-05T00:00:00.000Z',

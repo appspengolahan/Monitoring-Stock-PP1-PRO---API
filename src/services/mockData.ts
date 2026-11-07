@@ -774,11 +774,11 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "MANADO GRADE A (2024)",
-        "saldo": 13408.5,
-        "saldoSKT": 12245.3,
-        "saldoSKM": 1163.2,
+        "saldo": 11787.9,
+        "saldoSKT": 10728.3,
+        "saldoSKM": 1059.6,
         "kategoriProduksi": "Gabungan",
-        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
+        "tanggalTerakhir": "2026-11-07T00:00:00.000Z"
       },
       {
         "nama": "MANADO KODE B",
@@ -790,6 +790,73 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       }
     ],
     "mutasiTerbaru": [
+      {
+        "id": "cengkeh-bspp-MANADOGRADEA2024-2026-11-07-lebih",
+        "tanggal": "2026-11-07T00:00:00.000Z",
+        "kode": "MANADO GRADE A (2024)",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 1.4,
+        "keluar": 0,
+        "masukSKT": 0,
+        "masukSKM": 1.4,
+        "saldo": 11787.9,
+        "saldoSKT": 10728.3,
+        "saldoSKM": 1059.6,
+        "cek": true,
+        "bsppMatch": {
+          "matched": true,
+          "selisihKg": 1.4,
+          "selisih": 0,
+          "sumber": "Kertas Kerja BSPP (Penimbangan Ulang)",
+          "status": "Selisih Lebih"
+        }
+      },
+      {
+        "id": "cengkeh-setoran-MANADOGRADEA2024-2026-11-07",
+        "tanggal": "2026-11-07T00:00:00.000Z",
+        "kode": "MANADO GRADE A (2024)",
+        "jenisMutasi": "Pengeluaran Setoran",
+        "masuk": 0,
+        "keluar": 1617.0,
+        "keluarSKT": 1512.0,
+        "keluarSKM": 105.0,
+        "saldo": 11786.5,
+        "saldoSKT": 10728.3,
+        "saldoSKM": 1058.2,
+        "cek": true,
+        "setoranMatch": {
+          "matched": true,
+          "labelNetto": 1617.0,
+          "selisih": 0,
+          "sumber": "INTEGRASI DATA SETORAN CENGKEH",
+          "detailBlend": {
+            "153 - BK": 1512.0,
+            "F REGULER (LN, AVE)": 105.0
+          },
+          "tujuan": "153 - BK (1.512,0 Kg), F REGULER (LN, AVE) (105,0 Kg)"
+        }
+      },
+      {
+        "id": "cengkeh-bspp-MANADOGRADEA2024-2026-11-07-kurang",
+        "tanggal": "2026-11-07T00:00:00.000Z",
+        "kode": "MANADO GRADE A (2024)",
+        "jenisMutasi": "BSPP Kurang",
+        "masuk": 0,
+        "keluar": 5.0,
+        "keluarSKT": 5.0,
+        "keluarSKM": 0,
+        "saldo": 13403.5,
+        "saldoSKT": 12240.3,
+        "saldoSKM": 1163.2,
+        "cek": true,
+        "bsppMatch": {
+          "matched": true,
+          "selisihKg": 5.0,
+          "selisih": 0,
+          "sumber": "Kertas Kerja BSPP (Penimbangan Ulang)",
+          "status": "Selisih Kurang"
+        }
+      },
       {
         "id": "cengkeh-setoran-MANADOGRADEA2024-2026-11-05",
         "tanggal": "2026-11-05T00:00:00.000Z",
