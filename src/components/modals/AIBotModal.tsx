@@ -116,7 +116,15 @@ Saya siap membantu Anda menganalisis saldo persediaan bahan baku (${session.allo
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert('Input suara tidak didukung oleh browser ini. Disarankan menggunakan Google Chrome atau Microsoft Edge.');
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'assistant',
+          text: '⚠️ Input suara tidak didukung oleh browser ini. Disarankan menggunakan browser Google Chrome atau Microsoft Edge.',
+          timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
       return;
     }
 

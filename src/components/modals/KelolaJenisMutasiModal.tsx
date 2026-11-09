@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
   Minus
 } from 'lucide-react';
+import { StockAppsConfirmModal } from './StockAppsConfirmModal';
 
 interface KelolaJenisMutasiModalProps {
   isOpen: boolean;
@@ -40,6 +41,21 @@ export const KelolaJenisMutasiModal: React.FC<KelolaJenisMutasiModalProps> = ({
   const [kategoriArus, setKategoriArus] = useState<'masuk' | 'keluar' | 'netral'>('keluar');
   const [keterangan, setKeterangan] = useState<string>('');
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  // Custom Centered Confirmation Dialog ('monitoring stock apps says')
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: 'monitoring stock apps says',
+    message: '',
+    onConfirm: () => {}
+  });
 
   // Load custom list
   const refreshList = () => {
@@ -83,23 +99,42 @@ export const KelolaJenisMutasiModal: React.FC<KelolaJenisMutasiModalProps> = ({
   };
 
   const handleDelete = (id: string, itemNama: string) => {
-    GasService.deleteCustomJenisMutasi(id);
-    refreshList();
-    setFeedbackMsg(`Jenis mutasi "${itemNama}" berhasil dihapus.`);
-    setTimeout(() => setFeedbackMsg(null), 3000);
+    setConfirmModal({
+      isOpen: true,
+      title: 'monitoring stock apps says',
+      message: `Yakin ingin menghapus jenis mutasi "${itemNama}"?`,
+      confirmLabel: 'OK',
+      cancelLabel: 'Cancel',
+      onConfirm: () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        GasService.deleteCustomJenisMutasi(id);
+        refreshList();
+        setFeedbackMsg(`Jenis mutasi "${itemNama}" berhasil dihapus.`);
+        setTimeout(() => setFeedbackMsg(null), 3000);
+      }
+    });
   };
 
   const handleReset = () => {
-    if (confirm('Kembalikan jenis mutasi kustom ke daftar standar bawaan?')) {
-      GasService.resetCustomJenisMutasi();
-      refreshList();
-      setFeedbackMsg('Daftar jenis mutasi kustom telah dikembalikan ke standar.');
-      setTimeout(() => setFeedbackMsg(null), 3000);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'monitoring stock apps says',
+      message: 'Kembalikan jenis mutasi kustom ke daftar standar bawaan?',
+      confirmLabel: 'OK',
+      cancelLabel: 'Cancel',
+      onConfirm: () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        GasService.resetCustomJenisMutasi();
+        refreshList();
+        setFeedbackMsg('Daftar jenis mutasi kustom telah dikembalikan ke standar.');
+        setTimeout(() => setFeedbackMsg(null), 3000);
+      }
+    });
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in">
+    <>
+      <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in">
       <div className="bg-white w-full max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 to-indigo-950 text-white shrink-0">
@@ -369,5 +404,17 @@ export const KelolaJenisMutasiModal: React.FC<KelolaJenisMutasiModalProps> = ({
         </div>
       </div>
     </div>
-  );
+
+    {/* Centered Modal: Konfirmasi Hapus & Reset */}
+    <StockAppsConfirmModal
+      isOpen={confirmModal.isOpen}
+      title={confirmModal.title}
+      message={confirmModal.message}
+      confirmLabel={confirmModal.confirmLabel}
+      cancelLabel={confirmModal.cancelLabel}
+      onConfirm={confirmModal.onConfirm}
+      onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+    />
+  </>
+);
 };

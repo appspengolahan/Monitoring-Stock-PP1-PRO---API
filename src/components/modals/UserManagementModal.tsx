@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { UserAccessConfig, UserRole } from '../../types';
 import { GasService } from '../../services/gasService';
+import { StockAppsConfirmModal } from './StockAppsConfirmModal';
 
 interface UserManagementModalProps {
   isOpen: boolean;
@@ -56,6 +57,50 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formDefaultPin, setFormDefaultPin] = useState<string>('123456');
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  // Custom Centered Confirmation & Alert Dialog ('monitoring stock apps says')
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    isAlert?: boolean;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: 'monitoring stock apps says',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const showConfirm = (message: string, onConfirm: () => void, confirmLabel = 'OK', cancelLabel = 'Cancel') => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'monitoring stock apps says',
+      message,
+      isAlert: false,
+      confirmLabel,
+      cancelLabel,
+      onConfirm: () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        onConfirm();
+      }
+    });
+  };
+
+  const showAlert = (message: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'monitoring stock apps says',
+      message,
+      isAlert: true,
+      confirmLabel: 'OK',
+      onConfirm: () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
 
   if (!isOpen) return null;
 
@@ -166,13 +211,13 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formEmail.trim() || !formNama.trim()) {
-      alert('Email dan Nama staf wajib diisi.');
+      showAlert('Email dan Nama staf wajib diisi.');
       return;
     }
 
     const rawRole = isCustomRoleMode ? customRoleInput.trim() : formRole.trim();
     if (isCustomRoleMode && !rawRole) {
-      alert('Silakan ketik nama peran baru yang ingin ditambahkan (misal: Accounting).');
+      showAlert('Silakan ketik nama peran baru yang ingin ditambahkan (misal: Accounting).');
       return;
     }
     const finalRole: UserRole = rawRole || 'Staff Operasional';
@@ -233,33 +278,40 @@ Buka tautan di atas dan masukkan PIN ${pin} untuk masuk ke aplikasi.`;
   };
 
   const handleResetPin = (email: string) => {
-    if (window.confirm(`Reset PIN untuk ${email} kembali ke PIN default (123456)?`)) {
-      const updated = GasService.resetUserPassword(email, '123456');
-      setUsers(updated);
-      setStatusMessage(`PIN untuk ${email} berhasil di-reset ke default: 123456`);
-      setTimeout(() => setStatusMessage(null), 4000);
-    }
+    showConfirm(
+      `Reset PIN untuk ${email} kembali ke PIN default (123456)?`,
+      () => {
+        const updated = GasService.resetUserPassword(email, '123456');
+        setUsers(updated);
+        setStatusMessage(`PIN untuk ${email} berhasil di-reset ke default: 123456`);
+        setTimeout(() => setStatusMessage(null), 4000);
+      }
+    );
   };
 
-  const handleDelete = async (emailToDelete: string) => {
+  const handleDelete = (emailToDelete: string) => {
     if (emailToDelete === 'obeetools@gmail.com' || emailToDelete === 'loehendra@gmail.com') {
-      alert('Akun Developer & Site Engineer utama tidak boleh dihapus.');
+      showAlert('Akun Developer & Site Engineer utama tidak boleh dihapus.');
       return;
     }
-    if (window.confirm(`Yakin ingin mencabut akses staf ${emailToDelete}? Akun akan dihapus permanen dari whitelist.`)) {
-      const updated = await GasService.deleteUserConfigAsync(emailToDelete);
-      setUsers(updated);
-      if (editingEmail === emailToDelete) {
-        setEditingEmail(null);
-        setIsAddingNew(false);
+    showConfirm(
+      `Yakin ingin mencabut akses staf ${emailToDelete}? Akun akan dihapus permanen dari whitelist.`,
+      async () => {
+        const updated = await GasService.deleteUserConfigAsync(emailToDelete);
+        setUsers(updated);
+        if (editingEmail === emailToDelete) {
+          setEditingEmail(null);
+          setIsAddingNew(false);
+        }
+        setStatusMessage(`🗑️ Hak akses untuk ${emailToDelete} telah berhasil dihapus permanen dari sistem.`);
+        setTimeout(() => setStatusMessage(null), 4000);
       }
-      setStatusMessage(`🗑️ Hak akses untuk ${emailToDelete} telah berhasil dihapus permanen dari sistem.`);
-      setTimeout(() => setStatusMessage(null), 4000);
-    }
+    );
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <>
+      <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
@@ -296,369 +348,7 @@ Buka tautan di atas dan masukkan PIN ${pin} untuk masuk ke aplikasi.`;
             </div>
           )}
 
-          {/* Form Add / Edit Drawer */}
-          {(isAddingNew || editingEmail) && (
-            <form onSubmit={handleSave} className="p-4 bg-blue-50/60 rounded-2xl border border-blue-200 space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-blue-200/80">
-                <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-blue-700" />
-                  <span>{isAddingNew ? 'Tambah Akun Staf Baru' : `Edit Hak Akses: ${formEmail}`}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => { setIsAddingNew(false); setEditingEmail(null); }}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-800"
-                >
-                  Batal
-                </button>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                    Email Staf / Akun
-                  </label>
-                  <input
-                    type="email"
-                    value={formEmail}
-                    onChange={e => setFormEmail(e.target.value)}
-                    disabled={!isAddingNew}
-                    placeholder="nama.staf@gmail.com"
-                    required
-                    className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500 disabled:bg-slate-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                    Nama Lengkap / Jabatan
-                  </label>
-                  <input
-                    type="text"
-                    value={formNama}
-                    onChange={e => setFormNama(e.target.value)}
-                    placeholder="Contoh: Budi Santoso (Mandor Cengkeh)"
-                    required
-                    className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-slate-600">
-                      Peran Pengguna (Role)
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextMode = !isCustomRoleMode;
-                        setIsCustomRoleMode(nextMode);
-                        if (nextMode) {
-                          setCustomRoleInput('');
-                        } else {
-                          setFormRole('Staff Operasional');
-                          applyRoleDefaultPermissions('Staff Operasional');
-                        }
-                      }}
-                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 cursor-pointer"
-                      title={isCustomRoleMode ? 'Pilih peran dari daftar' : 'Tambah peran kustom baru'}
-                    >
-                      {isCustomRoleMode ? (
-                        <span>Pilih Daftar</span>
-                      ) : (
-                        <>
-                          <Plus className="w-3 h-3" />
-                          <span>+ Peran Baru</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {isCustomRoleMode ? (
-                    <div className="space-y-1">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={customRoleInput}
-                          onChange={e => {
-                            const val = e.target.value;
-                            setCustomRoleInput(val);
-                            setFormRole(val);
-                            applyRoleDefaultPermissions(val);
-                          }}
-                          placeholder="Ketik peran baru (e.g. Accounting)..."
-                          autoFocus
-                          required={isCustomRoleMode}
-                          className="w-full text-xs px-2.5 py-2 bg-white border border-blue-400 rounded-lg text-slate-900 font-semibold focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-xs"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-blue-600 font-medium">Contoh: Accounting, QC, Mandor</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsCustomRoleMode(false);
-                            setFormRole('Staff Operasional');
-                            applyRoleDefaultPermissions('Staff Operasional');
-                          }}
-                          className="text-slate-400 hover:text-slate-600 underline"
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <select
-                      value={formRole}
-                      onChange={e => {
-                        const val = e.target.value;
-                        if (val === '__ADD_NEW__') {
-                          setIsCustomRoleMode(true);
-                          setCustomRoleInput('');
-                          setFormRole('');
-                        } else {
-                          setFormRole(val);
-                          applyRoleDefaultPermissions(val);
-                        }
-                      }}
-                      className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500 font-medium"
-                    >
-                      <optgroup label="Peran Bawaan Standar">
-                        {defaultRoles.map(r => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </optgroup>
-                      {customRoles.length > 0 && (
-                        <optgroup label="Peran Kustom Tambahan">
-                          {customRoles.map(r => (
-                            <option key={r} value={r}>{r}</option>
-                          ))}
-                        </optgroup>
-                      )}
-                      <option value="__ADD_NEW__" className="text-blue-600 font-bold">
-                        + Tambah Peran Baru (Kustom)...
-                      </option>
-                    </select>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                    Password Awal / PIN Bawaan
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                    <input
-                      type="text"
-                      value={formDefaultPin}
-                      onChange={e => setFormDefaultPin(e.target.value)}
-                      placeholder="Default: 123456"
-                      className="w-full pl-8 pr-2 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <span className="text-[10px] text-slate-400">PIN default pabrik: 123456</span>
-                </div>
-              </div>
-
-              {/* Granular Feature Access Checkboxes (Hak Akses Fitur Aplikasi) */}
-              <div className="bg-white p-3.5 rounded-xl border border-blue-200/90 shadow-2xs space-y-2.5">
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 flex-wrap gap-1">
-                  <div className="flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
-                      Hak Akses Fitur Aplikasi (Centang Fitur yang Diizinkan)
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-400">
-                    Preset otomatis aktif sesuai peran, dapat disesuaikan manual
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
-                  {/* 1. Fitur AI Cerdas (AI Logistik & Bot Asisten) */}
-                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
-                    formCanAccessAI 
-                      ? 'bg-purple-50/70 border-purple-200 text-purple-950' 
-                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={formCanAccessAI}
-                      onChange={e => setFormCanAccessAI(e.target.checked)}
-                      className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
-                    />
-                    <div className="text-xs">
-                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
-                        <span>Fitur AI Cerdas</span>
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-purple-100 text-purple-700 font-semibold font-mono">Gemini</span>
-                      </span>
-                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
-                        AI Logistik, rekomendasi persediaan, dan AI Stock Bot
-                      </span>
-                    </div>
-                  </label>
-
-                  {/* 2. Mode Dev & Headless GAS API */}
-                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
-                    formHasDevAccess 
-                      ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950' 
-                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={formHasDevAccess}
-                      onChange={e => setFormHasDevAccess(e.target.checked)}
-                      className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                    />
-                    <div className="text-xs">
-                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
-                        <span>Mode Dev (Headless GAS)</span>
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-indigo-100 text-indigo-700 font-semibold font-mono">API</span>
-                      </span>
-                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
-                        Akses payload JSON, switchboard pengembang &amp; parameter GAS
-                      </span>
-                    </div>
-                  </label>
-
-                  {/* 3. Export PDF & Cetak Kartu */}
-                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
-                    formCanExport 
-                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' 
-                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={formCanExport}
-                      onChange={e => setFormCanExport(e.target.checked)}
-                      className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                    />
-                    <div className="text-xs">
-                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
-                        <span>Izin Export PDF Laporan</span>
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-700 font-semibold font-mono">PDF</span>
-                      </span>
-                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
-                        Cetak dan unduh laporan persediaan &amp; kartu stok format PDF
-                      </span>
-                    </div>
-                  </label>
-
-                  {/* 4. Audit Rekonsiliasi & Switch Board Susut */}
-                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
-                    formCanAccessReconciliation 
-                      ? 'bg-amber-50/70 border-amber-200 text-amber-950' 
-                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={formCanAccessReconciliation}
-                      onChange={e => setFormCanAccessReconciliation(e.target.checked)}
-                      className="mt-0.5 rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
-                    />
-                    <div className="text-xs">
-                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
-                        <span>Audit Rekonsiliasi Susut</span>
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-semibold font-mono">Audit</span>
-                      </span>
-                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
-                        Panel verifikasi cutoff, selisih timbangan &amp; status susut
-                      </span>
-                    </div>
-                  </label>
-
-                  {/* 5. Kelola Hak Akses Staf (Admin RBAC) */}
-                  <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
-                    formCanManageUsers 
-                      ? 'bg-rose-50/70 border-rose-200 text-rose-950' 
-                      : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={formCanManageUsers}
-                      onChange={e => setFormCanManageUsers(e.target.checked)}
-                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer"
-                    />
-                    <div className="text-xs">
-                      <span className="font-bold flex items-center gap-1.5 text-slate-800">
-                        <span>Kelola Hak Akses Staf</span>
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-rose-100 text-rose-700 font-semibold font-mono">Admin</span>
-                      </span>
-                      <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
-                        Membuka whitelist user, atur izin fitur &amp; reset PIN staf lain
-                      </span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Komoditas Checkboxes */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[11px] font-bold text-slate-700 block">
-                    Hak Akses Persediaan Bahan Baku:
-                  </label>
-                  <div className="flex items-center gap-2 text-[11px]">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectAllKomoditas(true)}
-                      className="text-blue-600 hover:underline font-semibold"
-                    >
-                      Pilih Semua (Full Akses)
-                    </button>
-                    <span className="text-slate-300">|</span>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectAllKomoditas(false)}
-                      className="text-slate-500 hover:underline"
-                    >
-                      Kosongkan
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white p-3 rounded-xl border border-blue-200/80">
-                  {availableKomoditas.map(k => {
-                    const isChecked = formAllowedKomoditas.includes('*') || 
-                                     formAllowedKomoditas.includes('all') || 
-                                     formAllowedKomoditas.includes(k);
-                    return (
-                      <label key={k} className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer p-1.5 rounded-lg hover:bg-slate-50">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleKomoditas(k)}
-                          className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-                        />
-                        <span className="font-medium truncate">{k}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <p className="text-[10.5px] text-slate-500 mt-1">
-                  * Staf hanya akan melihat kartu stok, mutasi riwayat, dan saldo kode untuk bahan yang dicentang di atas.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-blue-200">
-                <button
-                  type="button"
-                  onClick={() => { setIsAddingNew(false); setEditingEmail(null); }}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
-                >
-                  Simpan Hak Akses
-                </button>
-              </div>
-            </form>
-          )}
 
           {/* User Table Header Bar & Roles Pill Summary */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -685,12 +375,15 @@ Buka tautan di atas dan masukkan PIN ${pin} untuk masuk ke aplikasi.`;
                         <button
                           type="button"
                           onClick={() => {
-                            if (window.confirm(`Hapus peran kustom "${r}" yang tidak terpakai ini?`)) {
-                              GasService.deleteCustomRole(r);
-                              setAvailableRoles(GasService.getAvailableRoles());
-                              setStatusMessage(`🗑️ Peran kustom "${r}" berhasil dihapus.`);
-                              setTimeout(() => setStatusMessage(null), 3000);
-                            }
+                            showConfirm(
+                              `Hapus peran kustom "${r}" yang tidak terpakai ini?`,
+                              () => {
+                                GasService.deleteCustomRole(r);
+                                setAvailableRoles(GasService.getAvailableRoles());
+                                setStatusMessage(`🗑️ Peran kustom "${r}" berhasil dihapus.`);
+                                setTimeout(() => setStatusMessage(null), 3000);
+                              }
+                            );
                           }}
                           className="hover:text-rose-600 ml-0.5"
                           title="Hapus peran kustom"
@@ -885,5 +578,396 @@ Buka tautan di atas dan masukkan PIN ${pin} untuk masuk ke aplikasi.`;
         </div>
       </div>
     </div>
-  );
+
+    {/* Centered Modal: Edit / Tambah Hak Akses Pengguna */}
+    {(isAddingNew || editingEmail) && (
+      <div className="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden my-auto animate-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
+          {/* Header Pop-up */}
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-teal-50/90 to-blue-50/70 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#00696b] text-white flex items-center justify-center shadow-xs">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-[#00696b] uppercase tracking-wider">
+                  monitoring stock apps says
+                </div>
+                <h4 className="text-sm sm:text-base font-bold text-slate-900">
+                  {isAddingNew ? 'Tambah Akun Staf Baru' : `Edit Hak Akses: ${formEmail}`}
+                </h4>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setIsAddingNew(false); setEditingEmail(null); }}
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200/60 transition-colors cursor-pointer"
+              title="Batal dan tutup"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Scrollable Form Body */}
+          <form onSubmit={handleSave} className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                  Email Staf / Akun
+                </label>
+                <input
+                  type="email"
+                  value={formEmail}
+                  onChange={e => setFormEmail(e.target.value)}
+                  disabled={!isAddingNew}
+                  placeholder="nama.staf@gmail.com"
+                  required
+                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#00696b] disabled:bg-slate-100 disabled:text-slate-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                  Nama Lengkap / Jabatan
+                </label>
+                <input
+                  type="text"
+                  value={formNama}
+                  onChange={e => setFormNama(e.target.value)}
+                  placeholder="Contoh: Budi Santoso (Mandor Cengkeh)"
+                  required
+                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#00696b]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-600">
+                    Peran Pengguna (Role)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextMode = !isCustomRoleMode;
+                      setIsCustomRoleMode(nextMode);
+                      if (nextMode) {
+                        setCustomRoleInput('');
+                      } else {
+                        setFormRole('Staff Operasional');
+                        applyRoleDefaultPermissions('Staff Operasional');
+                      }
+                    }}
+                    className="text-[10px] font-bold text-[#00696b] hover:underline flex items-center gap-0.5 cursor-pointer"
+                    title={isCustomRoleMode ? 'Pilih peran dari daftar' : 'Tambah peran kustom baru'}
+                  >
+                    {isCustomRoleMode ? (
+                      <span>Pilih Dari Daftar</span>
+                    ) : (
+                      <>
+                        <Plus className="w-3 h-3" />
+                        <span>+ Peran Baru</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {isCustomRoleMode ? (
+                  <div className="space-y-1">
+                    <input
+                      type="text"
+                      value={customRoleInput}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setCustomRoleInput(val);
+                        setFormRole(val);
+                        applyRoleDefaultPermissions(val);
+                      }}
+                      placeholder="Ketik peran baru (e.g. Accounting)..."
+                      autoFocus
+                      required={isCustomRoleMode}
+                      className="w-full text-xs px-3 py-2 bg-white border border-[#00696b] rounded-xl text-slate-900 font-semibold focus:outline-hidden focus:ring-2 focus:ring-[#00696b] shadow-xs"
+                    />
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-[#00696b] font-medium">Contoh: Accounting, QC, Mandor</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomRoleMode(false);
+                          setFormRole('Staff Operasional');
+                          applyRoleDefaultPermissions('Staff Operasional');
+                        }}
+                        className="text-slate-400 hover:text-slate-600 underline cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={formRole}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val === '__ADD_NEW__') {
+                        setIsCustomRoleMode(true);
+                        setCustomRoleInput('');
+                        setFormRole('');
+                      } else {
+                        setFormRole(val);
+                        applyRoleDefaultPermissions(val);
+                      }
+                    }}
+                    className="w-full text-xs px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#00696b] font-medium"
+                  >
+                    <optgroup label="Peran Bawaan Standar">
+                      {defaultRoles.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </optgroup>
+                    {customRoles.length > 0 && (
+                      <optgroup label="Peran Kustom Tambahan">
+                        {customRoles.map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <option value="__ADD_NEW__" className="text-[#00696b] font-bold">
+                      + Tambah Peran Baru (Kustom)...
+                    </option>
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                  Password Awal / PIN Bawaan
+                </label>
+                <div className="relative">
+                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    value={formDefaultPin}
+                    onChange={e => setFormDefaultPin(e.target.value)}
+                    placeholder="Default: 123456"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-800 font-mono focus:outline-hidden focus:ring-2 focus:ring-[#00696b]"
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400">PIN default pabrik: 123456</span>
+              </div>
+            </div>
+
+            {/* Granular Feature Access Checkboxes (Hak Akses Fitur Aplikasi) */}
+            <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 flex-wrap gap-1">
+                <div className="flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-[#00696b]" />
+                  <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
+                    Hak Akses Fitur Aplikasi (Centang Fitur yang Diizinkan)
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Preset otomatis aktif sesuai peran, dapat disesuaikan manual
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                {/* 1. Fitur AI Cerdas */}
+                <label className={`flex items-start gap-2.5 p-2 rounded-xl border transition-all cursor-pointer ${
+                  formCanAccessAI 
+                    ? 'bg-purple-50/70 border-purple-200 text-purple-950' 
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formCanAccessAI}
+                    onChange={e => setFormCanAccessAI(e.target.checked)}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                      <span>Fitur AI Cerdas</span>
+                      <span className="text-[9.5px] px-1 py-0.2 rounded bg-purple-100 text-purple-700 font-semibold font-mono">Gemini</span>
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                      AI Logistik, rekomendasi persediaan, dan AI Stock Bot
+                    </span>
+                  </div>
+                </label>
+
+                {/* 2. Mode Dev & Headless GAS API */}
+                <label className={`flex items-start gap-2.5 p-2 rounded-xl border transition-all cursor-pointer ${
+                  formHasDevAccess 
+                    ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950' 
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formHasDevAccess}
+                    onChange={e => setFormHasDevAccess(e.target.checked)}
+                    className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                      <span>Mode Dev (Headless GAS)</span>
+                      <span className="text-[9.5px] px-1 py-0.2 rounded bg-indigo-100 text-indigo-700 font-semibold font-mono">API</span>
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                      Akses payload JSON, switchboard pengembang &amp; parameter GAS
+                    </span>
+                  </div>
+                </label>
+
+                {/* 3. Export PDF & Cetak Kartu */}
+                <label className={`flex items-start gap-2.5 p-2 rounded-xl border transition-all cursor-pointer ${
+                  formCanExport 
+                    ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' 
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formCanExport}
+                    onChange={e => setFormCanExport(e.target.checked)}
+                    className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                      <span>Izin Export PDF Laporan</span>
+                      <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-700 font-semibold font-mono">PDF</span>
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                      Cetak dan unduh laporan persediaan &amp; kartu stok format PDF
+                    </span>
+                  </div>
+                </label>
+
+                {/* 4. Audit Rekonsiliasi & Switch Board Susut */}
+                <label className={`flex items-start gap-2.5 p-2 rounded-xl border transition-all cursor-pointer ${
+                  formCanAccessReconciliation 
+                    ? 'bg-amber-50/70 border-amber-200 text-amber-950' 
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                  }`}>
+                  <input
+                    type="checkbox"
+                    checked={formCanAccessReconciliation}
+                    onChange={e => setFormCanAccessReconciliation(e.target.checked)}
+                    className="mt-0.5 rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                      <span>Audit Rekonsiliasi Susut</span>
+                      <span className="text-[9.5px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-semibold font-mono">Audit</span>
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                      Panel verifikasi cutoff, selisih timbangan &amp; status susut
+                    </span>
+                  </div>
+                </label>
+
+                {/* 5. Kelola Hak Akses Staf (Admin RBAC) */}
+                <label className={`flex items-start gap-2.5 p-2 rounded-xl border transition-all cursor-pointer ${
+                  formCanManageUsers 
+                    ? 'bg-rose-50/70 border-rose-200 text-rose-950' 
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100/50'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formCanManageUsers}
+                    onChange={e => setFormCanManageUsers(e.target.checked)}
+                    className="mt-0.5 rounded text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold flex items-center gap-1.5 text-slate-800">
+                      <span>Kelola Hak Akses Staf</span>
+                      <span className="text-[9.5px] px-1 py-0.2 rounded bg-rose-100 text-rose-700 font-semibold font-mono">Admin</span>
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 block leading-tight mt-0.5">
+                      Membuka whitelist user, atur izin fitur &amp; reset PIN staf lain
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Komoditas Checkboxes */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-bold text-slate-700 block">
+                  Hak Akses Persediaan Bahan Baku:
+                </label>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAllKomoditas(true)}
+                    className="text-[#00696b] hover:underline font-semibold cursor-pointer"
+                  >
+                    Pilih Semua (Full Akses)
+                  </button>
+                  <span className="text-slate-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAllKomoditas(false)}
+                    className="text-slate-500 hover:underline cursor-pointer"
+                  >
+                    Kosongkan
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50/70 p-3 rounded-2xl border border-slate-200">
+                {availableKomoditas.map(k => {
+                  const isChecked = formAllowedKomoditas.includes('*') || 
+                                   formAllowedKomoditas.includes('all') || 
+                                   formAllowedKomoditas.includes(k);
+                  return (
+                    <label key={k} className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer p-2 rounded-xl bg-white border border-slate-200/80 hover:bg-emerald-50/40">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => handleToggleKomoditas(k)}
+                        className="rounded text-[#00696b] focus:ring-[#00696b] w-4 h-4 cursor-pointer"
+                      />
+                      <span className="font-medium truncate">{k}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">
+                * Staf hanya akan melihat kartu stok, mutasi riwayat, dan saldo kode untuk bahan yang dicentang di atas.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => { setIsAddingNew(false); setEditingEmail(null); }}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 text-xs font-bold text-white bg-[#00696b] hover:bg-[#005254] rounded-xl shadow-xs transition-colors cursor-pointer"
+              >
+                Simpan Hak Akses
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* Centered Modal: Konfirmasi & Alert Hapus/Reset */}
+    <StockAppsConfirmModal
+      isOpen={confirmModal.isOpen}
+      title={confirmModal.title}
+      message={confirmModal.message}
+      isAlert={confirmModal.isAlert}
+      confirmLabel={confirmModal.confirmLabel}
+      cancelLabel={confirmModal.cancelLabel}
+      onConfirm={confirmModal.onConfirm}
+      onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+    />
+  </>
+);
 };

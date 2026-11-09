@@ -14,6 +14,7 @@ import {
   Tag
 } from 'lucide-react';
 import { useSwitchBoards, SwitchBoardItem } from '../../services/switchboardService';
+import { StockAppsConfirmModal } from './StockAppsConfirmModal';
 
 interface SwitchAppModalProps {
   isOpen: boolean;
@@ -41,7 +42,21 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
   const [formUrl, setFormUrl] = useState<string>('');
   const [formCommodity, setFormCommodity] = useState<string>('all');
   const [formError, setFormError] = useState<string>('');
-  const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
+  
+  // Custom Centered Confirmation Dialog ('monitoring stock apps says')
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: 'monitoring stock apps says',
+    message: '',
+    onConfirm: () => {}
+  });
 
   if (!isOpen) return null;
 
@@ -139,23 +154,41 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
   const handleDeleteItem = (id: string) => {
     const target = boards.find(b => b.id === id);
     if (!target) return;
-    if (window.confirm(`Yakin ingin menghapus tautan "${target.nama}"?`)) {
-      const updated = boards.filter(b => b.id !== id);
-      updateBoards(updated);
-      if (editingItem?.id === id) {
-        handleCancelForm();
+    setConfirmModal({
+      isOpen: true,
+      title: 'monitoring stock apps says',
+      message: `Yakin ingin menghapus tautan "${target.nama}"?`,
+      confirmLabel: 'OK',
+      cancelLabel: 'Cancel',
+      onConfirm: () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        const updated = boards.filter(b => b.id !== id);
+        updateBoards(updated);
+        if (editingItem?.id === id) {
+          handleCancelForm();
+        }
       }
-    }
+    });
   };
 
-  const handleResetToDefault = () => {
-    resetBoards();
-    setShowResetConfirm(false);
-    handleCancelForm();
+  const handlePromptReset = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'monitoring stock apps says',
+      message: 'Kembalikan setelan modul ke daftar default Vercel? Semua tautan kustom tambahan akan diatur ulang.',
+      confirmLabel: 'OK',
+      cancelLabel: 'Cancel',
+      onConfirm: () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        resetBoards();
+        handleCancelForm();
+      }
+    });
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <>
+      <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
         
         {/* Modal Header */}
@@ -185,7 +218,6 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
                 onClick={() => {
                   setIsManageMode(!isManageMode);
                   handleCancelForm();
-                  setShowResetConfirm(false);
                 }}
                 className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
                   isManageMode 
@@ -210,151 +242,7 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1">
-          {/* Konfirmasi Reset Default */}
-          {showResetConfirm && (
-            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-2 text-xs animate-in fade-in">
-              <div className="flex items-center gap-2 font-bold text-amber-800">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
-                <span>Kembalikan ke Setelan URL Default Vercel?</span>
-              </div>
-              <p className="text-amber-700">
-                Semua tautan Rekap Proses Blend, Krosok, Tembakau, dan Cengkeh akan diatur ulang ke domain default Vercel yang telah ditentukan. Modul tambahan baru akan dihapus.
-              </p>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleResetToDefault}
-                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg shadow-2xs transition-colors"
-                >
-                  Ya, Reset ke Default
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowResetConfirm(false)}
-                  className="px-3 py-1.5 bg-white border border-amber-300 text-amber-800 font-medium rounded-lg hover:bg-amber-100/50 transition-colors"
-                >
-                  Batal
-                </button>
-              </div>
-            </div>
-          )}
 
-          {/* Form Tambah Baru atau Edit */}
-          {canManage && (isAddingNew || editingItem) ? (
-            <form onSubmit={handleSaveForm} className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3.5 animate-in fade-in">
-              <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
-                <div className="font-bold text-sm text-blue-900 flex items-center gap-2">
-                  {isAddingNew ? <Plus className="w-4 h-4 text-blue-600" /> : <Edit3 className="w-4 h-4 text-blue-600" />}
-                  <span>{isAddingNew ? 'Tambah Modul / Tautan Baru' : `Edit: ${editingItem?.nama}`}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCancelForm}
-                  className="text-slate-400 hover:text-slate-600 text-xs font-semibold"
-                >
-                  Batal
-                </button>
-              </div>
-
-              {formError && (
-                <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Nama Modul</label>
-                <input
-                  type="text"
-                  value={formNama}
-                  onChange={e => setFormNama(e.target.value)}
-                  placeholder="Contoh: Rekap Proses Blend"
-                  className="w-full px-3 py-2 text-xs bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-blue-500" />
-                  <span>URL Tautan (Domain Vercel / Web Apps)</span>
-                </label>
-                <input
-                  type="text"
-                  value={formUrl}
-                  onChange={e => setFormUrl(e.target.value)}
-                  placeholder="https://rekap-data-..."
-                  className="w-full px-3 py-2 text-xs font-mono bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Kategori Bahan</span>
-                  </label>
-                  <select
-                    value={formCommodity}
-                    onChange={e => setFormCommodity(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
-                  >
-                    <option value="all">Semua Bahan / Umum</option>
-                    <option value="blend">Blend Tembakau</option>
-                    <option value="cengkeh">Cengkeh</option>
-                    <option value="tembakau">Tembakau</option>
-                    <option value="krosok">Krosok Rajang</option>
-                    <option value="custom">Lainnya / Khusus</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Keterangan Singkat</label>
-                  <input
-                    type="text"
-                    value={formDesc}
-                    onChange={e => setFormDesc(e.target.value)}
-                    placeholder="Contoh: Monitoring susut pengolahan"
-                    className="w-full px-3 py-2 text-xs bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <div>
-                  {editingItem && !editingItem.isCurrent && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteItem(editingItem.id)}
-                      className="text-xs text-rose-600 hover:text-rose-800 flex items-center gap-1 font-semibold p-1 hover:bg-rose-50 rounded"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Hapus Modul</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCancelForm}
-                    className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200/70 rounded-lg transition-colors"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Simpan</span>
-                  </button>
-                </div>
-              </div>
-            </form>
-          ) : null}
 
           {/* Daftar Modul */}
           <div className="space-y-2.5">
@@ -442,11 +330,11 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
               </button>
             )}
 
-            {canManage && isManageMode && !showResetConfirm && (
+            {canManage && isManageMode && (
               <button
                 type="button"
-                onClick={() => setShowResetConfirm(true)}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors"
+                onClick={handlePromptReset}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
                 title="Reset kembali ke URL default Vercel"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -465,5 +353,149 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
         </div>
       </div>
     </div>
-  );
+
+    {/* Centered Pop-up Modal: Edit & Tambah Modul */}
+    {canManage && (isAddingNew || editingItem) && (
+      <div className="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden my-auto animate-in zoom-in-95 duration-150 flex flex-col">
+          {/* Header Pop-up */}
+          <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-teal-50/90 to-emerald-50/70 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#00696b] text-white flex items-center justify-center shadow-xs">
+                {isAddingNew ? <Plus className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-[#00696b] uppercase tracking-wider">
+                  monitoring stock apps says
+                </div>
+                <h4 className="text-sm sm:text-base font-bold text-slate-900">
+                  {isAddingNew ? 'Tambah Modul / Tautan Baru' : `Edit: ${editingItem?.nama}`}
+                </h4>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleCancelForm}
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200/60 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Form Content */}
+          <form onSubmit={handleSaveForm} className="p-5 sm:p-6 space-y-4">
+            {formError && (
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700">Nama Modul</label>
+              <input
+                type="text"
+                value={formNama}
+                onChange={e => setFormNama(e.target.value)}
+                placeholder="Contoh: Rekap Proses Blend"
+                className="w-full px-3.5 py-2.5 text-xs bg-white rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-[#00696b] text-slate-900"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-[#00696b]" />
+                <span>URL Tautan (Domain Vercel / Web Apps)</span>
+              </label>
+              <input
+                type="text"
+                value={formUrl}
+                onChange={e => setFormUrl(e.target.value)}
+                placeholder="https://rekap-data-..."
+                className="w-full px-3.5 py-2.5 text-xs font-mono bg-white rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-[#00696b] text-slate-900"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Kategori Bahan</span>
+                </label>
+                <select
+                  value={formCommodity}
+                  onChange={e => setFormCommodity(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs bg-white rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-[#00696b] text-slate-900 font-medium"
+                >
+                  <option value="all">Semua Bahan / Umum</option>
+                  <option value="blend">Blend Tembakau</option>
+                  <option value="cengkeh">Cengkeh</option>
+                  <option value="tembakau">Tembakau</option>
+                  <option value="krosok">Krosok Rajang</option>
+                  <option value="custom">Lainnya / Khusus</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Keterangan Singkat</label>
+                <input
+                  type="text"
+                  value={formDesc}
+                  onChange={e => setFormDesc(e.target.value)}
+                  placeholder="Contoh: Monitoring susut pengolahan"
+                  className="w-full px-3.5 py-2.5 text-xs bg-white rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-[#00696b] text-slate-900"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+              <div>
+                {editingItem && !editingItem.isCurrent && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteItem(editingItem.id)}
+                    className="text-xs text-rose-600 hover:text-rose-800 flex items-center gap-1.5 font-bold p-1.5 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Hapus Modul</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelForm}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold bg-[#00696b] hover:bg-[#005254] text-white rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Simpan</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* Centered Modal: Konfirmasi Hapus & Reset */}
+    <StockAppsConfirmModal
+      isOpen={confirmModal.isOpen}
+      title={confirmModal.title}
+      message={confirmModal.message}
+      confirmLabel={confirmModal.confirmLabel}
+      cancelLabel={confirmModal.cancelLabel}
+      onConfirm={confirmModal.onConfirm}
+      onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+    />
+  </>
+);
 };
