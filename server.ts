@@ -847,6 +847,51 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     }
   });
 
+  const ROLE_STATUS_FILE = path.join(DATA_DIR, 'role_statuses.json');
+  let inMemoryRoleStatuses: Record<string, string> = {};
+
+  const readRoleStatusesFromFile = (): Record<string, string> => {
+    try {
+      if (fs.existsSync(ROLE_STATUS_FILE)) {
+        const raw = fs.readFileSync(ROLE_STATUS_FILE, 'utf-8');
+        return JSON.parse(raw);
+      }
+    } catch {}
+    return inMemoryRoleStatuses;
+  };
+
+  const writeRoleStatusesToFile = (statuses: Record<string, string>) => {
+    inMemoryRoleStatuses = statuses;
+    try {
+      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(ROLE_STATUS_FILE, JSON.stringify(statuses, null, 2), 'utf-8');
+    } catch (e) {
+      console.warn('Failed to write role statuses to file:', e);
+    }
+  };
+
+  app.get('/api/role-status', (_req, res) => {
+    return res.json({ ok: true, statuses: readRoleStatusesFromFile() });
+  });
+
+  app.post('/api/role-status', (req, res) => {
+    try {
+      const { role, status } = req.body;
+      if (!role) return res.status(400).json({ ok: false, error: 'Role is required' });
+      const cleanRole = String(role).trim().toLowerCase();
+      const current = readRoleStatusesFromFile();
+      current[cleanRole] = status === 'inactive' ? 'inactive' : 'active';
+      writeRoleStatusesToFile(current);
+
+      // 2-Way Sync forward to Google Sheets
+      forwardToGas({ action: 'setrolestatus', role: cleanRole, status: current[cleanRole] });
+
+      return res.json({ ok: true, statuses: current });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   // In-memory micro-cache for GAS proxy to accelerate repeat calls and reduce latency to < 5ms
   const proxyMemoryCache = new Map<string, { data: any; expiry: number }>();
   const PROXY_CACHE_TTL_MS = 60000; // 60 seconds cache for rapid repeat queries

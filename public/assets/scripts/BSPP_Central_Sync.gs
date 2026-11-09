@@ -1533,6 +1533,12 @@ function doGet(e) {
       return jsonResponse_(delRoleGetRes);
     }
 
+    // 6e. API Ubah Status Peran (Aktif / Nonaktif) via GET
+    if (action === "setrolestatus" || action === "rolestatus") {
+      var roleStatusGetRes = setRoleStatusInSheet_(params.role, params.status);
+      return jsonResponse_(roleStatusGetRes);
+    }
+
     // 7. Default: Render Web App Dashboard Elegan
     return htmlResponse_(renderDashboardHtml_());
   } catch (err) {
@@ -1584,6 +1590,13 @@ function doPost(e) {
       var roleToDel = payload.role || (e && e.parameter && e.parameter.role) || "";
       var delRoleRes = deleteCustomRoleFromSheet_(roleToDel);
       return jsonResponse_(delRoleRes);
+    }
+
+    if (action === "setrolestatus" || action === "rolestatus") {
+      var roleToSet = payload.role || (e && e.parameter && e.parameter.role) || "";
+      var statusToSet = (payload.status || (e && e.parameter && e.parameter.status) || "active").toLowerCase();
+      var roleStatusRes = setRoleStatusInSheet_(roleToSet, statusToSet);
+      return jsonResponse_(roleStatusRes);
     }
 
     if (action === "getusers" || action === "users") {
@@ -1979,6 +1992,39 @@ function deleteCustomRoleFromSheet_(roleToDelete) {
       success: true, 
       updatedCount: updated, 
       message: "Peran '" + roleToDelete + "' berhasil dinonaktifkan di Spreadsheet (diturunkan ke Staff Operasional)." 
+    };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+function setRoleStatusInSheet_(roleName, status) {
+  try {
+    if (!roleName) return { success: false, message: "Peran kosong" };
+    var cleanRole = String(roleName).toLowerCase().trim();
+    var isInactive = String(status).toLowerCase().trim() === "inactive" || String(status).toLowerCase().trim() === "nonaktif";
+    var sheetStatus = isInactive ? "Nonaktif" : "Aktif";
+    var ss = getTargetSpreadsheet_();
+    var sh = ss.getSheetByName("HAK_AKSES_USER");
+    if (!sh || sh.getLastRow() < 2) return { success: true, message: "Sheet kosong" };
+
+    var lastRow = sh.getLastRow();
+    var roles = sh.getRange(2, 4, lastRow - 1, 1).getValues();
+    var updated = 0;
+    var nowStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss") + " WIB";
+
+    for (var i = 0; i < roles.length; i++) {
+      if (String(roles[i][0]).toLowerCase().trim() === cleanRole) {
+        sh.getRange(i + 2, 10).setValue(sheetStatus); // Kolom 10: Status Akun
+        sh.getRange(i + 2, 11).setValue(nowStr);      // Kolom 11: Terakhir Diperbarui
+        updated++;
+      }
+    }
+    return { 
+      success: true, 
+      updatedCount: updated, 
+      status: sheetStatus,
+      message: "Status peran '" + roleName + "' berhasil diubah ke " + sheetStatus + " di Spreadsheet (" + updated + " akun diperbarui)." 
     };
   } catch (e) {
     return { success: false, error: e.message };

@@ -28,7 +28,7 @@ import {
   ExternalLink,
   FileCode
 } from 'lucide-react';
-import { UserAccessConfig, UserRole } from '../../types';
+import { UserAccessConfig, UserRole, RoleStatus } from '../../types';
 import { GasService } from '../../services/gasService';
 import { StockAppsConfirmModal } from './StockAppsConfirmModal';
 
@@ -51,6 +51,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formNama, setFormNama] = useState<string>('');
   const [formRole, setFormRole] = useState<UserRole>('Staff Operasional');
   const [availableRoles, setAvailableRoles] = useState<string[]>(() => GasService.getAvailableRoles());
+  const [roleStatuses, setRoleStatuses] = useState<Record<string, RoleStatus>>(() => GasService.getRoleStatuses());
   const [isCustomRoleMode, setIsCustomRoleMode] = useState<boolean>(false);
   const [customRoleInput, setCustomRoleInput] = useState<string>('');
   const [formHasDevAccess, setFormHasDevAccess] = useState<boolean>(false);
@@ -342,6 +343,19 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
     URL.revokeObjectURL(url);
   };
 
+  const handleToggleRoleStatus = (roleName: string, status: 'active' | 'inactive') => {
+    GasService.setRoleStatus(roleName, status);
+    const updated = GasService.getRoleStatuses();
+    setRoleStatuses(updated);
+    setUsers(GasService.getUserConfigs());
+    setStatusMessage(
+      status === 'active'
+        ? `🟢 Peran "${roleName}" berhasil DIAKTIFKAN. Staf dengan peran ini kini dapat login kembali.`
+        : `⚪ Peran "${roleName}" berhasil DINONAKTIFKAN. Akses staf dengan peran ini ditangguhkan sementara.`
+    );
+    setTimeout(() => setStatusMessage(null), 5000);
+  };
+
   const handleResetPin = (email: string) => {
     showConfirm(
       `Reset PIN untuk ${email} kembali ke PIN default (123456)?`,
@@ -428,14 +442,42 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
                 </span>
                 {availableRoles.map(r => {
                   const isCustom = !defaultRoles.includes(r);
+                  const isProtected = r === 'Web Developer' || r === 'Site Engineer / PM' || r === 'Project Manager';
                   const count = users.filter(u => u.role === r).length;
+                  const isActive = roleStatuses[r.toLowerCase().trim()] !== 'inactive';
+
                   return (
-                    <span 
+                    <div 
                       key={r} 
-                      className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${getRoleBadgeStyle(r)}`}
+                      className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold pl-2.5 pr-1.5 py-1 rounded-xl border transition-all shadow-2xs ${
+                        !isActive 
+                          ? 'bg-slate-100/95 text-slate-500 border-slate-300 opacity-85' 
+                          : getRoleBadgeStyle(r)
+                      }`}
                     >
-                      <span>{r}</span>
+                      <span className={!isActive ? 'line-through text-slate-400 font-medium' : ''}>{r}</span>
                       <span className="opacity-70 text-[9px]">({count})</span>
+
+                      {!isProtected ? (
+                        <select
+                          value={isActive ? 'active' : 'inactive'}
+                          onChange={(e) => handleToggleRoleStatus(r, e.target.value as 'active' | 'inactive')}
+                          className={`text-[9.5px] font-bold rounded-lg px-1.5 py-0.5 border cursor-pointer transition-colors shadow-2xs ${
+                            isActive
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                              : 'bg-slate-200 text-slate-700 border-slate-400 hover:bg-slate-300 font-bold'
+                          }`}
+                          title={`Ubah status peran ${r}`}
+                        >
+                          <option value="active">🟢 Aktif</option>
+                          <option value="inactive">⚪ Nonaktif</option>
+                        </select>
+                      ) : (
+                        <span className="text-[8.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shadow-2xs">
+                          Sistem
+                        </span>
+                      )}
+
                       {isCustom && count === 0 && (
                         <button
                           type="button"
@@ -450,13 +492,13 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
                               }
                             );
                           }}
-                          className="hover:text-rose-600 ml-0.5"
-                          title="Hapus peran kustom"
+                          className="hover:text-rose-600 p-0.5 rounded hover:bg-rose-50 transition-colors ml-0.5 cursor-pointer"
+                          title="Hapus permanen peran kustom yang kosong"
                         >
-                          <X className="w-2.5 h-2.5" />
+                          <X className="w-3 h-3 text-slate-400 hover:text-rose-600" />
                         </button>
                       )}
-                    </span>
+                    </div>
                   );
                 })}
               </div>
@@ -495,6 +537,12 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getRoleBadgeStyle(u.role)}`}>
                         {u.role}
                       </span>
+                      {!GasService.isRoleActive(u.role) && (
+                        <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                          <span>Peran Nonaktif</span>
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-600 flex-wrap pt-0.5">
@@ -816,15 +864,25 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
                     className="w-full text-xs px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#00696b] font-medium"
                   >
                     <optgroup label="Peran Bawaan Standar">
-                      {defaultRoles.map(r => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
+                      {defaultRoles.map(r => {
+                        const isActive = roleStatuses[r.toLowerCase().trim()] !== 'inactive';
+                        return (
+                          <option key={r} value={r} disabled={!isActive && formRole !== r}>
+                            {r} {!isActive ? '(Nonaktif)' : ''}
+                          </option>
+                        );
+                      })}
                     </optgroup>
                     {customRoles.length > 0 && (
                       <optgroup label="Peran Kustom Tambahan">
-                        {customRoles.map(r => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
+                        {customRoles.map(r => {
+                          const isActive = roleStatuses[r.toLowerCase().trim()] !== 'inactive';
+                          return (
+                            <option key={r} value={r} disabled={!isActive && formRole !== r}>
+                              {r} {!isActive ? '(Nonaktif)' : ''}
+                            </option>
+                          );
+                        })}
                       </optgroup>
                     )}
                     <option value="__ADD_NEW__" className="text-[#00696b] font-bold">

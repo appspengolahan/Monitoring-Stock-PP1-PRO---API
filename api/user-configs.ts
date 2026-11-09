@@ -220,6 +220,21 @@ export default async function handler(req: any, res: any) {
     return res.status(200).end();
   }
 
+  // Handle role status update (active / inactive)
+  if (req.body?.action === 'setrolestatus' || req.body?.action === 'role-status') {
+    try {
+      const role = String(req.body?.role || '').trim();
+      const status = req.body?.status === 'inactive' ? 'inactive' : 'active';
+      if (!role) {
+        return res.status(400).json({ ok: false, error: 'Role is required' });
+      }
+      forwardToGas({ action: 'setrolestatus', role, status });
+      return res.status(200).json({ ok: true, role, status });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  }
+
   // Handle custom role deletion
   if (req.body?.action === 'delete-role' || req.query?.action === 'delete-role' || req.body?.deleteRole) {
     try {

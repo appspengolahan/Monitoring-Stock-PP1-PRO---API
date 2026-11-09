@@ -1,4 +1,4 @@
-import { KomoditasData, BSPPData, BSPPEntry, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, SetoranCengkehEntry, PengirimanBlendEntry, CengkehDryerEntry, ReconciliationDisplayConfig } from '../types/index';
+import { KomoditasData, BSPPData, BSPPEntry, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, SetoranCengkehEntry, PengirimanBlendEntry, CengkehDryerEntry, ReconciliationDisplayConfig, RoleStatus } from '../types/index';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 import { parseDateIndo, normalizeDateToIso, getTanggalKey, getEpochTime } from '../utils/dateUtils';
 import { TelemetryService } from './telemetryService';
@@ -22,7 +22,8 @@ const STORAGE_KEYS = {
   CENGKEH_DRYER_RECONCILIATION: 'stockpp1_cengkeh_dryer_reconciliation_v1',
   RECONCILIATION_DISPLAY: 'stockpp1_reconciliation_display_config_v1',
   DELETED_USERS: 'stockpp1_deleted_users_v1',
-  DELETED_ROLES: 'stockpp1_deleted_roles_v1'
+  DELETED_ROLES: 'stockpp1_deleted_roles_v1',
+  ROLE_STATUS: 'stockpp1_role_status_v1'
 };
 
 export class GasService {
@@ -330,6 +331,84 @@ export class GasService {
     const clean = role.trim().toLowerCase();
     const current = this.getDeletedRoles().filter(r => r !== clean);
     localStorage.setItem(STORAGE_KEYS.DELETED_ROLES, JSON.stringify(current));
+  }
+
+  private static roleStatusesMemory: Record<string, RoleStatus> = {};
+
+  public static getRoleStatuses(): Record<string, RoleStatus> {
+    const statuses: Record<string, RoleStatus> = { ...this.roleStatusesMemory };
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEYS.ROLE_STATUS);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed === 'object') {
+            for (const [k, v] of Object.entries(parsed)) {
+              if (v === 'active' || v === 'inactive') {
+                statuses[k.trim().toLowerCase()] = v as RoleStatus;
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+    return statuses;
+  }
+
+  public static isRoleActive(role?: string): boolean {
+    if (!role) return false;
+    const clean = role.trim().toLowerCase();
+    // Developer & PM are protected system administrators and always active
+    if (clean === 'web developer' || clean === 'site engineer / pm' || clean === 'project manager') {
+      return true;
+    }
+    const statuses = this.getRoleStatuses();
+    return statuses[clean] !== 'inactive';
+  }
+
+  public static setRoleStatus(role: string, status: RoleStatus): Record<string, RoleStatus> {
+    const clean = role.trim().toLowerCase();
+    if (!clean) return this.getRoleStatuses();
+    if (clean === 'web developer' || clean === 'site engineer / pm' || clean === 'project manager') {
+      return this.getRoleStatuses();
+    }
+    this.roleStatusesMemory[clean] = status;
+    const current = this.getRoleStatuses();
+    current[clean] = status;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.ROLE_STATUS, JSON.stringify(current));
+      window.dispatchEvent(new CustomEvent('stockpp1_role_status_updated', { detail: { role, status, statuses: current } }));
+
+      // Update user status for all users holding this role
+      try {
+        const configs = this.getUserConfigs();
+        let hasChanges = false;
+        configs.forEach(u => {
+          if (u.role && u.role.trim().toLowerCase() === clean) {
+            u.status = status === 'active' ? 'aktif' : 'nonaktif';
+            hasChanges = true;
+          }
+        });
+        if (hasChanges) {
+          this.saveUserConfigs(configs);
+        }
+      } catch {}
+
+      // Sync with server API
+      fetch('/api/role-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, status })
+      }).catch(e => console.warn('Sync role status failed:', e));
+
+      // 2-Way Sync forward to Google Sheets
+      fetch('/api/gas-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setrolestatus', role, status })
+      }).catch(e => console.warn('Direct GAS role status sync notice:', e));
+    }
+    return current;
   }
 
   public static getAvailableRoles(): string[] {
@@ -904,6 +983,21 @@ export class GasService {
       return { 
         ok: false, 
         message: `Akses Ditolak: Email "${cleanEmail}" belum terdaftar dalam whitelist admin. Silakan minta Admin Produksi atau PM untuk menambahkan email Anda di menu Kelola Hak Akses Staf.` 
+      };
+    }
+
+    // 1b. Check if Role or Account is Inactive
+    if (found.role && !this.isRoleActive(found.role)) {
+      return { 
+        ok: false, 
+        message: `Akses Ditangguhkan: Peran akun Anda ("${found.role}") saat ini sedang dinonaktifkan oleh Admin. Silakan hubungi Admin Produksi atau PM jika memerlukan pengaktifan kembali peran Anda.` 
+      };
+    }
+
+    if (found.status === 'nonaktif') {
+      return { 
+        ok: false, 
+        message: `Akses Ditangguhkan: Akun Anda ("${found.email}") saat ini berstatus nonaktif di sistem. Silakan hubungi Admin Produksi atau PM untuk pengaktifan kembali.` 
       };
     }
 

@@ -6,6 +6,8 @@ export type UserRole =
   | 'Staff Operasional'
   | (string & {});
 
+export type RoleStatus = 'active' | 'inactive';
+
 export interface UserAccessConfig {
   email: string;
   nama: string;
@@ -19,6 +21,7 @@ export interface UserAccessConfig {
   canManageUsers?: boolean;
   canAccessAI?: boolean; // Izin Asisten Cerdas AI (AI Logistik & AI Stock Bot)
   canAccessReconciliation?: boolean; // Izin Menu Rekonsiliasi & Switch Board Susut
+  status?: 'aktif' | 'nonaktif'; // Status staf / akun
 }
 
 export interface UserSession {
