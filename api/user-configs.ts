@@ -119,46 +119,80 @@ const DEFAULT_USERS = [
     canManageUsers: false,
     canAccessAI: false,
     canAccessReconciliation: true
+  },
+  {
+    email: 'adintw40@gmail.com',
+    nama: 'Adin Tri W',
+    role: 'Admin Persediaan Cengkeh',
+    password: '040401',
+    defaultPin: '040401',
+    isDefaultPassword: true,
+    hasDevAccess: false,
+    allowedKomoditas: ['Cengkeh'],
+    canExportPdf: false,
+    canManageUsers: false,
+    canAccessAI: false,
+    canAccessReconciliation: true
   }
 ];
 
+let inMemoryUsers: any[] | null = null;
+let inMemoryRoles: string[] | null = null;
+
 function readUsers(): any[] {
+  if (inMemoryUsers && inMemoryUsers.length > 0) {
+    return inMemoryUsers;
+  }
   try {
     if (fs.existsSync(USERS_FILE)) {
       const raw = fs.readFileSync(USERS_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        inMemoryUsers = parsed;
+        return parsed;
+      }
     }
   } catch {}
-  return DEFAULT_USERS;
+  inMemoryUsers = [...DEFAULT_USERS];
+  return inMemoryUsers;
 }
 
 function writeUsers(users: any[]) {
+  inMemoryUsers = users;
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
   } catch (e) {
-    console.error('Failed to write user configs:', e);
+    // Expected on read-only environments like AWS Lambda / Vercel Serverless
+    console.warn('Filesystem write notice (using in-memory persistence):', e);
   }
 }
 
 function readRoles(): string[] {
+  if (inMemoryRoles && inMemoryRoles.length > 0) {
+    return inMemoryRoles;
+  }
   try {
     if (fs.existsSync(ROLES_FILE)) {
       const raw = fs.readFileSync(ROLES_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        inMemoryRoles = parsed;
+        return parsed;
+      }
     }
   } catch {}
-  return ['Accounting'];
+  inMemoryRoles = ['Accounting', 'Admin Persediaan Cengkeh'];
+  return inMemoryRoles;
 }
 
 function writeRoles(roles: string[]) {
+  inMemoryRoles = roles;
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(ROLES_FILE, JSON.stringify(roles, null, 2), 'utf-8');
   } catch (e) {
-    console.error('Failed to write custom roles:', e);
+    console.warn('Filesystem role write notice:', e);
   }
 }
 

@@ -470,20 +470,32 @@ export class GasService {
   }
 
   public static async syncUsersWithServer(): Promise<UserAccessConfig[]> {
+    const deleted = new Set(this.getDeletedUsers());
+    const emailMap = new Map<string, UserAccessConfig>();
+
+    // 1. Seed with INITIAL_USER_CONFIGS (including baseline whitelisted users)
+    INITIAL_USER_CONFIGS.forEach(u => {
+      const clean = u.email.toLowerCase().trim();
+      if (!deleted.has(clean)) {
+        emailMap.set(clean, { ...u, email: clean });
+      }
+    });
+
+    // 2. Overlay with locally stored configs
+    const current = this.getUserConfigs();
+    current.forEach(u => {
+      const clean = u.email.toLowerCase().trim();
+      if (!deleted.has(clean)) {
+        emailMap.set(clean, u);
+      }
+    });
+
+    // 3. Overlay with server API configs (/api/user-configs)
     try {
       const res = await fetch('/api/user-configs');
       if (res.ok) {
         const json = await res.json();
         if (json && Array.isArray(json.users)) {
-          const deleted = new Set(this.getDeletedUsers());
-          const current = this.getUserConfigs();
-          const emailMap = new Map<string, UserAccessConfig>();
-          current.forEach(u => {
-            const clean = u.email.toLowerCase().trim();
-            if (!deleted.has(clean)) {
-              emailMap.set(clean, u);
-            }
-          });
           json.users.forEach((u: any) => {
             if (u && u.email) {
               const clean = u.email.toLowerCase().trim();
@@ -497,24 +509,76 @@ export class GasService {
               }
             }
           });
-          const merged = Array.from(emailMap.values());
-          this.saveUserConfigs(merged);
-
-          if (Array.isArray(json.customRoles)) {
-            const deletedRoles = new Set(this.getDeletedRoles());
-            json.customRoles.forEach((r: string) => {
-              if (!deletedRoles.has(r.trim().toLowerCase())) {
-                this.addCustomRole(r);
-              }
-            });
-          }
-          return merged;
+        }
+        if (json && Array.isArray(json.customRoles)) {
+          const deletedRoles = new Set(this.getDeletedRoles());
+          json.customRoles.forEach((r: string) => {
+            if (!deletedRoles.has(r.trim().toLowerCase())) {
+              this.addCustomRole(r);
+            }
+          });
         }
       }
     } catch (e) {
-      console.warn('syncUsersWithServer error:', e);
+      console.warn('syncUsersWithServer server API notice:', e);
     }
-    return this.getUserConfigs();
+
+    // 4. Overlay with Google Sheets HAK_AKSES_USER tab (cloud single source of truth across all devices)
+    try {
+      const sheetUrl = 'https://docs.google.com/spreadsheets/d/1Qm3dLQaKpnwCRuIaGxR2UmVxV1MdxbTFvTVnnrRwoK8/gviz/tq?tqx=out:csv&sheet=HAK_AKSES_USER';
+      const sheetRes = await fetch(sheetUrl);
+      if (sheetRes.ok) {
+        const csvText = await sheetRes.text();
+        if (csvText && csvText.includes('Email Staf')) {
+          const rows = csvText.split('\n').map(r => r.trim()).filter(Boolean);
+          for (let i = 1; i < rows.length; i++) {
+            const cols = rows[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+            const email = (cols[1] || '').toLowerCase().trim();
+            if (email && email.includes('@') && !deleted.has(email)) {
+              const nama = cols[2] || email;
+              const role = cols[3] || 'Staff Operasional';
+              const pin = cols[4] || '123456';
+              const rawKomoditas = cols[5] || '*';
+              const allowedKomoditas = rawKomoditas.includes('*') || rawKomoditas.toLowerCase().includes('semua') 
+                ? ['*'] 
+                : rawKomoditas.split(',').map(k => k.trim()).filter(Boolean);
+              const canExportPdf = (cols[6] || '').toLowerCase() === 'diizinkan';
+              const canAccessAI = (cols[7] || '').toLowerCase() === 'diizinkan';
+              const canAccessReconciliation = (cols[8] || '').toLowerCase() !== 'nonaktif';
+              const status = (cols[9] || 'aktif').toLowerCase();
+
+              if (status !== 'nonaktif') {
+                const existing = emailMap.get(email);
+                emailMap.set(email, {
+                  ...existing,
+                  email,
+                  nama: existing?.nama || nama,
+                  role: existing?.role || (role as any),
+                  password: existing?.password || pin,
+                  defaultPin: existing?.defaultPin || pin,
+                  isDefaultPassword: existing?.isDefaultPassword ?? true,
+                  hasDevAccess: existing?.hasDevAccess ?? (role === 'Web Developer' || role === 'Site Engineer / PM'),
+                  allowedKomoditas: existing?.allowedKomoditas || allowedKomoditas,
+                  canExportPdf: existing?.canExportPdf ?? canExportPdf,
+                  canManageUsers: existing?.canManageUsers ?? (role === 'Web Developer' || role === 'Site Engineer / PM' || role === 'Admin Produksi'),
+                  canAccessAI: existing?.canAccessAI ?? canAccessAI,
+                  canAccessReconciliation: existing?.canAccessReconciliation ?? canAccessReconciliation
+                });
+                if (role && !this.DEFAULT_ROLES.includes(role)) {
+                  this.addCustomRole(role);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (sheetErr) {
+      // Fallback silently if offline or sheet unreachable
+    }
+
+    const merged = Array.from(emailMap.values());
+    this.saveUserConfigs(merged);
+    return merged;
   }
 
   public static getUserConfigs(): UserAccessConfig[] {
@@ -545,7 +609,9 @@ export class GasService {
   }
 
   public static saveUserConfigs(configs: UserAccessConfig[]): void {
-    localStorage.setItem(STORAGE_KEYS.USER_CONFIGS, JSON.stringify(configs));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.USER_CONFIGS, JSON.stringify(configs));
+    }
   }
 
   public static upsertUserConfig(config: UserAccessConfig): UserAccessConfig[] {

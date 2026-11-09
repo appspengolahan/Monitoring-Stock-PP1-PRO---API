@@ -723,7 +723,7 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
         if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
-    return ['Accounting'];
+    return ['Accounting', 'Admin Persediaan Cengkeh'];
   };
 
   const writeCustomRolesToFile = (roles: string[]) => {

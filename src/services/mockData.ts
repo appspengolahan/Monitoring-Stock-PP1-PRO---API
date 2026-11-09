@@ -35523,6 +35523,20 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
     canManageUsers: false,
     canAccessAI: false,
     canAccessReconciliation: false
+  },
+  {
+    email: 'adintw40@gmail.com',
+    nama: 'Adin Tri W',
+    role: 'Admin Persediaan Cengkeh',
+    password: '040401',
+    defaultPin: '040401',
+    isDefaultPassword: true,
+    hasDevAccess: false,
+    allowedKomoditas: ['Cengkeh'],
+    canExportPdf: false,
+    canManageUsers: false,
+    canAccessAI: false,
+    canAccessReconciliation: true
   }
 ];
 

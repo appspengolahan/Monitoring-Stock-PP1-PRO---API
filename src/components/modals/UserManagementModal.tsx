@@ -259,16 +259,18 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const handleCopyCredentials = (u: UserAccessConfig) => {
     const pin = u.password || u.defaultPin || '123456';
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const loginUrl = `${origin}?login=true&email=${encodeURIComponent(u.email)}`;
+    const bahanStr = (u.allowedKomoditas || ['*']).join(',');
+    const loginUrl = `${origin}?login=true&email=${encodeURIComponent(u.email)}&pin=${encodeURIComponent(pin)}&role=${encodeURIComponent(u.role)}&nama=${encodeURIComponent(u.nama)}&bahan=${encodeURIComponent(bahanStr)}`;
     const text = `🔐 AKSES MONITORING STOCK PP1 - PT BATU KARANG
 Halo ${u.nama},
 Akun Anda telah didaftarkan ke sistem dengan rincian:
 • Email: ${u.email}
 • Peran (Role): ${u.role}
+• Hak Akses Bahan: ${bahanStr === '*' ? 'Semua Bahan' : bahanStr}
 • PIN/Password Awal: ${pin}
-• Tautan Masuk: ${loginUrl}
+• Tautan Masuk Langsung: ${loginUrl}
 
-Buka tautan di atas dan masukkan PIN ${pin} untuk masuk ke aplikasi.`;
+Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.email} dan PIN ${pin} di halaman login.`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);

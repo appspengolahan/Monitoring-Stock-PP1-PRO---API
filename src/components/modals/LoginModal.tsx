@@ -26,7 +26,37 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         const params = new URLSearchParams(window.location.search);
         const emailParam = params.get('email') || params.get('user');
         const pinParam = params.get('pin') || params.get('pass');
-        if (emailParam) setEmailInput(emailParam.trim());
+        const namaParam = params.get('nama');
+        const roleParam = params.get('role');
+        const bahanParam = params.get('bahan') || params.get('komoditas');
+
+        if (emailParam) {
+          const cleanEmail = emailParam.trim().toLowerCase();
+          setEmailInput(cleanEmail);
+
+          // If invitation parameters are present, auto-register locally on this device
+          if (roleParam) {
+            const roleStr = decodeURIComponent(roleParam);
+            const namaStr = namaParam ? decodeURIComponent(namaParam) : cleanEmail;
+            const pinStr = pinParam ? pinParam.trim() : '123456';
+            const bahanArr = bahanParam ? decodeURIComponent(bahanParam).split(',').map(b => b.trim()).filter(Boolean) : ['*'];
+
+            GasService.upsertUserConfig({
+              email: cleanEmail,
+              nama: namaStr,
+              role: roleStr as any,
+              password: pinStr,
+              defaultPin: pinStr,
+              isDefaultPassword: true,
+              hasDevAccess: roleStr === 'Web Developer' || roleStr === 'Site Engineer / PM',
+              allowedKomoditas: bahanArr.length > 0 ? bahanArr : ['*'],
+              canExportPdf: true,
+              canManageUsers: roleStr === 'Web Developer' || roleStr === 'Site Engineer / PM' || roleStr === 'Admin Produksi',
+              canAccessAI: false,
+              canAccessReconciliation: true
+            });
+          }
+        }
         if (pinParam) setPasswordInput(pinParam.trim());
       } catch (e) {}
     }
