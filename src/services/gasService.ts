@@ -688,7 +688,7 @@ export class GasService {
     }
     this.saveUserConfigs(configs);
 
-    // Sync with server across devices
+    // Sync with server across devices & Google Sheets 2-way sync
     if (typeof window !== 'undefined') {
       try {
         const res = await fetch('/api/user-configs', {
@@ -700,12 +700,18 @@ export class GasService {
           const json = await res.json();
           if (json && Array.isArray(json.users)) {
             this.saveUserConfigs(json.users);
-            return json.users;
           }
         }
       } catch (e) {
         console.warn('Failed to sync user with server:', e);
       }
+
+      // Redundant direct post to Google Sheets webhook via proxy
+      fetch('/api/gas-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'saveuser', user: config })
+      }).catch(e => console.warn('Direct GAS sync notice:', e));
     }
 
     return configs;
@@ -719,6 +725,7 @@ export class GasService {
       target.defaultPin = defaultPin;
       target.isDefaultPassword = true;
       this.saveUserConfigs(configs);
+      this.upsertUserConfigAsync(target).catch(() => {});
     }
     return configs;
   }
@@ -786,6 +793,13 @@ export class GasService {
       } catch (e) {
         console.warn('Failed to delete user on server:', e);
       }
+
+      // Redundant direct post to Google Sheets webhook via proxy
+      fetch('/api/gas-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deleteuser', email: cleanEmail })
+      }).catch(e => console.warn('Direct GAS delete sync notice:', e));
     }
     return configs;
   }

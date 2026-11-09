@@ -242,7 +242,8 @@ function setupUserAccessSheet_(ss) {
     var defaultUsers = [
       [1, "loehendra@gmail.com", "Lalu Mahendra", "Web Developer", "123456", "Semua Komoditas (*)", "Diizinkan", "Diizinkan", "Diizinkan", "Aktif", nowStr],
       [2, "obeetools@gmail.com", "Site Engineer / PM", "Site Engineer / PM", "123456", "Semua Komoditas (*)", "Diizinkan", "Diizinkan", "Diizinkan", "Aktif", nowStr],
-      [3, "staffacc1bkr@gmail.com", "Tri Andini", "Accounting", "123456", "Tembakau Blend, Tembakau & Krosok (Rajang II), Cengkeh, Tembakau & Krosok (Rajang I)", "Diizinkan", "Nonaktif", "Diizinkan", "Aktif", nowStr]
+      [3, "staffacc1bkr@gmail.com", "Tri Andini", "Staff Operasional", "123456", "Tembakau Blend, Tembakau & Krosok (Rajang II), Cengkeh, Tembakau & Krosok (Rajang I)", "Diizinkan", "Nonaktif", "Diizinkan", "Aktif", nowStr],
+      [4, "adintw40@gmail.com", "Adin Tri W", "Admin Persediaan Cengkeh", "040401", "Cengkeh", "Tutup", "Nonaktif", "Diizinkan", "Aktif", nowStr]
     ];
     sheet.getRange(2, 1, defaultUsers.length, headers.length).setValues(defaultUsers);
     sheet.getRange(2, 1, defaultUsers.length, 1).setHorizontalAlignment("center");
@@ -1503,6 +1504,35 @@ function doGet(e) {
       });
     }
 
+    // 6b. API Simpan / Upsert User via GET (fallback fleksibel)
+    if (action === "saveuser" || action === "upsertuser") {
+      var userObj = {
+        email: params.email,
+        nama: params.nama || params.name,
+        role: params.role,
+        password: params.password || params.pin,
+        defaultPin: params.pin || params.password,
+        allowedKomoditas: params.komoditas ? params.komoditas.split(",") : ["*"],
+        canExportPdf: params.export === "true" || params.pdf === "true",
+        canAccessAI: params.ai === "true",
+        canAccessReconciliation: params.reconciliation !== "false"
+      };
+      var saveGetRes = saveUserConfigToSheet_(userObj);
+      return jsonResponse_(saveGetRes);
+    }
+
+    // 6c. API Hapus User via GET
+    if (action === "deleteuser") {
+      var delGetRes = deleteUserConfigFromSheet_(params.email);
+      return jsonResponse_(delGetRes);
+    }
+
+    // 6d. API Hapus Peran via GET
+    if (action === "deleterole") {
+      var delRoleGetRes = deleteCustomRoleFromSheet_(params.role);
+      return jsonResponse_(delRoleGetRes);
+    }
+
     // 7. Default: Render Web App Dashboard Elegan
     return htmlResponse_(renderDashboardHtml_());
   } catch (err) {
@@ -1548,6 +1578,18 @@ function doPost(e) {
       var emailToDel = payload.email || (e && e.parameter && e.parameter.email) || "";
       var delRes = deleteUserConfigFromSheet_(emailToDel);
       return jsonResponse_(delRes);
+    }
+
+    if (action === "deleterole") {
+      var roleToDel = payload.role || (e && e.parameter && e.parameter.role) || "";
+      var delRoleRes = deleteCustomRoleFromSheet_(roleToDel);
+      return jsonResponse_(delRoleRes);
+    }
+
+    if (action === "getusers" || action === "users") {
+      var ssUsers = getTargetSpreadsheet_();
+      var usersList = getUserConfigsFromSheet_(ssUsers);
+      return jsonResponse_({ success: true, count: usersList.length, users: usersList });
     }
 
     // Endpoint untuk Push Entri BSPP Digital Baru dari Web Apps (misal data 27 Okt 2026 ke atas)
@@ -1908,6 +1950,36 @@ function deleteUserConfigFromSheet_(email) {
       }
     }
     return { success: true, deleted: deleted, message: "Akun " + cleanEmail + " berhasil dihapus dari Spreadsheet." };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+function deleteCustomRoleFromSheet_(roleToDelete) {
+  try {
+    if (!roleToDelete) return { success: false, message: "Peran kosong" };
+    var cleanRole = String(roleToDelete).toLowerCase().trim();
+    var ss = getTargetSpreadsheet_();
+    var sh = ss.getSheetByName("HAK_AKSES_USER");
+    if (!sh || sh.getLastRow() < 2) return { success: true, message: "Sheet kosong" };
+
+    var lastRow = sh.getLastRow();
+    var roles = sh.getRange(2, 4, lastRow - 1, 1).getValues();
+    var updated = 0;
+    var nowStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss") + " WIB";
+
+    for (var i = 0; i < roles.length; i++) {
+      if (String(roles[i][0]).toLowerCase().trim() === cleanRole) {
+        sh.getRange(i + 2, 4).setValue("Staff Operasional");
+        sh.getRange(i + 2, 11).setValue(nowStr);
+        updated++;
+      }
+    }
+    return { 
+      success: true, 
+      updatedCount: updated, 
+      message: "Peran '" + roleToDelete + "' berhasil dinonaktifkan di Spreadsheet (diturunkan ke Staff Operasional)." 
+    };
   } catch (e) {
     return { success: false, error: e.message };
   }

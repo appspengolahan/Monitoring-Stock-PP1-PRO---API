@@ -740,6 +740,21 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
     return res.json({ ok: true, users: fileConfigs, customRoles });
   });
 
+  const GAS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwpvTstV4SeELEB1QZgd2TR0sXIPFaJaO1owlVboHI0lnkacQPQ1_BwNrfpYMrUURVG/exec';
+
+  const forwardToGas = async (payload: any) => {
+    try {
+      fetch(GAS_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        redirect: 'follow'
+      }).catch(e => console.warn('server forwardToGas notice:', e));
+    } catch (e) {
+      console.warn('server forwardToGas error:', e);
+    }
+  };
+
   app.post(['/api/user-configs', '/api/user-configs/upsert'], (req, res) => {
     try {
       const config = req.body;
@@ -764,6 +779,10 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
           writeCustomRolesToFile(roles);
         }
       }
+
+      // 2-Way Sync forward to Google Sheets
+      forwardToGas({ action: 'saveuser', user: config });
+
       return res.json({ ok: true, users: configs });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err.message });
@@ -778,6 +797,10 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
       let configs = readUserConfigsFromFile();
       configs = configs.filter((c: any) => c.email.toLowerCase().trim() !== cleanEmail);
       writeUserConfigsToFile(configs);
+
+      // 2-Way Sync forward to Google Sheets
+      forwardToGas({ action: 'deleteuser', email: cleanEmail });
+
       return res.json({ ok: true, users: configs });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err.message });
@@ -814,6 +837,10 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
       let roles = readCustomRolesFromFile();
       roles = roles.filter(r => r.trim().toLowerCase() !== cleanRole);
       writeCustomRolesToFile(roles);
+
+      // 2-Way Sync forward to Google Sheets
+      forwardToGas({ action: 'deleterole', role: cleanRole });
+
       return res.json({ ok: true, roles });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err.message });
@@ -824,7 +851,30 @@ Berikan kesimpulan ringkas maks 3 paragraf dengan rekomendasi teknis kalibrasi a
   const proxyMemoryCache = new Map<string, { data: any; expiry: number }>();
   const PROXY_CACHE_TTL_MS = 60000; // 60 seconds cache for rapid repeat queries
 
-  // Proxy API endpoint to bypass browser CORS and follow 302 redirect transparently
+  // Proxy API endpoint to bypass browser CORS and follow 302 redirect transparently (POST support)
+  app.post('/api/gas-proxy', async (req, res) => {
+    const targetUrl = (req.query.url as string) || GAS_WEBHOOK_URL;
+    try {
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) StockPP1/2.0'
+        },
+        body: typeof req.body === 'string' ? req.body : JSON.stringify(req.body),
+        redirect: 'follow'
+      });
+      const data = await response.text();
+      try {
+        return res.status(response.status).json(JSON.parse(data));
+      } catch {
+        return res.status(response.status).send(data);
+      }
+    } catch (err: any) {
+      return res.status(502).json({ ok: false, error: err.message });
+    }
+  });
+
   app.get('/api/gas-proxy', async (req, res) => {
     const targetUrl = req.query.url as string;
     const noCache = req.query.noCache === 'true';

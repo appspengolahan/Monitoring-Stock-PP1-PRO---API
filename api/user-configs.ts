@@ -196,6 +196,21 @@ function writeRoles(roles: string[]) {
   }
 }
 
+const GAS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwpvTstV4SeELEB1QZgd2TR0sXIPFaJaO1owlVboHI0lnkacQPQ1_BwNrfpYMrUURVG/exec';
+
+async function forwardToGas(payload: any) {
+  try {
+    fetch(GAS_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      redirect: 'follow'
+    }).catch(e => console.warn('forwardToGas notice:', e));
+  } catch (err) {
+    console.warn('forwardToGas error:', err);
+  }
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
@@ -215,6 +230,10 @@ export default async function handler(req: any, res: any) {
       let roles = readRoles();
       roles = roles.filter(r => r.toLowerCase().trim() !== roleToDelete.toLowerCase());
       writeRoles(roles);
+
+      // 2-Way Sync forward to Google Sheets
+      forwardToGas({ action: 'deleterole', role: roleToDelete });
+
       return res.status(200).json({ ok: true, roles, customRoles: roles });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err.message });
@@ -232,6 +251,10 @@ export default async function handler(req: any, res: any) {
       let users = readUsers();
       users = users.filter((u: any) => u.email.toLowerCase().trim() !== cleanEmail);
       writeUsers(users);
+
+      // 2-Way Sync forward to Google Sheets
+      forwardToGas({ action: 'deleteuser', email: cleanEmail });
+
       return res.status(200).json({ ok: true, users, customRoles: readRoles() });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: err.message });
@@ -275,6 +298,9 @@ export default async function handler(req: any, res: any) {
           writeRoles(roles);
         }
       }
+
+      // 2-Way Sync forward to Google Sheets
+      forwardToGas({ action: 'saveuser', user: config });
 
       return res.status(200).json({ ok: true, users, customRoles: readRoles() });
     } catch (err: any) {
