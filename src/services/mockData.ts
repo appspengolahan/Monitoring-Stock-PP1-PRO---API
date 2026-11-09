@@ -35513,7 +35513,7 @@ export const INITIAL_USER_CONFIGS: import('../types').UserAccessConfig[] = [
   {
     email: 'staffacc1bkr@gmail.com',
     nama: 'Tri Andini',
-    role: 'Accounting',
+    role: 'Staff Operasional',
     password: '123',
     defaultPin: '123456',
     isDefaultPassword: true,

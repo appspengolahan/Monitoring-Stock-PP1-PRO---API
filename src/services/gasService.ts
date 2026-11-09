@@ -423,6 +423,22 @@ export class GasService {
       } catch {}
       currentCustom = currentCustom.filter(r => r.toLowerCase() !== clean.toLowerCase());
       localStorage.setItem('stockpp1_custom_roles_v1', JSON.stringify(currentCustom));
+
+      // Also demote any user holding this role to Staff Operasional so it won't resurrect via userConfigs
+      try {
+        const configs = this.getUserConfigs();
+        let changed = false;
+        configs.forEach(u => {
+          if (u.role && u.role.trim().toLowerCase() === clean.toLowerCase()) {
+            u.role = 'Staff Operasional';
+            changed = true;
+          }
+        });
+        if (changed) {
+          this.saveUserConfigs(configs);
+        }
+      } catch {}
+
       window.dispatchEvent(new CustomEvent('stockpp1_roles_updated', { detail: this.getAvailableRoles() }));
 
       // 3. Sync deletion to server so refresh never revives it
@@ -431,6 +447,12 @@ export class GasService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: clean, action: 'delete-role' })
       }).catch(e => console.warn('Failed to delete role on server:', e));
+
+      fetch('/api/user-configs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: clean, action: 'delete-role' })
+      }).catch(e => console.warn('Failed to delete role on user-configs:', e));
     }
     return this.getAvailableRoles();
   }
@@ -548,24 +570,34 @@ export class GasService {
               const status = (cols[9] || 'aktif').toLowerCase();
 
               if (status !== 'nonaktif') {
+                const deletedRoles = new Set(this.getDeletedRoles());
+                const cleanRole = role.trim();
+                const isRoleDeleted = deletedRoles.has(cleanRole.toLowerCase());
+                const effectiveRole = isRoleDeleted ? 'Staff Operasional' : (cleanRole || 'Staff Operasional');
+
                 const existing = emailMap.get(email);
+                const existingRole = existing?.role;
+                const finalRole = existingRole && !deletedRoles.has(existingRole.toLowerCase().trim())
+                  ? existingRole
+                  : effectiveRole;
+
                 emailMap.set(email, {
                   ...existing,
                   email,
                   nama: existing?.nama || nama,
-                  role: existing?.role || (role as any),
+                  role: finalRole as any,
                   password: existing?.password || pin,
                   defaultPin: existing?.defaultPin || pin,
                   isDefaultPassword: existing?.isDefaultPassword ?? true,
-                  hasDevAccess: existing?.hasDevAccess ?? (role === 'Web Developer' || role === 'Site Engineer / PM'),
+                  hasDevAccess: existing?.hasDevAccess ?? (finalRole === 'Web Developer' || finalRole === 'Site Engineer / PM'),
                   allowedKomoditas: existing?.allowedKomoditas || allowedKomoditas,
                   canExportPdf: existing?.canExportPdf ?? canExportPdf,
-                  canManageUsers: existing?.canManageUsers ?? (role === 'Web Developer' || role === 'Site Engineer / PM' || role === 'Admin Produksi'),
+                  canManageUsers: existing?.canManageUsers ?? (finalRole === 'Web Developer' || finalRole === 'Site Engineer / PM' || finalRole === 'Admin Produksi'),
                   canAccessAI: existing?.canAccessAI ?? canAccessAI,
                   canAccessReconciliation: existing?.canAccessReconciliation ?? canAccessReconciliation
                 });
-                if (role && !this.DEFAULT_ROLES.includes(role)) {
-                  this.addCustomRole(role);
+                if (finalRole && !this.DEFAULT_ROLES.includes(finalRole) && !deletedRoles.has(finalRole.toLowerCase())) {
+                  this.addCustomRole(finalRole);
                 }
               }
             }

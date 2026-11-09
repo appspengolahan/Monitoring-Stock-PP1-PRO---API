@@ -67,7 +67,7 @@ const DEFAULT_USERS = [
   {
     email: 'staffacc1bkr@gmail.com',
     nama: 'Tri Andini',
-    role: 'Accounting',
+    role: 'Staff Operasional',
     password: '123',
     defaultPin: '123456',
     isDefaultPassword: true,
@@ -182,7 +182,7 @@ function readRoles(): string[] {
       }
     }
   } catch {}
-  inMemoryRoles = ['Accounting', 'Admin Persediaan Cengkeh'];
+  inMemoryRoles = ['Admin Persediaan Cengkeh'];
   return inMemoryRoles;
 }
 
