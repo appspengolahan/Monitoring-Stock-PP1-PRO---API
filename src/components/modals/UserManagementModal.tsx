@@ -147,8 +147,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     }
   };
 
-  const getRoleBadgeStyle = (role: string) => {
-    switch (role) {
+  const getRoleBadgeStyle = (role?: string) => {
+    const clean = String(role || '').trim();
+    switch (clean) {
       case 'Web Developer':
         return 'bg-purple-100 text-purple-700 border border-purple-200';
       case 'Site Engineer / PM':
@@ -159,7 +160,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
       case 'Staff Operasional':
         return 'bg-amber-100 text-amber-800 border border-amber-200';
       default:
-        if (role.toLowerCase().includes('accounting')) {
+        if (clean.toLowerCase().includes('accounting')) {
           return 'bg-cyan-100 text-cyan-800 border border-cyan-200';
         }
         return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
@@ -183,13 +184,19 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setIsAddingNew(false);
     setEditingEmail(user.email);
     setFormEmail(user.email);
-    setFormNama(user.nama);
-    setFormRole(user.role);
+    setFormNama(user.nama || '');
+    setFormRole(user.role || 'Staff Operasional');
     setIsCustomRoleMode(false);
     setCustomRoleInput('');
-    setFormDefaultPin(user.defaultPin || '123456');
+    setFormDefaultPin(user.defaultPin || user.password || '123456');
     setFormHasDevAccess(!!user.hasDevAccess);
-    setFormAllowedKomoditas(user.allowedKomoditas);
+    setFormAllowedKomoditas(
+      Array.isArray(user.allowedKomoditas)
+        ? [...user.allowedKomoditas]
+        : typeof user.allowedKomoditas === 'string'
+          ? (user.allowedKomoditas as string).split(',').map(s => s.trim()).filter(Boolean)
+          : ['*']
+    );
     setFormCanExport(user.canExportPdf ?? true);
     setFormCanAccessAI(user.canAccessAI ?? (user.role === 'Web Developer' || user.role === 'Site Engineer / PM' || user.role === 'Admin Produksi'));
     setFormCanManageUsers(user.canManageUsers ?? (user.role === 'Web Developer' || user.role === 'Site Engineer / PM' || user.role === 'Admin Produksi'));
@@ -197,17 +204,18 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   };
 
   const handleToggleKomoditas = (item: string) => {
-    if (formAllowedKomoditas.includes('*') || formAllowedKomoditas.includes('all')) {
+    const current = Array.isArray(formAllowedKomoditas) ? formAllowedKomoditas : ['*'];
+    if (current.includes('*') || current.includes('all')) {
       // switch to explicit items except clicked one
       const remaining = availableKomoditas.filter(k => k !== item);
       setFormAllowedKomoditas(remaining);
       return;
     }
 
-    if (formAllowedKomoditas.includes(item)) {
-      setFormAllowedKomoditas(formAllowedKomoditas.filter(k => k !== item));
+    if (current.includes(item)) {
+      setFormAllowedKomoditas(current.filter(k => k !== item));
     } else {
-      setFormAllowedKomoditas([...formAllowedKomoditas, item]);
+      setFormAllowedKomoditas([...current, item]);
     }
   };
 
@@ -440,34 +448,36 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
                   <Tag className="w-2.5 h-2.5" />
                   Peran:
                 </span>
-                {availableRoles.map(r => {
-                  const isCustom = !defaultRoles.includes(r);
-                  const isProtected = r === 'Web Developer' || r === 'Site Engineer / PM' || r === 'Project Manager';
-                  const count = users.filter(u => u.role === r).length;
-                  const isActive = roleStatuses[r.toLowerCase().trim()] !== 'inactive';
+                {availableRoles.filter(Boolean).map(r => {
+                  const roleName = String(r || '').trim();
+                  if (!roleName) return null;
+                  const isCustom = !defaultRoles.includes(roleName);
+                  const isProtected = roleName === 'Web Developer' || roleName === 'Site Engineer / PM' || roleName === 'Project Manager';
+                  const count = users.filter(u => String(u?.role || '').trim() === roleName).length;
+                  const isActive = roleStatuses[roleName.toLowerCase()] !== 'inactive';
 
                   return (
                     <div 
-                      key={r} 
+                      key={roleName} 
                       className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold pl-2.5 pr-1.5 py-1 rounded-xl border transition-all shadow-2xs ${
                         !isActive 
                           ? 'bg-slate-100/95 text-slate-500 border-slate-300 opacity-85' 
-                          : getRoleBadgeStyle(r)
+                          : getRoleBadgeStyle(roleName)
                       }`}
                     >
-                      <span className={!isActive ? 'line-through text-slate-400 font-medium' : ''}>{r}</span>
+                      <span className={!isActive ? 'line-through text-slate-400 font-medium' : ''}>{roleName}</span>
                       <span className="opacity-70 text-[9px]">({count})</span>
 
                       {!isProtected ? (
                         <select
                           value={isActive ? 'active' : 'inactive'}
-                          onChange={(e) => handleToggleRoleStatus(r, e.target.value as 'active' | 'inactive')}
+                          onChange={(e) => handleToggleRoleStatus(roleName, e.target.value as 'active' | 'inactive')}
                           className={`text-[9.5px] font-bold rounded-lg px-1.5 py-0.5 border cursor-pointer transition-colors shadow-2xs ${
                             isActive
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                               : 'bg-slate-200 text-slate-700 border-slate-400 hover:bg-slate-300 font-bold'
                           }`}
-                          title={`Ubah status peran ${r}`}
+                          title={`Ubah status peran ${roleName}`}
                         >
                           <option value="active">🟢 Aktif</option>
                           <option value="inactive">⚪ Nonaktif</option>
@@ -483,11 +493,11 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
                           type="button"
                           onClick={() => {
                             showConfirm(
-                              `Hapus peran kustom "${r}" yang tidak terpakai ini?`,
+                              `Hapus peran kustom "${roleName}" yang tidak terpakai ini?`,
                               () => {
-                                GasService.deleteCustomRole(r);
+                                GasService.deleteCustomRole(roleName);
                                 setAvailableRoles(GasService.getAvailableRoles());
-                                setStatusMessage(`🗑️ Peran kustom "${r}" berhasil dihapus.`);
+                                setStatusMessage(`🗑️ Peran kustom "${roleName}" berhasil dihapus.`);
                                 setTimeout(() => setStatusMessage(null), 3000);
                               }
                             );
@@ -516,28 +526,34 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
 
           {/* User List Cards / Table */}
           <div className="space-y-2.5">
-            {users.map(u => {
-              const isSuper = u.email === 'obeetools@gmail.com' || u.email === 'loehendra@gmail.com';
+            {users.filter(u => Boolean(u && u.email)).map(u => {
+              const userEmail = String(u.email).toLowerCase().trim();
+              const isSuper = userEmail === 'obeetools@gmail.com' || userEmail === 'loehendra@gmail.com';
               const isDevHidden = !u.hasDevAccess;
-              const hasAllBahan = u.allowedKomoditas.includes('*') || u.allowedKomoditas.includes('all');
+              const allowed = Array.isArray(u.allowedKomoditas)
+                ? u.allowedKomoditas
+                : typeof u.allowedKomoditas === 'string'
+                  ? (u.allowedKomoditas as string).split(',').map(s => s.trim()).filter(Boolean)
+                  : ['*'];
+              const hasAllBahan = allowed.includes('*') || allowed.includes('all') || allowed.length === 0;
 
               return (
                 <div
-                  key={u.email}
+                  key={userEmail}
                   className="p-3.5 bg-slate-50/80 hover:bg-slate-100/80 rounded-xl border border-slate-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-xs sm:text-sm text-slate-900">
-                        {u.nama}
+                        {u.nama || userEmail}
                       </span>
                       <span className="text-xs text-slate-400 font-mono">
-                        ({u.email})
+                        ({userEmail})
                       </span>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getRoleBadgeStyle(u.role)}`}>
-                        {u.role}
+                        {u.role || 'Staff Operasional'}
                       </span>
-                      {!GasService.isRoleActive(u.role) && (
+                      {u.role && !GasService.isRoleActive(u.role) && (
                         <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 shadow-2xs">
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
                           <span>Peran Nonaktif</span>
@@ -613,7 +629,7 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
                           <strong className="text-blue-700">Semua</strong>
                         ) : (
                           <span className="text-slate-800 bg-white border border-slate-200 px-1.5 py-0.5 rounded font-mono text-[10px]">
-                            {u.allowedKomoditas.join(', ')}
+                            {allowed.join(', ')}
                           </span>
                         )}
                       </span>
@@ -865,10 +881,11 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
                   >
                     <optgroup label="Peran Bawaan Standar">
                       {defaultRoles.map(r => {
-                        const isActive = roleStatuses[r.toLowerCase().trim()] !== 'inactive';
+                        const cleanRole = String(r || '').trim();
+                        const isActive = roleStatuses[cleanRole.toLowerCase()] !== 'inactive';
                         return (
-                          <option key={r} value={r} disabled={!isActive && formRole !== r}>
-                            {r} {!isActive ? '(Nonaktif)' : ''}
+                          <option key={cleanRole} value={cleanRole} disabled={!isActive && formRole !== cleanRole}>
+                            {cleanRole} {!isActive ? '(Nonaktif)' : ''}
                           </option>
                         );
                       })}
@@ -876,10 +893,11 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
                     {customRoles.length > 0 && (
                       <optgroup label="Peran Kustom Tambahan">
                         {customRoles.map(r => {
-                          const isActive = roleStatuses[r.toLowerCase().trim()] !== 'inactive';
+                          const cleanRole = String(r || '').trim();
+                          const isActive = roleStatuses[cleanRole.toLowerCase()] !== 'inactive';
                           return (
-                            <option key={r} value={r} disabled={!isActive && formRole !== r}>
-                              {r} {!isActive ? '(Nonaktif)' : ''}
+                            <option key={cleanRole} value={cleanRole} disabled={!isActive && formRole !== cleanRole}>
+                              {cleanRole} {!isActive ? '(Nonaktif)' : ''}
                             </option>
                           );
                         })}

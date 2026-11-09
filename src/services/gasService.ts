@@ -422,8 +422,8 @@ export class GasService {
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed)) {
-            parsed.forEach((r: string) => {
-              const clean = String(r).trim();
+            parsed.forEach((r: any) => {
+              const clean = String(r || '').trim();
               if (clean && !deletedRoles.has(clean.toLowerCase())) {
                 customRoles.push(clean);
               }
@@ -436,19 +436,20 @@ export class GasService {
     try {
       const users = this.getUserConfigs();
       users.forEach(u => {
-        if (u.role && !roles.includes(u.role) && !customRoles.includes(u.role) && !deletedRoles.has(u.role.trim().toLowerCase())) {
-          customRoles.push(u.role);
+        const r = String(u?.role || '').trim();
+        if (r && !roles.includes(r) && !customRoles.includes(r) && !deletedRoles.has(r.toLowerCase())) {
+          customRoles.push(r);
         }
       });
     } catch {}
 
     customRoles.forEach(r => {
-      const clean = r.trim();
+      const clean = String(r || '').trim();
       if (clean && !roles.includes(clean) && !deletedRoles.has(clean.toLowerCase())) {
         roles.push(clean);
       }
     });
-    return roles;
+    return roles.filter(Boolean);
   }
 
   public static addCustomRole(newRole: string): string[] {
@@ -692,31 +693,86 @@ export class GasService {
     return merged;
   }
 
+  public static normalizeUserConfig(u: any): UserAccessConfig {
+    if (!u) {
+      return {
+        email: '',
+        nama: 'Pengguna',
+        role: 'Staff Operasional',
+        password: '123',
+        defaultPin: '123456',
+        isDefaultPassword: true,
+        hasDevAccess: false,
+        allowedKomoditas: ['*'],
+        canExportPdf: true,
+        canManageUsers: false,
+        canAccessAI: false,
+        canAccessReconciliation: true,
+        status: 'aktif'
+      };
+    }
+    const email = String(u.email || '').toLowerCase().trim();
+    const nama = String(u.nama || email || 'Pengguna').trim();
+    const role = String(u.role || 'Staff Operasional').trim();
+    let allowedKomoditas: string[] = ['*'];
+    if (Array.isArray(u.allowedKomoditas)) {
+      const filtered = u.allowedKomoditas.filter(Boolean).map((s: any) => String(s).trim());
+      allowedKomoditas = filtered.length > 0 ? filtered : ['*'];
+    } else if (typeof u.allowedKomoditas === 'string') {
+      const parts = u.allowedKomoditas.split(',').map((s: string) => s.trim()).filter(Boolean);
+      allowedKomoditas = parts.length > 0 ? parts : ['*'];
+    }
+    const isSuper = email === 'obeetools@gmail.com' || email === 'loehendra@gmail.com';
+    return {
+      email,
+      nama,
+      role: role as any,
+      password: String(u.password || u.defaultPin || '123456').trim(),
+      defaultPin: String(u.defaultPin || '123456').trim(),
+      isDefaultPassword: u.isDefaultPassword ?? true,
+      hasDevAccess: isSuper ? true : Boolean(u.hasDevAccess || role === 'Web Developer' || role === 'Site Engineer / PM'),
+      allowedKomoditas,
+      canExportPdf: isSuper ? true : (u.canExportPdf ?? true),
+      canManageUsers: isSuper ? true : (u.canManageUsers ?? (role === 'Web Developer' || role === 'Site Engineer / PM' || role === 'Admin Produksi')),
+      canAccessAI: isSuper ? true : (u.canAccessAI ?? (role === 'Web Developer' || role === 'Site Engineer / PM' || role === 'Admin Produksi')),
+      canAccessReconciliation: isSuper ? true : (u.canAccessReconciliation ?? true),
+      status: u.status === 'nonaktif' ? 'nonaktif' : 'aktif'
+    };
+  }
+
   public static getUserConfigs(): UserAccessConfig[] {
     const deleted = new Set(this.getDeletedUsers());
     const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.USER_CONFIGS) : null;
+    let list: UserAccessConfig[] = [];
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Filter out explicitly deleted users
-          const filtered = parsed.filter((p: UserAccessConfig) => !deleted.has(p.email.toLowerCase().trim()));
-          const existingEmails = new Set(filtered.map((p: UserAccessConfig) => p.email.toLowerCase().trim()));
+          // Filter out explicitly deleted users and normalize every entry
+          const filtered = parsed
+            .filter((p: any) => p && p.email && !deleted.has(String(p.email).toLowerCase().trim()))
+            .map((p: any) => this.normalizeUserConfig(p));
+          const existingEmails = new Set(filtered.map(p => p.email));
           const merged = [...filtered];
           for (const init of INITIAL_USER_CONFIGS) {
             const cleanInit = init.email.toLowerCase().trim();
             // JANGAN masukkan kembali jika user sudah sengaja dihapus oleh admin!
             if (!existingEmails.has(cleanInit) && !deleted.has(cleanInit)) {
-              merged.push(init);
+              merged.push(this.normalizeUserConfig(init));
             }
           }
-          return merged;
+          list = merged;
         }
       } catch (e) {}
     }
-    const initialFiltered = INITIAL_USER_CONFIGS.filter(u => !deleted.has(u.email.toLowerCase().trim()));
-    this.saveUserConfigs(initialFiltered);
-    return initialFiltered;
+    if (list.length === 0) {
+      const initialFiltered = INITIAL_USER_CONFIGS
+        .filter(u => !deleted.has(u.email.toLowerCase().trim()))
+        .map(u => this.normalizeUserConfig(u));
+      this.saveUserConfigs(initialFiltered);
+      list = initialFiltered;
+    }
+    return list;
   }
 
   public static saveUserConfigs(configs: UserAccessConfig[]): void {

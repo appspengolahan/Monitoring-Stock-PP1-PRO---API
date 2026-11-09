@@ -861,7 +861,7 @@ export default function App() {
           isOpen={isUserManagementOpen}
           onClose={() => setIsUserManagementOpen(false)}
           availableKomoditas={allAvailableCommodityNames}
-          currentUserEmail={session.email}
+          currentUserEmail={session?.email || ''}
         />
       )}
 
