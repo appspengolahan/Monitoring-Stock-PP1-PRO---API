@@ -62,6 +62,11 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formDefaultPin, setFormDefaultPin] = useState<string>('123456');
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isPullingSheet, setIsPullingSheet] = useState<boolean>(false);
+  const [isScriptModalOpen, setIsScriptModalOpen] = useState<boolean>(false);
+  const [scriptContent, setScriptContent] = useState<string>('');
+  const [isLoadingScript, setIsLoadingScript] = useState<boolean>(false);
+  const [hasCopiedScript, setHasCopiedScript] = useState<boolean>(false);
 
   // Custom Centered Confirmation & Alert Dialog ('monitoring stock apps says')
   const [confirmModal, setConfirmModal] = useState<{
@@ -284,8 +289,6 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
     }
   };
 
-  const [isPullingSheet, setIsPullingSheet] = useState(false);
-
   const handleManualPullFromSheet = async () => {
     setIsPullingSheet(true);
     setStatusMessage('⏳ Menarik data hak akses terbaru dari Google Sheet HAK_AKSES_USER...');
@@ -301,11 +304,6 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
       setTimeout(() => setStatusMessage(null), 5000);
     }
   };
-
-  const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
-  const [scriptContent, setScriptContent] = useState<string>('');
-  const [isLoadingScript, setIsLoadingScript] = useState(false);
-  const [hasCopiedScript, setHasCopiedScript] = useState(false);
 
   const handleOpenScriptModal = async () => {
     setIsScriptModalOpen(true);
