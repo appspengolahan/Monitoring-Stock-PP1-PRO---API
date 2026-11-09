@@ -23,7 +23,10 @@ import {
   Copy,
   Share2,
   Code2,
-  RefreshCw
+  RefreshCw,
+  Download,
+  ExternalLink,
+  FileCode
 } from 'lucide-react';
 import { UserAccessConfig, UserRole } from '../../types';
 import { GasService } from '../../services/gasService';
@@ -299,20 +302,46 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
     }
   };
 
-  const handleCopyGasScript = async () => {
-    try {
-      const res = await fetch('/assets/scripts/BSPP_Central_Sync.gs');
-      if (res.ok) {
-        const scriptCode = await res.text();
-        if (navigator.clipboard) {
-          await navigator.clipboard.writeText(scriptCode);
-          setStatusMessage('📋 Skrip Google Apps Script 2-Arah (BSPP_Central_Sync.gs) berhasil disalin ke clipboard! Tempelkan di Ekstensi > Apps Script spreadsheet.');
-          setTimeout(() => setStatusMessage(null), 6000);
-          return;
+  const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
+  const [scriptContent, setScriptContent] = useState<string>('');
+  const [isLoadingScript, setIsLoadingScript] = useState(false);
+  const [hasCopiedScript, setHasCopiedScript] = useState(false);
+
+  const handleOpenScriptModal = async () => {
+    setIsScriptModalOpen(true);
+    if (!scriptContent) {
+      setIsLoadingScript(true);
+      try {
+        const res = await fetch('/assets/scripts/BSPP_Central_Sync.gs');
+        if (res.ok) {
+          const text = await res.text();
+          setScriptContent(text);
         }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoadingScript(false);
       }
-    } catch (e) {}
-    window.open('/assets/scripts/BSPP_Central_Sync.gs', '_blank');
+    }
+  };
+
+  const handleCopyFromModal = async () => {
+    if (scriptContent && navigator.clipboard) {
+      await navigator.clipboard.writeText(scriptContent);
+      setHasCopiedScript(true);
+      setTimeout(() => setHasCopiedScript(false), 3000);
+    }
+  };
+
+  const handleDownloadScript = () => {
+    if (!scriptContent) return;
+    const blob = new Blob([scriptContent], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'BSPP_Central_Sync.gs';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleResetPin = (email: string) => {
@@ -624,12 +653,12 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
               <span>Status Koneksi: <strong className="text-emerald-700">Aktif & Siap Pakai</strong></span>
               <button
                 type="button"
-                onClick={handleCopyGasScript}
-                className="text-teal-700 hover:text-teal-900 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                title="Salin skrip Google Apps Script 2-arah lengkap"
+                onClick={handleOpenScriptModal}
+                className="text-teal-700 hover:text-teal-900 font-bold bg-white px-3 py-1.5 rounded-lg border border-teal-300 shadow-2xs hover:bg-teal-50 flex items-center gap-1.5 cursor-pointer transition-colors"
+                title="Buka dan salin skrip Google Apps Script 2-arah lengkap"
               >
-                <Code2 className="w-3.5 h-3.5" />
-                <span>Salin Skrip Apps Script 2-Arah (BSPP_Central_Sync.gs)</span>
+                <Code2 className="w-3.5 h-3.5 text-teal-600" />
+                <span>Lihat & Salin Skrip Apps Script 2-Arah (.gs)</span>
               </button>
             </div>
           </div>
@@ -1021,6 +1050,122 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    )}
+
+    {/* Centered Modal: Penampil Skrip Google Apps Script 2-Arah */}
+    {isScriptModalOpen && (
+      <div className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in">
+        <div className="bg-slate-900 rounded-3xl border border-slate-700/80 shadow-2xl max-w-4xl w-full overflow-hidden my-auto animate-in zoom-in-95 duration-150 flex flex-col max-h-[92vh] text-slate-100">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center shadow-xs">
+                <FileCode className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-teal-400 uppercase tracking-wider">
+                  Google Apps Script (GAS) Engine
+                </div>
+                <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                  <span>BSPP_Central_Sync.gs (v1.4 - 2-Way Sync)</span>
+                </h4>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsScriptModalOpen(false)}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Panduan Singkat 4 Langkah */}
+          <div className="p-4 bg-slate-950/70 border-b border-slate-800 shrink-0">
+            <div className="text-xs font-bold text-slate-200 mb-2 flex items-center gap-1.5">
+              <span>🚀 4 Langkah Memasang di Google Spreadsheet:</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] text-slate-300">
+              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span className="font-bold text-teal-400 block mb-0.5">1. Buka Apps Script</span>
+                <span>Buka spreadsheet, klik menu <strong>Ekstensi</strong> &gt; <strong>Apps Script</strong>.</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span className="font-bold text-teal-400 block mb-0.5">2. Ganti Seluruh Kode</span>
+                <span>Hapus semua kode lama, lalu klik tombol <strong>Salin Semua Kode</strong> di bawah.</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span className="font-bold text-teal-400 block mb-0.5">3. Simpan Proyek</span>
+                <span>Tempelkan kode, lalu klik tombol <strong>Simpan (ikon disk)</strong>.</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span className="font-bold text-teal-400 block mb-0.5">4. Deploy Versi Baru</span>
+                <span>Klik <strong>Terapkan</strong> &gt; <strong>Kelola Penerapan</strong> &gt; <strong>Pensil</strong> &gt; pilih <strong>Versi Baru</strong> &gt; <strong>Terapkan</strong>.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Bar */}
+          <div className="px-6 py-2.5 bg-slate-900/80 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+            <span className="text-xs text-slate-400 font-mono">
+              Ukuran: ~88 KB (2.200+ baris) • Status: Siap Salin
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyFromModal}
+                className="px-3.5 py-1.5 text-xs font-bold text-slate-900 bg-teal-400 hover:bg-teal-300 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                {hasCopiedScript ? <Check className="w-3.5 h-3.5 text-slate-900" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{hasCopiedScript ? 'Berhasil Disalin!' : 'Salin Semua Kode'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadScript}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh File (.gs)</span>
+              </button>
+              <a
+                href="https://docs.google.com/spreadsheets/d/1Qm3dLQaKpnwCRuIaGxR2UmVxV1MdxbTFvTVnnrRwoK8/edit"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-xl flex items-center gap-1.5 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Buka Spreadsheet ↗</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Code Viewer */}
+          <div className="p-4 overflow-y-auto flex-1 font-mono text-xs bg-slate-950/90 text-slate-300 leading-relaxed max-h-[420px] select-all">
+            {isLoadingScript ? (
+              <div className="py-20 text-center text-slate-400">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-teal-400" />
+                <span>Memuat skrip Google Apps Script...</span>
+              </div>
+            ) : (
+              <pre className="whitespace-pre overflow-x-auto text-[11.5px] font-mono">
+                {scriptContent || 'Skrip tersedia di /public/assets/scripts/BSPP_Central_Sync.gs'}
+              </pre>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between shrink-0">
+            <span className="text-xs text-slate-400">
+              Sinkronisasi 2-Arah otomatis bekerja seketika setelah script di-deploy.
+            </span>
+            <button
+              onClick={() => setIsScriptModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+            >
+              Tutup Penampil
+            </button>
+          </div>
         </div>
       </div>
     )}
