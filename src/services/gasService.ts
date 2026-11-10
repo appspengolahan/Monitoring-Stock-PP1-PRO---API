@@ -1,4 +1,4 @@
-import { KomoditasData, BSPPData, BSPPEntry, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, SetoranCengkehEntry, PengirimanBlendEntry, CengkehDryerEntry, ReconciliationDisplayConfig, RoleStatus } from '../types/index';
+import { KomoditasData, BSPPData, BSPPEntry, SnapshotResult, UserSession, UserRole, UserAccessConfig, CustomJenisMutasiItem, DHPEntry, SetoranEntry, SetoranCengkehEntry, PengirimanBlendEntry, CengkehDryerEntry, ReconciliationDisplayConfig, RoleStatus, KodeItem } from '../types/index';
 import { INITIAL_KOMODITAS_DATA, INITIAL_BSPP_DATA, INITIAL_USER_CONFIGS } from './mockData';
 import { parseDateIndo, normalizeDateToIso, getTanggalKey, getEpochTime } from '../utils/dateUtils';
 import { TelemetryService } from './telemetryService';
@@ -3071,11 +3071,13 @@ export class GasService {
                 migrated = true;
               }
 
-              // Jika cache lokal Rajang II masih menggunakan baseline September (< 33.000 Kg atau Madura < 11.000 Kg),
-              // mutakhirkan ke baseline 5 November 2026 yang identik dengan sistem akuntansi
+              // Jika cache lokal Rajang II masih menggunakan baseline lama (saldoTotal berbeda dengan baseline Kartustock 31.075,2 Kg atau jumlah kode != 45),
+              // mutakhirkan ke baseline Kartustock Rajang II terverifikasi (ID Sheet 1CB_qQbvOB-_sUUKrewTaDInR-NN3gycRFyGGUNvkZcI: 45 kode / 31.075,2 Kg)
               const initialRajang = INITIAL_KOMODITAS_DATA.find((item: any) => (item.komoditas || '').toLowerCase().includes('rajang ii'));
-              if (initialRajang && (k.saldoTotal < 33000 || (k.kodeList || []).some((item: any) => item.nama === 'MADURA 2024 (BAT) R' && item.saldo < 11000))) {
+              if (initialRajang && (Math.abs((k.saldoTotal || 0) - initialRajang.saldoTotal) > 0.1 || (k.kodeList || []).length !== (initialRajang.kodeList || []).length)) {
                 k.saldoTotal = initialRajang.saldoTotal;
+                k.saldoSKTTotal = initialRajang.saldoSKTTotal;
+                k.saldoSKMTotal = initialRajang.saldoSKMTotal;
                 k.jumlahKode = initialRajang.jumlahKode;
                 k.kodeList = JSON.parse(JSON.stringify(initialRajang.kodeList));
                 migrated = true;
@@ -4080,7 +4082,8 @@ export class GasService {
         this.fetchSetoranDirectFromSheet().catch(e => { console.warn('Refresh Setoran error:', e); return []; }),
         this.fetchPengirimanBlendDirectFromSheet().catch(e => { console.warn('Refresh Pengiriman Blend error:', e); return []; }),
         this.fetchCengkehDryerDirectFromSheet().catch(e => { console.warn('Refresh Cengkeh Dryer error:', e); return []; }),
-        this.fetchSetoranCengkehDirectFromSheet().catch(e => { console.warn('Refresh Setoran Cengkeh error:', e); return []; })
+        this.fetchSetoranCengkehDirectFromSheet().catch(e => { console.warn('Refresh Setoran Cengkeh error:', e); return []; }),
+        this.fetchRajangIIDirectFromSheet().catch(e => { console.warn('Refresh Rajang II error:', e); return []; })
       ]);
       if (blendItems && blendItems.length > 0) {
         this.saveCachedDHPBlend(blendItems, true);
@@ -4619,6 +4622,74 @@ export class GasService {
       } catch (e) {
         console.warn('Gagal memicu pembaruan rekonsiliasi Cengkeh Dryer', e);
       }
+    }
+  }
+
+  /**
+   * Mengambil saldo presisi Tembakau & Krosok (Rajang II) langsung dari tab KARTUSTOCK RAJANG II
+   * Spreadsheet ID: 1CB_qQbvOB-_sUUKrewTaDInR-NN3gycRFyGGUNvkZcI
+   * Menjamin keakuratan 44 jenis stok tersedia (+ 1 jenis stok habis = total 45 grade) dan akumulasi 31.075,2 Kg
+   */
+  public static async fetchRajangIIDirectFromSheet(): Promise<KodeItem[]> {
+    try {
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/1CB_qQbvOB-_sUUKrewTaDInR-NN3gycRFyGGUNvkZcI/gviz/tq?tqx=out:csv&sheet=KARTUSTOCK%20RAJANG%20II';
+      const text = await this.fetchWithTimeout(csvUrl, 12000);
+      let rawText = '';
+      if (typeof text === 'string') {
+        rawText = text;
+      } else if (text && typeof text === 'object') {
+        rawText = JSON.stringify(text);
+      }
+      if (!rawText || rawText.length < 50) return [];
+
+      const lines = rawText.split(/\r?\n/);
+      const parsedItems: KodeItem[] = [];
+
+      for (let r = 3; r < lines.length; r++) {
+        const cols = this.parseCSVLine(lines[r]);
+        if (cols.length < 4) continue;
+        const rawNama = (cols[2] || '').trim();
+        const rawSaldo = (cols[3] || '').trim();
+        if (!rawNama || rawNama.toUpperCase().includes('TOTAL') || rawNama.toUpperCase().includes('STOCK TERSEDIA') || rawNama.toUpperCase().startsWith('JENIS_')) {
+          continue;
+        }
+
+        const cleaned = rawSaldo.replace(/kg/gi, '').replace(/\./g, '').replace(/,/g, '.').trim();
+        const saldoVal = Math.round((parseFloat(cleaned) || 0) * 10) / 10;
+        const namaUpper = rawNama.toUpperCase();
+
+        const isSKM = ['ZIMBABWE', 'BRAZIL', 'ZAMBIA', 'WELERI', 'EXPANDED', 'FCV', 'DIET'].some(k => namaUpper.includes(k));
+        const saldoSKM = isSKM ? saldoVal : 0;
+        const saldoSKT = isSKM ? 0 : saldoVal;
+        const kat = (saldoSKT > 0 && saldoSKM > 0) ? 'Gabungan' : (saldoSKT > 0 ? 'Murni SKT' : (saldoSKM > 0 ? 'Murni SKM' : 'Nol'));
+
+        parsedItems.push({
+          nama: namaUpper,
+          saldo: saldoVal,
+          saldoSKT,
+          saldoSKM,
+          kategoriProduksi: kat,
+          tanggalTerakhir: '2026-11-10T00:00:00.000Z'
+        });
+      }
+
+      if (parsedItems.length >= 40) {
+        const cached = this.getCachedKomoditas();
+        const rj2 = cached.find((k: any) => (k.komoditas || '').toLowerCase().includes('rajang ii'));
+        if (rj2) {
+          rj2.kodeList = parsedItems;
+          rj2.jumlahKode = parsedItems.length;
+          rj2.saldoTotal = Math.round(parsedItems.reduce((acc, it) => acc + (it.saldo || 0), 0) * 10) / 10;
+          rj2.saldoSKTTotal = Math.round(parsedItems.reduce((acc, it) => acc + (it.saldoSKT || 0), 0) * 10) / 10;
+          rj2.saldoSKMTotal = Math.round(parsedItems.reduce((acc, it) => acc + (it.saldoSKM || 0), 0) * 10) / 10;
+          this.saveCachedKomoditas(cached);
+        }
+      }
+
+      return parsedItems;
+    } catch (err) {
+      console.warn('fetchRajangIIDirectFromSheet error:', err);
+      return [];
     }
   }
 
