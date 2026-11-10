@@ -28,6 +28,7 @@ import { AIBotModal } from './components/modals/AIBotModal';
 import { SktSkmSettingsModal } from './components/modals/SktSkmSettingsModal';
 import { SystemAuditReportModal } from './components/modals/SystemAuditReportModal';
 import { PublicPortalSettingsModal } from './components/modals/PublicPortalSettingsModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { StockEstimationService } from './services/stockEstimationService';
 import { useFullscreen } from './hooks/useFullscreen';
 import { usePWAInstall } from './hooks/usePWAInstall';
@@ -856,13 +857,15 @@ export default function App() {
         />
       )}
 
-      {!isPublicView && (
-        <UserManagementModal
-          isOpen={isUserManagementOpen}
-          onClose={() => setIsUserManagementOpen(false)}
-          availableKomoditas={allAvailableCommodityNames}
-          currentUserEmail={session?.email || ''}
-        />
+      {!isPublicView && isUserManagementOpen && (
+        <ErrorBoundary fallbackTitle="Kendala Membuka Pengaturan Hak Akses">
+          <UserManagementModal
+            isOpen={isUserManagementOpen}
+            onClose={() => setIsUserManagementOpen(false)}
+            availableKomoditas={allAvailableCommodityNames || []}
+            currentUserEmail={session?.email || ''}
+          />
+        </ErrorBoundary>
       )}
 
       {!isPublicView && (

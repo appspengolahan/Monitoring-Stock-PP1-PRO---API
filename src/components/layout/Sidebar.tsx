@@ -386,6 +386,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
             {session.canManageUsers && onOpenUserManagement && (
               <div className="relative group">
                 <button
+                  type="button"
                   onClick={onOpenUserManagement}
                   className={`w-full flex items-center rounded-xl transition-all ${
                     isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'

@@ -35,15 +35,15 @@ import { StockAppsConfirmModal } from './StockAppsConfirmModal';
 interface UserManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  availableKomoditas: string[];
-  currentUserEmail: string;
+  availableKomoditas?: string[];
+  currentUserEmail?: string;
 }
 
 export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   isOpen,
   onClose,
-  availableKomoditas,
-  currentUserEmail
+  availableKomoditas = [],
+  currentUserEmail = ''
 }) => {
   const [users, setUsers] = useState<UserAccessConfig[]>(() => GasService.getUserConfigs());
   const [editingEmail, setEditingEmail] = useState<string | null>(null);
@@ -1086,10 +1086,12 @@ Klik tautan di atas untuk masuk langsung ke aplikasi atau masukkan email ${u.ema
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50/70 p-3 rounded-2xl border border-slate-200">
-                {availableKomoditas.map(k => {
-                  const isChecked = formAllowedKomoditas.includes('*') || 
-                                   formAllowedKomoditas.includes('all') || 
-                                   formAllowedKomoditas.includes(k);
+                {(availableKomoditas || []).map(k => {
+                  const isChecked = Array.isArray(formAllowedKomoditas) && (
+                    formAllowedKomoditas.includes('*') || 
+                    formAllowedKomoditas.includes('all') || 
+                    formAllowedKomoditas.includes(k)
+                  );
                   return (
                     <label key={k} className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer p-2 rounded-xl bg-white border border-slate-200/80 hover:bg-emerald-50/40">
                       <input
