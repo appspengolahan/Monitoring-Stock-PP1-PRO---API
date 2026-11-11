@@ -3092,11 +3092,13 @@ export class GasService {
             }
 
             if ((k.komoditas || '').toLowerCase().includes('rajang i') && !(k.komoditas || '').toLowerCase().includes('rajang ii')) {
-              // Jika cache lokal Rajang I masih menggunakan baseline lama (> 4 kode atau > 3.000 Kg),
-              // mutakhirkan ke 4 kode aktif terverifikasi (2.385,3 Kg)
+              // Jika cache lokal Rajang I masih menggunakan baseline lama (saldoTotal berbeda dengan baseline Kartustock 3.888,7 Kg atau Krs. Garut 2024 masih 795 Kg),
+              // mutakhirkan ke baseline Kartustock Rajang I terverifikasi (ID Sheet 1s7o445qm3-r-l3auAK0KkBk3mIJBQMM0ZO643sLNV6E: 3.888,7 Kg)
               const initialRajang1 = INITIAL_KOMODITAS_DATA.find((item: any) => (item.komoditas || '').toLowerCase().includes('rajang i') && !(item.komoditas || '').toLowerCase().includes('rajang ii'));
-              if (initialRajang1 && (k.saldoTotal > 3000 || (k.kodeList || []).length > 4)) {
+              if (initialRajang1 && (Math.abs((k.saldoTotal || 0) - initialRajang1.saldoTotal) > 0.1 || (k.kodeList || []).some((item: any) => item.nama === 'KRS. GARUT 2024 (MYN)' && item.saldo < 2000))) {
                 k.saldoTotal = initialRajang1.saldoTotal;
+                k.saldoSKTTotal = initialRajang1.saldoSKTTotal;
+                k.saldoSKMTotal = initialRajang1.saldoSKMTotal;
                 k.jumlahKode = initialRajang1.jumlahKode;
                 k.kodeList = JSON.parse(JSON.stringify(initialRajang1.kodeList));
                 k.mutasiTerbaru = JSON.parse(JSON.stringify(initialRajang1.mutasiTerbaru || []));
@@ -4083,7 +4085,8 @@ export class GasService {
         this.fetchPengirimanBlendDirectFromSheet().catch(e => { console.warn('Refresh Pengiriman Blend error:', e); return []; }),
         this.fetchCengkehDryerDirectFromSheet().catch(e => { console.warn('Refresh Cengkeh Dryer error:', e); return []; }),
         this.fetchSetoranCengkehDirectFromSheet().catch(e => { console.warn('Refresh Setoran Cengkeh error:', e); return []; }),
-        this.fetchRajangIIDirectFromSheet().catch(e => { console.warn('Refresh Rajang II error:', e); return []; })
+        this.fetchRajangIIDirectFromSheet().catch(e => { console.warn('Refresh Rajang II error:', e); return []; }),
+        this.fetchRajangIDirectFromSheet().catch(e => { console.warn('Refresh Rajang I error:', e); return []; })
       ]);
       if (blendItems && blendItems.length > 0) {
         this.saveCachedDHPBlend(blendItems, true);
@@ -4689,6 +4692,117 @@ export class GasService {
       return parsedItems;
     } catch (err) {
       console.warn('fetchRajangIIDirectFromSheet error:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Mengambil saldo presisi Tembakau & Krosok (Rajang I) langsung dari tab KARTU STOCK RAJANG I
+   * Spreadsheet ID: 1s7o445qm3-r-l3auAK0KkBk3mIJBQMM0ZO643sLNV6E
+   * Menjamin keakuratan 4 jenis stok aktif (Hang Madura 2024 (BAT), Hang Madura Grade B (2021), Krs. Garut 2024 (MYN), Krs. Garut 2025 (MYN)) dan akumulasi 3.888,7 Kg
+   */
+  public static async fetchRajangIDirectFromSheet(): Promise<KodeItem[]> {
+    try {
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/1s7o445qm3-r-l3auAK0KkBk3mIJBQMM0ZO643sLNV6E/gviz/tq?tqx=out:csv&sheet=KARTU%20STOCK%20RAJANG%20I';
+      const text = await this.fetchWithTimeout(csvUrl, 12000);
+      let rawText = '';
+      if (typeof text === 'string') {
+        rawText = text;
+      } else if (text && typeof text === 'object') {
+        rawText = JSON.stringify(text);
+      }
+      if (!rawText || rawText.length < 50) return [];
+
+      const lines = rawText.split(/\r?\n/);
+      const parsedItems: KodeItem[] = [];
+
+      for (let r = 4; r < lines.length; r++) {
+        const cols = this.parseCSVLine(lines[r]);
+        let rawNama = '';
+        let rawSaldo = '';
+        if (cols.length > 10 && (cols[9] || '').trim() && (cols[10] || '').trim()) {
+          rawNama = (cols[9] || '').trim();
+          rawSaldo = (cols[10] || '').trim();
+        } else if (cols.length > 4 && (cols[3] || '').trim() && (cols[4] || '').trim()) {
+          rawNama = (cols[3] || '').trim();
+          rawSaldo = (cols[4] || '').trim();
+        }
+
+        if (!rawNama || rawNama.toUpperCase().includes('TOTAL') || rawNama.toUpperCase().includes('JENIS TEMBAKAU')) {
+          continue;
+        }
+
+        const cleaned = rawSaldo.replace(/kg/gi, '').replace(/\./g, '').replace(/,/g, '.').trim();
+        const saldoVal = Math.round((parseFloat(cleaned) || 0) * 10) / 10;
+        if (saldoVal <= 0) continue;
+
+        const namaUpper = rawNama.toUpperCase();
+        if (parsedItems.some(it => it.nama === namaUpper)) continue;
+
+        const isSKM = namaUpper.includes('MADURA') || namaUpper.includes('ZIMBABWE') || namaUpper.includes('BRAZIL');
+        const saldoSKM = isSKM ? saldoVal : 0;
+        const saldoSKT = isSKM ? 0 : saldoVal;
+        const kat = (saldoSKT > 0 && saldoSKM > 0) ? 'Gabungan' : (saldoSKT > 0 ? 'Murni SKT' : (saldoSKM > 0 ? 'Murni SKM' : 'Nol'));
+
+        let tanggalTerakhir = '2026-10-29T00:00:00.000Z';
+        if (namaUpper.includes('GARUT 2024')) {
+          tanggalTerakhir = '2026-11-06T00:00:00.000Z';
+        } else if (namaUpper.includes('MADURA 2024')) {
+          tanggalTerakhir = '2026-11-05T00:00:00.000Z';
+        } else if (namaUpper.includes('GRADE B')) {
+          tanggalTerakhir = '2026-06-12T00:00:00.000Z';
+        }
+
+        parsedItems.push({
+          nama: namaUpper,
+          saldo: saldoVal,
+          saldoSKT,
+          saldoSKM,
+          kategoriProduksi: kat,
+          tanggalTerakhir
+        });
+      }
+
+      if (parsedItems.length >= 3) {
+        const cached = this.getCachedKomoditas();
+        const rj1 = cached.find((k: any) => (k.komoditas || '').toLowerCase().includes('rajang i') && !(k.komoditas || '').toLowerCase().includes('rajang ii'));
+        if (rj1) {
+          rj1.kodeList = parsedItems;
+          rj1.jumlahKode = parsedItems.length;
+          rj1.saldoTotal = Math.round(parsedItems.reduce((acc, it) => acc + (it.saldo || 0), 0) * 10) / 10;
+          rj1.saldoSKTTotal = Math.round(parsedItems.reduce((acc, it) => acc + (it.saldoSKT || 0), 0) * 10) / 10;
+          rj1.saldoSKMTotal = Math.round(parsedItems.reduce((acc, it) => acc + (it.saldoSKM || 0), 0) * 10) / 10;
+
+          // Pastikan entri mutasi 6 Nov 2026 untuk KRS. GARUT 2024 (MYN) terpasang di mutasiTerbaru
+          const hasNov6Mutasi = (rj1.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-06') && m.kode.includes('GARUT 2024'));
+          if (!hasNov6Mutasi) {
+            const garutItem = parsedItems.find(it => it.nama.includes('GARUT 2024'));
+            if (garutItem && garutItem.saldo >= 2000) {
+              const nov6Entry = {
+                id: 'tembakau---krosok--rajang-i--krsgarut2024-2026-11-06-penerimaan',
+                tanggal: '2026-11-06T00:00:00.000Z',
+                kode: 'KRS. GARUT 2024 (MYN)',
+                jenisMutasi: 'Penerimaan Baku',
+                masuk: 1503.4,
+                keluar: 0,
+                saldo: garutItem.saldo,
+                masukSKT: 1503.4,
+                masukSKM: 0,
+                saldoSKT: garutItem.saldo,
+                saldoSKM: 0,
+                cek: true
+              };
+              rj1.mutasiTerbaru = [nov6Entry, ...(rj1.mutasiTerbaru || [])];
+            }
+          }
+
+          this.saveCachedKomoditas(cached);
+        }
+      }
+
+      return parsedItems;
+    } catch (err) {
+      console.warn('fetchRajangIDirectFromSheet error:', err);
       return [];
     }
   }

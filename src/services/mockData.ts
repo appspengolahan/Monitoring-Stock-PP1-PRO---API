@@ -2372,13 +2372,13 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     {
     "komoditas": "Tembakau & Krosok (Rajang I)",
     "satuan": "Kg",
-    "saldoTotal": 2385.3,
-    "masukTotal": 38248,
+    "saldoTotal": 3888.7,
+    "masukTotal": 39751.4,
     "keluarTotal": 35017.2,
-    "entriTotal": 148,
+    "entriTotal": 149,
     "entriTervalidasi": 98.5,
     "jumlahKode": 4,
-    "saldoSKTTotal": 1695.0,
+    "saldoSKTTotal": 3198.4,
     "saldoSKMTotal": 690.3,
     "kodeList": [
       {
@@ -2391,11 +2391,11 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "KRS. GARUT 2024 (MYN)",
-        "saldo": 795.0,
-        "saldoSKT": 795.0,
+        "saldo": 2298.4,
+        "saldoSKT": 2298.4,
         "saldoSKM": 0.0,
         "kategoriProduksi": "Murni SKT",
-        "tanggalTerakhir": "2026-10-29T00:00:00.000Z"
+        "tanggalTerakhir": "2026-11-06T00:00:00.000Z"
       },
       {
         "nama": "KRS. GARUT 2025 (MYN)",
@@ -2415,6 +2415,20 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       }
     ],
     "mutasiTerbaru": [
+      {
+        "id": "tembakau---krosok--rajang-i--krsgarut2024-2026-11-06-penerimaan",
+        "tanggal": "2026-11-06T00:00:00.000Z",
+        "kode": "KRS. GARUT 2024 (MYN)",
+        "jenisMutasi": "Penerimaan Baku",
+        "masuk": 1503.4,
+        "keluar": 0,
+        "saldo": 2298.4,
+        "masukSKT": 1503.4,
+        "masukSKM": 0,
+        "saldoSKT": 2298.4,
+        "saldoSKM": 0,
+        "cek": true
+      },
       {
         "id": "tembakau---krosok--rajang-i--hangmadura2024bat-2026-11-05-bspp",
         "tanggal": "2026-11-05T00:00:00.000Z",
