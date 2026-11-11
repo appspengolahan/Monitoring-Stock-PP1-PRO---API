@@ -272,10 +272,10 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   }, []);
 
   const handleResetToLatest = useCallback(() => {
-    setFilterFrom('');
-    setFilterTo('');
-    setShowAllDates(false);
-  }, []);
+  setFilterFrom('');
+  setFilterTo('');
+  setShowAllDates(false);
+}, []);
 
   // Available Kode options based on selected Komoditas
   const kodeOptions = useMemo(() => {
