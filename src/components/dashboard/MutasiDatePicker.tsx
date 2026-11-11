@@ -44,7 +44,7 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
   // Determine current active mode
   const initialMode = useMemo<DateFilterMode>(() => {
     if (showAllDates && !filterFrom && !filterTo) return 'all';
-    if (!filterFrom && !filterTo) return 'daily'; // Default hari ini (tanggal berjalan)
+    if (!filterFrom && !filterTo) return 'latest'; // Default mode: Terkini (menampilkan transaksi terbaru)
     if (filterFrom && filterTo && filterFrom === filterTo) {
       if (latestTanggal && filterFrom === latestTanggal && latestTanggal !== todayKey) {
         return 'latest';
@@ -140,12 +140,7 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
     setActiveMode(mode);
 
     if (mode === 'latest') {
-      if (latestTanggal) {
-        setSelectedSingleDate(latestTanggal);
-        onApplyDateFilter(latestTanggal, latestTanggal, false, 'latest');
-      } else {
-        onResetToLatest();
-      }
+      onApplyDateFilter('', '', false, 'latest');
     } else if (mode === 'all') {
       onApplyDateFilter('', '', true, 'all');
     } else if (mode === 'daily') {
@@ -210,8 +205,8 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
     }
     if (activeMode === 'latest') {
       return latestTanggal 
-        ? `Data Terkini / Rencana: ${formatTanggalIndo(latestTanggal)}`
-        : 'Transaksi Terkini Lintas Bahan';
+        ? `Data Terkini: ${formatTanggalIndo(latestTanggal)} (Terbaru)`
+        : 'Transaksi Terkini Lintas Bahan (Terbaru)';
     }
     if (activeMode === 'daily') {
       const isToday = selectedSingleDate === todayKey;
@@ -298,10 +293,10 @@ export const MutasiDatePicker: React.FC<MutasiDatePickerProps> = ({
                 ? 'bg-white text-blue-700 shadow-2xs font-bold' 
                 : 'text-slate-600 hover:text-slate-900'
             }`}
-            title="Tampilkan transaksi data terkini atau rencana masa depan yang sudah dicicil inputnya"
+            title="Tampilkan transaksi data mutasi terkini"
           >
             <Sparkles className="w-3 h-3 text-amber-500" />
-            <span>Terkini (Rencana)</span>
+            <span>Terkini</span>
           </button>
 
           <button

@@ -66,13 +66,13 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
 }) => {
   const todayKey = useMemo(() => getTodayKey(), []);
 
-  // Filters state (Default filter tanggal adalah hari atau tanggal bulan tahun berjalan)
+  // Filters state (Default: menampilkan seluruh transaksi terkini lintas komoditas)
   const [filterKomoditas, setFilterKomoditas] = useState<string>(initialCommodity);
   const [filterKode, setFilterKode] = useState<string>('all');
   const [filterJenis, setFilterJenis] = useState<string>('all');
   const [filterProduksi, setFilterProduksi] = useState<'all' | 'SKT' | 'SKM' | 'Gabungan'>('all');
-  const [filterFrom, setFilterFrom] = useState<string>(() => getTodayKey());
-  const [filterTo, setFilterTo] = useState<string>(() => getTodayKey());
+  const [filterFrom, setFilterFrom] = useState<string>('');
+  const [filterTo, setFilterTo] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterHideZero, setFilterHideZero] = useState<boolean>(false);
   const [showAllDates, setShowAllDates] = useState<boolean>(false);
@@ -272,16 +272,10 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
   }, []);
 
   const handleResetToLatest = useCallback(() => {
-    if (latestTanggal) {
-      setFilterFrom(latestTanggal);
-      setFilterTo(latestTanggal);
-    } else {
-      const tk = getTodayKey();
-      setFilterFrom(tk);
-      setFilterTo(tk);
-    }
+    setFilterFrom('');
+    setFilterTo('');
     setShowAllDates(false);
-  }, [latestTanggal]);
+  }, []);
 
   // Available Kode options based on selected Komoditas
   const kodeOptions = useMemo(() => {
@@ -1206,7 +1200,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
               <span>{filterOnlyReconciled ? '✓ Mode Rekonsiliasi Aktif' : `Filter Badge Rekonsiliasi (${totalReconciledCount})`}</span>
             </button>
 
-            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero || filterOnlyReconciled || filterFrom !== todayKey || filterTo !== todayKey || showAllDates) && (
+            {(filterKomoditas !== 'all' || filterKode !== 'all' || filterJenis !== 'all' || searchQuery || filterHideZero || filterOnlyReconciled || filterFrom !== '' || filterTo !== '' || showAllDates) && (
               <button
                 type="button"
                 onClick={() => {
@@ -1216,12 +1210,12 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                   setSearchQuery('');
                   setFilterHideZero(false);
                   setFilterOnlyReconciled(false);
-                  setFilterFrom(todayKey);
-                  setFilterTo(todayKey);
+                  setFilterFrom('');
+                  setFilterTo('');
                   setShowAllDates(false);
                 }}
                 className="text-[10.5px] text-slate-500 hover:text-slate-800 underline px-1 font-medium flex items-center gap-0.5 cursor-pointer"
-                title="Reset semua filter ke default (Hari Ini / Tanggal Berjalan)"
+                title="Reset semua filter ke default (Transaksi Terkini)"
               >
                 Reset Semua Filter
               </button>
