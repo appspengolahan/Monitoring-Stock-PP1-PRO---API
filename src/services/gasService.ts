@@ -1309,6 +1309,12 @@ export class GasService {
         const cleanJ = j.toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (validMaterialNamesSet.has(cleanJ)) return false;
 
+        // Khusus Tembakau & Krosok (Rajang II), tidak ada jenis mutasi 'Pengeluaran Bahan' atau 'Pemasukan Bahan'
+        // Baris ini adalah artefak parse dari sel kosong pada tabel rekap Google Sheets yang menimbulkan duplikasi semu
+        if (komoditasLower.includes('rajang ii') && (j.toLowerCase() === 'pengeluaran bahan' || j.toLowerCase() === 'pemasukan bahan')) {
+          return false;
+        }
+
         return true;
       });
 

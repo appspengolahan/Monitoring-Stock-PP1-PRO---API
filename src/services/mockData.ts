@@ -2376,21 +2376,6 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
     ],
     "mutasiTerbaru": [
       {
-        "tanggal": "2026-11-11T20:15:40.134Z",
-        "kode": "BESUKI 2025 (ZN)",
-        "jenisMutasi": "Pengeluaran Bahan",
-        "masuk": 0,
-        "keluar": 27,
-        "saldo": -0.7,
-        "masukSKT": 0,
-        "keluarSKT": 27,
-        "saldoSKT": -0.7,
-        "masukSKM": 0,
-        "keluarSKM": 0,
-        "saldoSKM": 0,
-        "cek": false
-      },
-      {
         "tanggal": "2026-11-11T00:00:00.000Z",
         "kode": "MADURA 2024 (BAT) R",
         "jenisMutasi": "Pemasukan Hasil Proses",
