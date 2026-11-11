@@ -5832,12 +5832,8 @@ export class GasService {
     return result;
   }
 
-  // --- Network Fetch with Fast Server Proxy & Graceful Timeout ---
+  // --- Network Fetch with Fast Server Proxy & Graceful Timeout (with Direct GAS Fallback for Cloudflare / Static Hosting) ---
   public static async fetchWithTimeout(url: string, timeoutMs: number = 20000): Promise<any> {
-    let proxyUrl = `/api/gas-proxy?url=${encodeURIComponent(url)}`;
-    if (typeof window === 'undefined') {
-      proxyUrl = `http://localhost:3000${proxyUrl}`;
-    }
     const controller = new AbortController();
     const timeoutMsg = `Waktu tunggu permintaan habis (${timeoutMs}ms) untuk: ${url}`;
     const id = setTimeout(() => {
@@ -5848,6 +5844,27 @@ export class GasService {
       }
     }, timeoutMs);
 
+    const tryDirectFetch = async (): Promise<any> => {
+      try {
+        const directRes = await fetch(url, {
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json, text/plain, */*' }
+        });
+        const directJson = await directRes.json().catch(() => null);
+        if (directJson && typeof directJson === 'object') {
+          return directJson;
+        }
+      } catch (directErr) {
+        console.warn('Direct GAS fetch notice:', directErr);
+      }
+      return null;
+    };
+
+    let proxyUrl = `/api/gas-proxy?url=${encodeURIComponent(url)}`;
+    if (typeof window === 'undefined') {
+      proxyUrl = `http://localhost:3000${proxyUrl}`;
+    }
+
     try {
       const res = await fetch(proxyUrl, { 
         signal: controller.signal,
@@ -5855,19 +5872,41 @@ export class GasService {
           'Accept': 'application/json, text/plain, */*'
         }
       });
+      const contentType = res.headers.get('content-type') || '';
+      
+      // Deteksi Cloudflare / Static SPA: Jika proxy mengembalikan HTML (karena server Express tidak ada), bypass langsung ke Google Apps Script
+      if (contentType.includes('text/html')) {
+        const direct = await tryDirectFetch();
+        clearTimeout(id);
+        if (direct) return direct;
+        return { ok: false, fallback: true, error: 'Proxy mengembalikan HTML, koneksi langsung gagal' };
+      }
+
       clearTimeout(id);
       const data = await res.json().catch(() => null);
       if (!data) {
+        const direct = await tryDirectFetch();
+        if (direct) return direct;
         return { ok: false, fallback: true, error: 'Respon server kosong' };
       }
       if (data.fallback) {
+        const direct = await tryDirectFetch();
+        if (direct) return direct;
         return data;
       }
       if (!res.ok || (data && data.isHtml)) {
+        const direct = await tryDirectFetch();
+        if (direct) return direct;
         throw new Error(data.error || `HTTP ${res.status}: Respon server tidak valid`);
       }
       return data;
     } catch (err: any) {
+      // Jika proxy gagal koneksi (misal server Express tidak ada di Cloudflare), coba direct fetch
+      try {
+        const direct = await tryDirectFetch();
+        clearTimeout(id);
+        if (direct) return direct;
+      } catch {}
       clearTimeout(id);
       if (err.name === 'AbortError' || err.message?.includes('aborted')) {
         return { ok: false, fallback: true, timeout: true, error: timeoutMsg };
@@ -5972,7 +6011,7 @@ export class GasService {
       const bsppPromises = [0, 1, 2, 3].map(async (b) => {
         try {
           const key = bsppCommodityKeys[b];
-          const bUrl = `${this.gasUrl}?action=getData&sheet=${key}&index=${b}&t=${Date.now()}`;
+          const bUrl = `${this.gasUrl}?action=getBSPPData&index=${b}&t=${Date.now()}`;
           const bRes = await this.fetchWithTimeout(bUrl, 18000);
           const bData = (bRes && bRes.data) || bRes;
           return { index: b, key, data: bData };
