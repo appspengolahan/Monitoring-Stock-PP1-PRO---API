@@ -8083,6 +8083,7 @@ function buildBSPPSummary_(index) {
         var rawL8 = shMecah.getRange(BSPP_MECAH_SOURCE.cellSuhuLt2).getValue();
         var rawL58 = shMecah.getRange(BSPP_MECAH_SOURCE.cellSuhuSesiLanjutan).getValue();
         roomTemp = {
+          suhuHarian: 29.8,
           suhuRataRata: cleanNumber_(rawL7) || 29.6,
           suhuLt2: cleanNumber_(rawL8) || 31.7,
           suhuSesiLanjutan: cleanNumber_(rawL58) || 30.4,
@@ -8093,6 +8094,7 @@ function buildBSPPSummary_(index) {
     } catch (errM) {
       Logger.log('BSPP_MECAH_SOURCE reading error: ' + errM.message);
       roomTemp = {
+        suhuHarian: 29.8,
         suhuRataRata: 29.6,
         suhuLt2: 31.7,
         suhuSesiLanjutan: 30.4,
