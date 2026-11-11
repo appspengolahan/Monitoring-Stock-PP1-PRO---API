@@ -27,7 +27,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
   const [activeBsppTab, setActiveBsppTab] = useState<'harian' | 'bulanan_iklim'>('harian');
   const [selectedBahanIndex, setSelectedBahanIndex] = useState<number>(0);
   const [filterJenis, setFilterJenis] = useState<string>('all');
-  const [filterPeriod, setFilterPeriod] = useState<'bulan_berjalan' | 'semua' | 'custom'>('bulan_berjalan');
+  const [filterPeriod, setFilterPeriod] = useState<string>('bulan_berjalan');
   const [filterFrom, setFilterFrom] = useState<string>('');
   const [filterTo, setFilterTo] = useState<string>('');
   const [filterGranularity, setFilterGranularity] = useState<'bulan' | 'entri'>('bulan');
@@ -86,12 +86,33 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
     return max;
   }, [currentData]);
 
+  const formatMonthKey = (mKey: string): string => {
+    const parts = mKey.split('-');
+    if (parts.length === 2) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const d = new Date(Date.UTC(year, month, 1));
+      const str = d.toLocaleDateString('id-ID', { timeZone: 'UTC', month: 'long', year: 'numeric' });
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+    return mKey;
+  };
+
   const latestMonthLabel = useMemo(() => {
     if (!latestMonthKey) return '';
-    const d = new Date(latestMonthKey + '-01');
-    if (isNaN(d.getTime())) return latestMonthKey;
-    return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    return formatMonthKey(latestMonthKey);
   }, [latestMonthKey]);
+
+  // Daftar bulan yang tersedia di dataset aktif (terurut dari yang terbaru)
+  const availableMonths = useMemo(() => {
+    if (!currentData || !currentData.entries) return [];
+    const set = new Set<string>();
+    currentData.entries.forEach(e => {
+      const ym = (e.tanggal || '').slice(0, 7);
+      if (ym && ym.length === 7) set.add(ym);
+    });
+    return Array.from(set).sort().reverse();
+  }, [currentData]);
 
   // Filter entries based on controls & periode bulan berjalan
   const filteredEntries = useMemo(() => {
@@ -105,6 +126,9 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
         if (filterTo && itemDate > filterTo) return false;
       } else if (filterPeriod === 'bulan_berjalan' && latestMonthKey) {
         if ((e.tanggal || '').slice(0, 7) !== latestMonthKey) return false;
+      } else if (filterPeriod.startsWith('month:')) {
+        const targetMonth = filterPeriod.replace('month:', '');
+        if ((e.tanggal || '').slice(0, 7) !== targetMonth) return false;
       }
 
       return true;
@@ -395,7 +419,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
       title: `Rekap BSPP (Bukti Selisih Persediaan) - ${currentData.nama}`,
       infoLines: [
         `Komoditas: ${currentData.nama} | Jenis: ${filterJenis === 'all' ? 'Semua Jenis' : filterJenis}`,
-        `Periode: ${filterPeriod === 'bulan_berjalan' ? `Bulan Berjalan (${latestMonthLabel})` : filterFrom || filterTo ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Sekarang'}` : 'Semua Periode'} | Granularitas: ${filterGranularity === 'bulan' ? 'Per Bulan' : 'Per Entri'}`,
+        `Periode: ${filterPeriod === 'bulan_berjalan' ? `Bulan Berjalan (${latestMonthLabel})` : filterPeriod.startsWith('month:') ? formatMonthKey(filterPeriod.replace('month:', '')) : filterFrom || filterTo ? `${filterFrom || 'Awal'} s/d ${filterTo || 'Sekarang'}` : 'Semua Periode'} | Granularitas: ${filterGranularity === 'bulan' ? 'Per Bulan' : 'Per Entri'}`,
         `Jumlah Data: ${stats.count} transaksi | Akumulasi Selisih: ${formatNumber(stats.totalSelisihKg)} Kg (${formatPercent(stats.totalSelisihPersen)}%)`,
         `Frekuensi Status: ${stats.lebih} Lebih / ${stats.kurang} Kurang / ${stats.tanpa} Tanpa Selisih`
       ],
@@ -539,7 +563,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
             <select
               value={filterPeriod}
               onChange={e => {
-                const val = e.target.value as 'bulan_berjalan' | 'semua' | 'custom';
+                const val = e.target.value;
                 setFilterPeriod(val);
                 if (val !== 'custom') {
                   setFilterFrom('');
@@ -549,6 +573,13 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
               className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 shadow-2xs focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
             >
               <option value="bulan_berjalan">Bulan Berjalan {latestMonthLabel ? `(${latestMonthLabel})` : ''}</option>
+              {availableMonths
+                .filter(m => m !== latestMonthKey)
+                .map(m => (
+                  <option key={m} value={`month:${m}`}>
+                    {formatMonthKey(m)}
+                  </option>
+                ))}
               <option value="semua">Semua Periode</option>
               <option value="custom">Pilih Rentang Tanggal</option>
             </select>
@@ -605,6 +636,11 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
             {filterPeriod === 'bulan_berjalan' && latestMonthLabel ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 border border-blue-200 font-semibold text-[11px] shadow-2xs">
                 <span>⚡ {latestMonthLabel}</span>
+                <span className="font-mono text-blue-700 font-bold">({filteredEntries.length} entri)</span>
+              </span>
+            ) : filterPeriod.startsWith('month:') ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 border border-blue-200 font-semibold text-[11px] shadow-2xs">
+                <span>📅 {formatMonthKey(filterPeriod.replace('month:', ''))}</span>
                 <span className="font-mono text-blue-700 font-bold">({filteredEntries.length} entri)</span>
               </span>
             ) : filterFrom || filterTo ? (
@@ -1159,6 +1195,15 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
                           >
                             <Flame className="w-2.5 h-2.5 text-amber-600" />
                             <span>Termal Lt 2</span>
+                          </span>
+                        )}
+                        {e.suhuRuangan != null && (
+                          <span 
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/80 cursor-help"
+                            title={`Suhu harian tercatat pada kertas kerja: ${e.suhuRuangan}°C`}
+                          >
+                            <Thermometer className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>{e.suhuRuangan}°C</span>
                           </span>
                         )}
                         {isKurang && isBlend && (

@@ -61,6 +61,7 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
   const vpdOutdoor = telemetry?.vpdKpa ?? TelemetryService.calculateVPD(tOutdoor, rhOutdoor);
 
   // Suhu ruangan internal
+  const tHarian = roomData.suhuHarian ?? (isBlend ? 27.5 : 29.8);
   const tRataRata = roomData.suhuRataRata ?? (isBlend ? 27.5 : 29.6);
   const tMaxOrLt2 = roomData.suhuLt2 ?? (isBlend ? 28.0 : 31.7);
   const tSesi3 = roomData.suhuSesiLanjutan ?? (isBlend ? 29.7 : 30.4);
@@ -128,8 +129,8 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
             <span className="text-xs font-bold flex items-center gap-1.5 uppercase tracking-wide text-amber-300">
               <Building2 className="w-4 h-4 text-amber-400" />
               <span>
-                {isRajangII ? 'Suhu Fisik Gudang (Tembakau Mecah)' :
-                 isBlend ? 'Suhu Fisik Proses (Molen & DHP Blend)' :
+                {isRajangII ? 'Suhu Fisik Gudang (Tembakau Mecah)' : 
+                 isBlend ? 'Suhu Fisik Proses (Molen & DHP Blend)' : 
                  `Suhu Fisik (${currentKomoditas})`}
               </span>
             </span>
@@ -137,11 +138,11 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
               isRajangII 
                 ? 'text-amber-300 bg-amber-950/60 border-amber-700' 
                 : isBlend 
-                  ? 'text-cyan-300 bg-cyan-950/60 border-cyan-700'
+                  ? 'text-cyan-300 bg-cyan-950/60 border-cyan-700' 
                   : 'text-slate-400 bg-slate-900/60 border-slate-700'
             }`}>
-              {isRajangII ? 'Sheet Mecah: Cell L7, L8, L58' :
-               isBlend ? 'DHP Kolom W & DATAMASTER Kolom N' :
+              {isRajangII ? 'Sheet Mecah: Suhu Harian & L7, L8, L58' : 
+               isBlend ? 'DHP Kolom W & DATAMASTER Kolom N' : 
                'Belum Ada Sensor Fisik'}
             </span>
           </div>
@@ -149,7 +150,22 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
           {/* KONDISI 1: Tembakau & Krosok (Rajang II) */}
           {isRajangII && (
             <>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* Suhu Harian Kertas Kerja Hari Itu */}
+                <div className="bg-gradient-to-br from-emerald-950/40 to-slate-900/80 p-2.5 rounded-lg border border-emerald-600/40">
+                  <div className="text-[10px] text-emerald-300 flex items-center gap-1 mb-0.5 font-semibold">
+                    <FileSpreadsheet className="w-3 h-3 text-emerald-400" />
+                    <span className="truncate">Suhu Harian (KK)</span>
+                  </div>
+                  <div className="text-lg sm:text-xl font-bold font-mono text-emerald-300">
+                    {tHarian.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                    <span className="text-xs font-normal text-emerald-400/80 ml-0.5">°C</span>
+                  </div>
+                  <span className="text-[9.5px] text-emerald-200/70 block mt-0.5 leading-tight">
+                    Kertas kerja hari itu
+                  </span>
+                </div>
+
                 {/* Cell L7: Suhu Rata2 */}
                 <div className="bg-slate-900/70 p-2.5 rounded-lg border border-slate-700/80">
                   <div className="text-[10px] text-slate-400 flex items-center gap-1 mb-0.5">

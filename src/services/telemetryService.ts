@@ -293,11 +293,12 @@ export class TelemetryService {
     return {
       hasData: true,
       lokasiRuang: 'Gudang Tembakau Mecah (Lt 2)',
+      suhuHarian: 29.8,
       suhuRataRata: 29.6,
       suhuLt2: 31.7,
       suhuSesiLanjutan: 30.4,
-      tanggal: '2026-10-26T00:00:00.000Z',
-      keterangan: 'Kertas Kerja BSPP Mecah Tembakau (Cell L7, L8, L58)',
+      tanggal: '2026-11-11T00:00:00.000Z',
+      keterangan: 'Kertas Kerja BSPP Mecah Tembakau (Suhu Harian Kertas Kerja & Cell L7, L8, L58)',
       sumberSheet: '1ofl3ja4d5QRbbxFAsQYS6Xq-19KUNpbpkbcXIAa26Wg (Tab BSPP MECAH - TEMBAKAU)'
     };
   }

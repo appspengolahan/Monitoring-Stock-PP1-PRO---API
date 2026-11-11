@@ -169,6 +169,7 @@ export interface KomoditasData {
 export interface BSPPRoomTemperature {
   hasData?: boolean;
   lokasiRuang?: string;
+  suhuHarian?: number;   // Suhu harian yang tercatat pada kertas kerja hari itu
   suhuRataRata?: number; // Nilai suhu rata-rata
   suhuLt2?: number;       // Nilai suhu titik spesifik / Lt 2 / Batch max
   suhuSesiLanjutan?: number; // Nilai suhu lanjutan / sore / bulanan

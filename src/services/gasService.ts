@@ -3330,6 +3330,33 @@ export class GasService {
         result.push(this.DEFAULT_RAJANG_I_BSPP);
       }
 
+      // 3. Pastikan Tembakau & Krosok (Rajang II) memiliki data transaksi November 2026
+      const rj2Index = result.findIndex(b => 
+        (b.nama || '').toLowerCase().includes('rajang ii') || 
+        ((b.nama || '').toLowerCase().includes('tembakau') && !(b.nama || '').toLowerCase().includes('blend') && !(b.nama || '').toLowerCase().includes('cengkeh') && !(b.nama || '').toLowerCase().includes('rajang i'))
+      );
+      if (rj2Index !== -1) {
+        const rj2 = result[rj2Index];
+        const hasNov = (rj2.entries || []).some(e => (e.tanggal || '').startsWith('2026-11'));
+        if (!hasNov) {
+          const initRj2 = INITIAL_BSPP_DATA.find(b => (b.nama || '').toLowerCase().includes('rajang ii'));
+          if (initRj2 && initRj2.entries) {
+            const novEntries = initRj2.entries.filter(e => (e.tanggal || '').startsWith('2026-11'));
+            if (novEntries.length > 0) {
+              const combined = [...novEntries, ...(rj2.entries || [])];
+              result[rj2Index] = {
+                ...rj2,
+                entries: combined,
+                jumlahEntri: combined.length,
+                totalLebih: combined.filter(e => e.status === 'Selisih Lebih').length,
+                totalKurang: combined.filter(e => e.status === 'Selisih Kurang').length,
+                totalTanpa: combined.filter(e => e.status === 'Sesuai / Pas').length,
+              };
+            }
+          }
+        }
+      }
+
       return result.map(b => {
         const nameLower = (b.nama || '').toLowerCase();
         if (nameLower.includes('blend')) {
@@ -6161,19 +6188,37 @@ export class GasService {
             });
 
             if (currentBsppList[idx]) {
+              const prevEntries = currentBsppList[idx]?.entries || [];
+              const prevNovEntries = prevEntries.filter(e => (e.tanggal || '').startsWith('2026-11'));
+              const newHasNov = mappedEntries.some(e => (e.tanggal || '').startsWith('2026-11'));
+              const mergedEntries = (!newHasNov && prevNovEntries.length > 0)
+                ? [...prevNovEntries, ...mappedEntries]
+                : mappedEntries;
+
               currentBsppList[idx] = {
                 ...currentBsppList[idx],
-                entries: mappedEntries,
-                jumlahEntri: mappedEntries.length,
+                entries: mergedEntries,
+                jumlahEntri: mergedEntries.length,
                 jenisList: Array.from(jenisSet),
-                totalLebih: lebih,
-                totalKurang: kurang,
-                totalTanpa: tanpa
+                totalLebih: mergedEntries.filter(e => e.status.includes('Lebih')).length,
+                totalKurang: mergedEntries.filter(e => e.status.includes('Kurang')).length,
+                totalTanpa: mergedEntries.filter(e => !e.status.includes('Lebih') && !e.status.includes('Kurang')).length
               };
               bsppUpdatedCount++;
             }
           } else if (rawData && Array.isArray(rawData.entries)) {
-            currentBsppList[idx] = rawData;
+            const prevEntries = currentBsppList[idx]?.entries || [];
+            const prevNovEntries = prevEntries.filter(e => (e.tanggal || '').startsWith('2026-11'));
+            const newHasNov = rawData.entries.some((e: any) => (e.tanggal || '').startsWith('2026-11'));
+            const mergedEntries = (!newHasNov && prevNovEntries.length > 0)
+              ? [...prevNovEntries, ...rawData.entries]
+              : rawData.entries;
+
+            currentBsppList[idx] = {
+              ...rawData,
+              entries: mergedEntries,
+              jumlahEntri: mergedEntries.length
+            };
             bsppUpdatedCount++;
           }
         }
@@ -6427,7 +6472,18 @@ export class GasService {
         if (res.status === 'fulfilled' && res.value?.data) {
           const bsppItem = res.value.data;
           if (Array.isArray(bsppItem.entries)) {
-            currentBsppList[res.value.index] = bsppItem;
+            const prevEntries = currentBsppList[res.value.index]?.entries || [];
+            const prevNovEntries = prevEntries.filter(e => (e.tanggal || '').startsWith('2026-11'));
+            const newHasNov = bsppItem.entries.some((e: any) => (e.tanggal || '').startsWith('2026-11'));
+            const mergedEntries = (!newHasNov && prevNovEntries.length > 0)
+              ? [...prevNovEntries, ...bsppItem.entries]
+              : bsppItem.entries;
+
+            currentBsppList[res.value.index] = {
+              ...bsppItem,
+              entries: mergedEntries,
+              jumlahEntri: mergedEntries.length
+            };
             bsppUpdatedCount++;
           }
         }
