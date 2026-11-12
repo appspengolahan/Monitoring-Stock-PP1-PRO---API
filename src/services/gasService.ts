@@ -3100,10 +3100,10 @@ export class GasService {
             }
 
             if ((k.komoditas || '').toLowerCase().includes('rajang i') && !(k.komoditas || '').toLowerCase().includes('rajang ii')) {
-              // Jika cache lokal Rajang I masih menggunakan baseline lama (saldoTotal berbeda dengan baseline Kartustock 3.888,7 Kg atau Krs. Garut 2024 masih 795 Kg),
-              // mutakhirkan ke baseline Kartustock Rajang I terverifikasi (ID Sheet 1s7o445qm3-r-l3auAK0KkBk3mIJBQMM0ZO643sLNV6E: 3.888,7 Kg)
+              // Jika cache lokal Rajang I belum memiliki transaksi 12 November 2026 atau saldoTotal belum sinkron dengan 3.228,4 Kg
+              const hasNov12 = (k.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-12'));
               const initialRajang1 = INITIAL_KOMODITAS_DATA.find((item: any) => (item.komoditas || '').toLowerCase().includes('rajang i') && !(item.komoditas || '').toLowerCase().includes('rajang ii'));
-              if (initialRajang1 && (Math.abs((k.saldoTotal || 0) - initialRajang1.saldoTotal) > 0.1 || (k.kodeList || []).some((item: any) => item.nama === 'KRS. GARUT 2024 (MYN)' && item.saldo < 2000))) {
+              if (initialRajang1 && (!hasNov12 || Math.abs((k.saldoTotal || 0) - initialRajang1.saldoTotal) > 0.1 || (k.kodeList || []).some((item: any) => item.nama === 'KRS. GARUT 2024 (MYN)' && item.saldo > 2020))) {
                 k.saldoTotal = initialRajang1.saldoTotal;
                 k.saldoSKTTotal = initialRajang1.saldoSKTTotal;
                 k.saldoSKMTotal = initialRajang1.saldoSKMTotal;
@@ -4893,10 +4893,8 @@ export class GasService {
         const kat = (saldoSKT > 0 && saldoSKM > 0) ? 'Gabungan' : (saldoSKT > 0 ? 'Murni SKT' : (saldoSKM > 0 ? 'Murni SKM' : 'Nol'));
 
         let tanggalTerakhir = '2026-10-29T00:00:00.000Z';
-        if (namaUpper.includes('GARUT 2024')) {
-          tanggalTerakhir = '2026-11-06T00:00:00.000Z';
-        } else if (namaUpper.includes('MADURA 2024')) {
-          tanggalTerakhir = '2026-11-05T00:00:00.000Z';
+        if (namaUpper.includes('GARUT 2024') || namaUpper.includes('GARUT 2025') || namaUpper.includes('MADURA 2024')) {
+          tanggalTerakhir = '2026-11-12T00:00:00.000Z';
         } else if (namaUpper.includes('GRADE B')) {
           tanggalTerakhir = '2026-06-12T00:00:00.000Z';
         }
@@ -4921,6 +4919,98 @@ export class GasService {
           rj1.saldoSKTTotal = Math.round(parsedItems.reduce((acc, it) => acc + (it.saldoSKT || 0), 0) * 10) / 10;
           rj1.saldoSKMTotal = Math.round(parsedItems.reduce((acc, it) => acc + (it.saldoSKM || 0), 0) * 10) / 10;
 
+          // Pastikan entri mutasi 12 November 2026 terpasang di mutasiTerbaru Rajang I
+          const hasNov12Mutasi = (rj1.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-12'));
+          if (!hasNov12Mutasi) {
+            const nov12Rajang1Entries = [
+              {
+                id: 'tembakau---krosok--rajang-i--krsgarut2025-2026-11-12-bspp',
+                tanggal: '2026-11-12T00:00:00.000Z',
+                kode: 'KRS. GARUT 2025 (MYN)',
+                jenisMutasi: 'BSPP Lebih',
+                masuk: 1.1,
+                keluar: 0,
+                saldo: 585.0,
+                masukSKT: 1.1,
+                masukSKM: 0,
+                saldoSKT: 585.0,
+                saldoSKM: 0,
+                cek: true
+              },
+              {
+                id: 'tembakau---krosok--rajang-i--krsgarut2025-2026-11-12-rj2',
+                tanggal: '2026-11-12T00:00:00.000Z',
+                kode: 'KRS. GARUT 2025 (MYN)',
+                jenisMutasi: 'Pengeluaran ke RJ II',
+                masuk: 0,
+                keluar: 316.1,
+                saldo: 583.9,
+                keluarSKT: 316.1,
+                keluarSKM: 0,
+                saldoSKT: 583.9,
+                saldoSKM: 0,
+                cek: true
+              },
+              {
+                id: 'tembakau---krosok--rajang-i--krsgarut2024-2026-11-12-bspp',
+                tanggal: '2026-11-12T00:00:00.000Z',
+                kode: 'KRS. GARUT 2024 (MYN)',
+                jenisMutasi: 'BSPP Lebih',
+                masuk: 0.5,
+                keluar: 0,
+                saldo: 2013.1,
+                masukSKT: 0.5,
+                masukSKM: 0,
+                saldoSKT: 2013.1,
+                saldoSKM: 0,
+                cek: true
+              },
+              {
+                id: 'tembakau---krosok--rajang-i--krsgarut2024-2026-11-12-rj2',
+                tanggal: '2026-11-12T00:00:00.000Z',
+                kode: 'KRS. GARUT 2024 (MYN)',
+                jenisMutasi: 'Pengeluaran ke RJ II',
+                masuk: 0,
+                keluar: 285.8,
+                saldo: 2012.6,
+                keluarSKT: 285.8,
+                keluarSKM: 0,
+                saldoSKT: 2012.6,
+                saldoSKM: 0,
+                cek: true
+              },
+              {
+                id: 'tembakau---krosok--rajang-i--hangmadura2024bat-2026-11-12-bspp',
+                tanggal: '2026-11-12T00:00:00.000Z',
+                kode: 'HANG MADURA 2024 (BAT)',
+                jenisMutasi: 'BSPP Lebih',
+                masuk: 1.5,
+                keluar: 0,
+                saldo: 510.0,
+                masukSKT: 0,
+                masukSKM: 1.5,
+                saldoSKT: 0,
+                saldoSKM: 510.0,
+                cek: true
+              },
+              {
+                id: 'tembakau---krosok--rajang-i--hangmadura2024bat-2026-11-12-rj2',
+                tanggal: '2026-11-12T00:00:00.000Z',
+                kode: 'HANG MADURA 2024 (BAT)',
+                jenisMutasi: 'Pengeluaran ke RJ II',
+                masuk: 0,
+                keluar: 61.5,
+                saldo: 508.5,
+                keluarSKT: 0,
+                keluarSKM: 61.5,
+                saldoSKT: 0,
+                saldoSKM: 508.5,
+                cek: true
+              }
+            ];
+            rj1.mutasiTerbaru = [...nov12Rajang1Entries, ...(rj1.mutasiTerbaru || [])];
+          }
+
           // Pastikan entri mutasi 6 Nov 2026 untuk KRS. GARUT 2024 (MYN) terpasang di mutasiTerbaru
           const hasNov6Mutasi = (rj1.mutasiTerbaru || []).some((m: any) => (m.tanggal || '').includes('2026-11-06') && m.kode.includes('GARUT 2024'));
           if (!hasNov6Mutasi) {
@@ -4940,7 +5030,7 @@ export class GasService {
                 saldoSKM: 0,
                 cek: true
               };
-              rj1.mutasiTerbaru = [nov6Entry, ...(rj1.mutasiTerbaru || [])];
+              rj1.mutasiTerbaru = [...(rj1.mutasiTerbaru || []), nov6Entry];
             }
           }
 

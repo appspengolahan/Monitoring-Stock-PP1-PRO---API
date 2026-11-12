@@ -6452,22 +6452,22 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
   {
     "komoditas": "Tembakau & Krosok (Rajang I)",
     "satuan": "Kg",
-    "saldoTotal": 3888.7,
-    "masukTotal": 41128.1,
-    "keluarTotal": 38104.6,
-    "entriTotal": 348,
-    "entriTervalidasi": 98.5,
+    "saldoTotal": 3228.4,
+    "masukTotal": 41131.2,
+    "keluarTotal": 38768.0,
+    "entriTotal": 354,
+    "entriTervalidasi": 100,
     "jumlahKode": 6,
-    "saldoSKTTotal": 3198.4,
-    "saldoSKMTotal": 690.3,
+    "saldoSKTTotal": 2598.1,
+    "saldoSKMTotal": 630.3,
     "kodeList": [
       {
         "nama": "HANG MADURA 2024 (BAT)",
-        "saldo": 570,
+        "saldo": 510,
         "saldoSKT": 0,
-        "saldoSKM": 570,
+        "saldoSKM": 510,
         "kategoriProduksi": "Murni SKM",
-        "tanggalTerakhir": "2026-11-05T00:00:00.000Z"
+        "tanggalTerakhir": "2026-11-12T00:00:00.000Z"
       },
       {
         "nama": "HANG MADURA GRADE B (2021)",
@@ -6495,22 +6495,106 @@ export const INITIAL_KOMODITAS_DATA: KomoditasData[] = [
       },
       {
         "nama": "KRS. GARUT 2024 (MYN)",
-        "saldo": 2298.4,
-        "saldoSKT": 2298.4,
+        "saldo": 2013.1,
+        "saldoSKT": 2013.1,
         "saldoSKM": 0,
         "kategoriProduksi": "Murni SKT",
-        "tanggalTerakhir": "2026-11-06T00:00:00.000Z"
+        "tanggalTerakhir": "2026-11-12T00:00:00.000Z"
       },
       {
         "nama": "KRS. GARUT 2025 (MYN)",
-        "saldo": 900,
-        "saldoSKT": 900,
+        "saldo": 585,
+        "saldoSKT": 585,
         "saldoSKM": 0,
         "kategoriProduksi": "Murni SKT",
-        "tanggalTerakhir": "2026-10-29T00:00:00.000Z"
+        "tanggalTerakhir": "2026-11-12T00:00:00.000Z"
       }
     ],
     "mutasiTerbaru": [
+      {
+        "id": "tembakau---krosok--rajang-i--krsgarut2025-2026-11-12-bspp",
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "kode": "KRS. GARUT 2025 (MYN)",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 1.1,
+        "keluar": 0,
+        "saldo": 585.0,
+        "masukSKT": 1.1,
+        "masukSKM": 0,
+        "saldoSKT": 585.0,
+        "saldoSKM": 0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-i--krsgarut2025-2026-11-12-rj2",
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "kode": "KRS. GARUT 2025 (MYN)",
+        "jenisMutasi": "Pengeluaran ke RJ II",
+        "masuk": 0,
+        "keluar": 316.1,
+        "saldo": 583.9,
+        "keluarSKT": 316.1,
+        "keluarSKM": 0,
+        "saldoSKT": 583.9,
+        "saldoSKM": 0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-i--krsgarut2024-2026-11-12-bspp",
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "kode": "KRS. GARUT 2024 (MYN)",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 0.5,
+        "keluar": 0,
+        "saldo": 2013.1,
+        "masukSKT": 0.5,
+        "masukSKM": 0,
+        "saldoSKT": 2013.1,
+        "saldoSKM": 0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-i--krsgarut2024-2026-11-12-rj2",
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "kode": "KRS. GARUT 2024 (MYN)",
+        "jenisMutasi": "Pengeluaran ke RJ II",
+        "masuk": 0,
+        "keluar": 285.8,
+        "saldo": 2012.6,
+        "keluarSKT": 285.8,
+        "keluarSKM": 0,
+        "saldoSKT": 2012.6,
+        "saldoSKM": 0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-i--hangmadura2024bat-2026-11-12-bspp",
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "kode": "HANG MADURA 2024 (BAT)",
+        "jenisMutasi": "BSPP Lebih",
+        "masuk": 1.5,
+        "keluar": 0,
+        "saldo": 510.0,
+        "masukSKT": 0,
+        "masukSKM": 1.5,
+        "saldoSKT": 0,
+        "saldoSKM": 510.0,
+        "cek": true
+      },
+      {
+        "id": "tembakau---krosok--rajang-i--hangmadura2024bat-2026-11-12-rj2",
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "kode": "HANG MADURA 2024 (BAT)",
+        "jenisMutasi": "Pengeluaran ke RJ II",
+        "masuk": 0,
+        "keluar": 61.5,
+        "saldo": 508.5,
+        "keluarSKT": 0,
+        "keluarSKM": 61.5,
+        "saldoSKT": 0,
+        "saldoSKM": 508.5,
+        "cek": true
+      },
       {
         "id": "tembakau---krosok--rajang-i--krsgarut2024-2026-11-06-penerimaan",
         "tanggal": "2026-11-06T00:00:00.000Z",
