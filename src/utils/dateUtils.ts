@@ -145,10 +145,20 @@ export function getTanggalKey(input: unknown): string {
     }
     return '';
   }
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(d);
+  } catch {
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
 }
 
 /**
@@ -242,7 +252,7 @@ export function formatTanggalIndo(
 
   try {
     return d.toLocaleDateString('id-ID', {
-      timeZone: 'UTC', // Karena kita parsing sebagai Date UTC murni
+      timeZone: 'Asia/Jakarta',
       weekday: withWeekday ? 'short' : undefined,
       day: 'numeric',
       month: monthFormat,

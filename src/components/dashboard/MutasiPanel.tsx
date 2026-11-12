@@ -2106,7 +2106,7 @@ export const MutasiPanel: React.FC<MutasiPanelProps> = React.memo(({
                               title={`Auto-Check: Terverifikasi dengan ${m.bsppMatch.sumber} (${formatNumber(m.bsppMatch.selisihKg)} Kg). Klik untuk lihat audit.`}
                             >
                               <ShieldCheck className="w-2.5 h-2.5 text-purple-600" />
-                              <span>Match BSPP</span>
+                              <span>{m.bsppMatch.sumber?.includes('Penyiapan') ? 'Match Penyiapan' : 'Match BSPP'}</span>
                             </button>
                           ) : (
                             <button

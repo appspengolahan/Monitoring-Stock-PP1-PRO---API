@@ -1927,9 +1927,10 @@ export class GasService {
         };
 
         const enrichedMutasi = normalizedMutasi.map(m => {
-          // 1. Rekonsiliasi BSPP (Penimbangan Ulang)
+          // 1. Rekonsiliasi BSPP (Penimbangan Ulang) & Selisih Penyiapan
           const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
-          if (isBspp) {
+          const isPenyiapan = (m.jenisMutasi || '').toLowerCase().includes('penyiapan');
+          if (isBspp || isPenyiapan) {
             const val = Number(m.masuk || m.keluar || 0);
             return {
               ...m,
@@ -1938,8 +1939,8 @@ export class GasService {
                 matched: true,
                 selisihKg: val,
                 selisih: 0,
-                sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
-                status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
+                sumber: isPenyiapan ? 'Lembar Timbang Penyiapan Bahan Baku' : 'Kertas Kerja BSPP (Penimbangan Ulang)',
+                status: (m.jenisMutasi || '').toLowerCase().includes('kurang') ? 'Selisih Kurang' : 'Selisih Lebih'
               }
             };
           }
@@ -2272,7 +2273,8 @@ export class GasService {
       const cleanSaldoTotal = Math.round(cleanKodeList.reduce((acc, kd) => acc + (Number(kd.saldo) || 0), 0) * 10) / 10;
       const finalMutasi = normalizedMutasi.map(m => {
         const isBspp = m.jenisMutasi === 'BSPP Lebih' || m.jenisMutasi === 'BSPP Kurang' || (m.jenisMutasi || '').toLowerCase().includes('bspp');
-        if (isBspp) {
+        const isPenyiapan = (m.jenisMutasi || '').toLowerCase().includes('penyiapan');
+        if (isBspp || isPenyiapan) {
           const val = Number(m.masuk || m.keluar || 0);
           return {
             ...m,
@@ -2281,8 +2283,8 @@ export class GasService {
               matched: true,
               selisihKg: val,
               selisih: 0,
-              sumber: 'Kertas Kerja BSPP (Penimbangan Ulang)',
-              status: m.jenisMutasi.includes('Lebih') ? 'Selisih Lebih' : 'Selisih Kurang'
+              sumber: isPenyiapan ? 'Lembar Timbang Penyiapan Bahan Baku' : 'Kertas Kerja BSPP (Penimbangan Ulang)',
+              status: (m.jenisMutasi || '').toLowerCase().includes('kurang') ? 'Selisih Kurang' : 'Selisih Lebih'
             }
           };
         }
@@ -3417,6 +3419,43 @@ export class GasService {
   }
 
   public static readonly DEFAULT_DHP_ENTRIES: DHPEntry[] = [
+    // === DATA 12 NOVEMBER 2026 (Live Worksheet DHP Krosok - Kolom I Hasil Proses) ===
+    {
+      tanggal: '2026-11-12T00:00:00.000Z',
+      nama: 'Hang Madura 2024 (BAT)',
+      nettoKg: 61.5,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-12T00:00:00.000Z',
+      nama: 'Diet Trial - 3 Plus (2026)',
+      nettoKg: 120.0,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-12T00:00:00.000Z',
+      nama: 'Diet Trial - 3 (2026)',
+      nettoKg: 119.1,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-12T00:00:00.000Z',
+      nama: 'Krs. Garut 2025 (MYN)',
+      nettoKg: 317.0,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+    {
+      tanggal: '2026-11-12T00:00:00.000Z',
+      nama: 'Krs. Garut 2024 (MYN)',
+      nettoKg: 286.3,
+      jalur: 'SKT',
+      sumber: 'DHP Krosok'
+    },
+
     // === DATA 05 NOVEMBER 2026 (Live Worksheet DHP Krosok - Kolom I Hasil Proses) ===
     {
       tanggal: '2026-11-05T00:00:00.000Z',
@@ -4155,6 +4194,35 @@ export class GasService {
 
   // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---
   public static readonly DEFAULT_DHP_BLEND_ENTRIES: DHPEntry[] = [
+    // === DATA 12 NOVEMBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi: 6 Molen 153-BK, 3 Molen KARANG-BK) ===
+    {
+      tanggal: '2026-11-12T00:00:00.000Z',
+      nama: '153 - BK',
+      nettoKg: 5248.6,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: '153 - BK 01', nettoKg: 875.1 },
+        { no: 2, namaMolen: '153 - BK 02', nettoKg: 874.5 },
+        { no: 3, namaMolen: '153 - BK 03', nettoKg: 875.4 },
+        { no: 4, namaMolen: '153 - BK 04', nettoKg: 875.1 },
+        { no: 5, namaMolen: '153 - BK 05', nettoKg: 874.5 },
+        { no: 6, namaMolen: '153 - BK 06', nettoKg: 874.0 }
+      ]
+    },
+    {
+      tanggal: '2026-11-12T00:00:00.000Z',
+      nama: 'KARANG - BK',
+      nettoKg: 2624.9,
+      jalur: 'Wagir',
+      sumber: 'DHP Blend (Kolom I)',
+      molenList: [
+        { no: 1, namaMolen: 'KARANG - BK 01', nettoKg: 875.2 },
+        { no: 2, namaMolen: 'KARANG - BK 02', nettoKg: 874.5 },
+        { no: 3, namaMolen: 'KARANG - BK 03', nettoKg: 875.2 }
+      ]
+    },
+
     // === DATA 05 NOVEMBER 2026 (Live Worksheet DHP Blend - Kolom I Hasil Jadi: 6 Molen 153-BK, 3 Molen KARANG-BK) ===
     {
       tanggal: '2026-11-05T00:00:00.000Z',
@@ -4573,6 +4641,39 @@ export class GasService {
 
   // --- Rekonsiliasi Hasil Proses Pengeringan Cengkeh (Kertas Kerja SOURCE HASIL DRYER - Kolom F) ---
   public static readonly DEFAULT_CENGKEH_DRYER_ENTRIES: CengkehDryerEntry[] = [
+    // === DATA NOVEMBER 2026 (Live Worksheet SOURCE HASIL DRYER - Kolom F) ===
+    {
+      tanggal: '2026-11-12T00:00:00.000Z',
+      partai: 'PARTAI V SESI 1',
+      nama: 'Manado Grade A (2024)',
+      timbangUlangBasahKg: 3740.0,
+      hasilDryerKg: 2890.6,
+      susutKg: 849.4,
+      susutPersen: '22,71%',
+      sumber: 'SOURCE HASIL DRYER (Kolom F)'
+    },
+    {
+      tanggal: '2026-11-11T00:00:00.000Z',
+      partai: 'PARTAI IV SESI 2',
+      nama: 'Manado Grade A (2024)',
+      timbangUlangBasahKg: 3760.0,
+      hasilDryerKg: 2911.6,
+      susutKg: 848.4,
+      susutPersen: '22,56%',
+      sumber: 'SOURCE HASIL DRYER (Kolom F)'
+    },
+    {
+      tanggal: '2026-11-10T00:00:00.000Z',
+      partai: 'PARTAI IV SESI 1',
+      nama: 'Manado Grade A (2024)',
+      timbangUlangBasahKg: 3690.0,
+      hasilDryerKg: 2853.6,
+      susutKg: 836.4,
+      susutPersen: '22,67%',
+      sumber: 'SOURCE HASIL DRYER (Kolom F)'
+    },
+
+    // === DATA SEPTEMBER 2026 ===
     {
       tanggal: '2026-09-22T00:00:00.000Z',
       partai: 'PARTAI I SESI 1',
@@ -4636,6 +4737,20 @@ export class GasService {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingKeys = new Set(
+            parsed.map((p: any) => `${getTanggalKey(p.tanggal)}_${String(p.partai || '').trim().toUpperCase()}`)
+          );
+          const missingDefaults = this.DEFAULT_CENGKEH_DRYER_ENTRIES.filter(d => {
+            const k = `${getTanggalKey(d.tanggal)}_${String(d.partai || '').trim().toUpperCase()}`;
+            return !existingKeys.has(k);
+          });
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
+            try {
+              localStorage.setItem(STORAGE_KEYS.CENGKEH_DRYER_RECONCILIATION, JSON.stringify(merged));
+            } catch {}
+            return this.cleanCengkehDryerEntries(merged);
+          }
           return this.cleanCengkehDryerEntries(parsed);
         }
       } catch (e) {}
@@ -4900,6 +5015,17 @@ export class GasService {
 
   // --- Rekonsiliasi Pengeluaran Setoran Cengkeh (INTEGRASI DATA SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ---
   public static readonly DEFAULT_SETORAN_CENGKEH_ENTRIES: SetoranCengkehEntry[] = [
+    // === DATA 12 NOVEMBER 2026 (Live Worksheet SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ===
+    {
+      tanggal: '2026-11-12T00:00:00.000Z',
+      nama: 'MANADO GRADE A (2024)',
+      totalKg: 2160.0,
+      detailBlend: {
+        '153 - BK': 2160.0
+      },
+      sumber: 'INTEGRASI DATA SETORAN CENGKEH'
+    },
+
     // === DATA 07 NOVEMBER 2026 (Live Worksheet SETORAN CENGKEH - ID: 1erIyNfNyJncv7GkqMLKQAI2v--FU_mgar9AN07sqt5A) ===
     {
       tanggal: '2026-11-07T00:00:00.000Z',
@@ -5054,19 +5180,32 @@ export class GasService {
       if (!Array.isArray(rows) || rows.length === 0) return this.getCachedSetoranCengkeh();
 
       const items: SetoranCengkehEntry[] = [];
+      let lastKnownDate = '2026-11-04T00:00:00.000Z';
+
+      const cleanNum = (val: any) => {
+        if (val === null || val === undefined) return 0;
+        if (typeof val === 'number') return isNaN(val) ? 0 : val;
+        const s = String(val).trim().replace(/\./g, '').replace(/,/g, '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+      };
+
       for (const row of rows) {
         const c = row?.c || [];
         const rawDate = c[0]?.f || c[0]?.v;
+        if (rawDate && String(rawDate).trim()) {
+          lastKnownDate = normalizeDateToIso(rawDate, lastKnownDate);
+        }
         const rawNama = c[1]?.f || c[1]?.v;
         if (!rawNama) continue;
         const nama = String(rawNama).trim();
-        if (!nama || nama.toUpperCase().includes('TOTAL') || nama.toUpperCase().includes('STATUS')) continue;
+        if (!nama || nama.toUpperCase().includes('TOTAL') || nama.toUpperCase().includes('STATUS') || nama.toUpperCase().includes('JENIS BAHAN')) continue;
 
-        const val153 = Number(String(c[2]?.v ?? c[2]?.f ?? '0').replace(',', '.')) || 0;
-        const valKarang = Number(String(c[3]?.v ?? c[3]?.f ?? '0').replace(',', '.')) || 0;
-        const valTis = Number(String(c[4]?.v ?? c[4]?.f ?? '0').replace(',', '.')) || 0;
-        const valFReg = Number(String(c[5]?.v ?? c[5]?.f ?? '0').replace(',', '.')) || 0;
-        const rawH = Number(String(c[6]?.v ?? c[6]?.f ?? '0').replace(',', '.')) || 0;
+        const val153 = cleanNum(c[2]?.v ?? c[2]?.f);
+        const valKarang = cleanNum(c[3]?.v ?? c[3]?.f);
+        const valTis = cleanNum(c[4]?.v ?? c[4]?.f);
+        const valFReg = cleanNum(c[5]?.v ?? c[5]?.f);
+        const rawH = cleanNum(c[6]?.v ?? c[6]?.f);
 
         const calculatedTotal = Math.round((val153 + valKarang + valTis + valFReg) * 10) / 10;
         const finalTotal = calculatedTotal > 0 ? calculatedTotal : rawH;
@@ -5080,7 +5219,7 @@ export class GasService {
         if (valFReg > 0) detailBlend['F REGULER (LN, AVE)'] = valFReg;
 
         items.push({
-          tanggal: normalizeDateToIso(rawDate, '2026-11-04T00:00:00.000Z'),
+          tanggal: lastKnownDate,
           nama,
           totalKg: finalTotal,
           detailBlend,
