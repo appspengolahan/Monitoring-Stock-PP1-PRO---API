@@ -11,9 +11,19 @@ import {
   Check, 
   AlertCircle,
   Globe,
-  Tag
+  Tag,
+  Copy,
+  Upload,
+  Info,
+  AlertTriangle
 } from 'lucide-react';
-import { useSwitchBoards, SwitchBoardItem } from '../../services/switchboardService';
+import { 
+  useSwitchBoards, 
+  SwitchBoardItem, 
+  isVercelUrl, 
+  isCloudflareUrl, 
+  SwitchBoardService 
+} from '../../services/switchboardService';
 import { StockAppsConfirmModal } from './StockAppsConfirmModal';
 
 interface SwitchAppModalProps {
@@ -29,13 +39,19 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
   allowedKomoditas = ['*'],
   canManage = false
 }) => {
-  const { boards, updateBoards, resetBoards } = useSwitchBoards();
+  const { boards, updateBoards, resetBoards, importBoards } = useSwitchBoards();
   
   // State manajemen/edit
   const [isManageMode, setIsManageMode] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<SwitchBoardItem | null>(null);
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   
+  // State Impor / Ekspor JSON
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [importJsonText, setImportJsonText] = useState<string>('');
+  const [importStatusMsg, setImportStatusMsg] = useState<{ isError: boolean; text: string } | null>(null);
+  const [copyToast, setCopyToast] = useState<boolean>(false);
+
   // Form state
   const [formNama, setFormNama] = useState<string>('');
   const [formDesc, setFormDesc] = useState<string>('');
@@ -243,11 +259,56 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
         {/* Modal Body */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1">
 
+          {/* Banner Pemberitahuan Multi-Device saat Mode Kelola Aktif */}
+          {canManage && isManageMode && (
+            <div className="p-3.5 rounded-xl bg-blue-50/90 border border-blue-200 text-xs text-blue-900 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-blue-950">
+                <Info className="w-4 h-4 text-blue-700 shrink-0" />
+                <span>Catatan Penting Sinkronisasi Antar Perangkat &amp; Incognito:</span>
+              </div>
+              <p className="text-[11.5px] text-blue-800 leading-relaxed">
+                Tautan yang Anda edit lewat menu ini awalnya disimpan di peramban (Local Storage) perangkat ini. Agar tautan Cloudflare baru aktif <strong>secara otomatis di seluruh perangkat (HP, laptop lain, PC rekan kerja) dan mode Incognito</strong> tanpa perlu disetel ulang satu per satu:
+              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const json = SwitchBoardService.exportConfigJson(boards);
+                    navigator.clipboard.writeText(json);
+                    setCopyToast(true);
+                    setTimeout(() => setCopyToast(false), 3000);
+                  }}
+                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer text-[11px]"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{copyToast ? 'Tersalin ke Clipboard!' : 'Salin Konfigurasi (JSON)'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportJsonText('');
+                    setImportStatusMsg(null);
+                    setIsImportModalOpen(true);
+                  }}
+                  className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-blue-900 border border-blue-300 rounded-lg font-semibold flex items-center gap-1.5 transition-colors cursor-pointer text-[11px]"
+                >
+                  <Upload className="w-3.5 h-3.5 text-blue-700" />
+                  <span>Impor / Tempel JSON</span>
+                </button>
+                <span className="text-[11px] text-blue-700 italic">
+                  Atau kirim URL Cloudflare Anda ke chat AI Studio agar ditanam langsung ke kode sumber!
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Daftar Modul */}
           <div className="space-y-2.5">
             {visibleBoards.map((b) => {
               const isCurrent = !!b.isCurrent;
+              const hasVercel = isVercelUrl(b.url);
+              const hasCloudflare = isCloudflareUrl(b.url);
+
               return (
                 <div
                   key={b.id}
@@ -269,9 +330,23 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
                             Sedang Dibuka
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[220px]">
-                            {b.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-                          </span>
+                          <>
+                            <span className="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[200px]" title={b.url}>
+                              {b.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                            </span>
+                            {hasVercel && (
+                              <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/90 border border-amber-300 px-1.5 py-0.5 rounded flex items-center gap-1" title="Aplikasi di Vercel kemungkinan sedang paused / halaman putih">
+                                <AlertTriangle className="w-3 h-3 text-amber-700" />
+                                <span>Vercel (Mungkin Paused)</span>
+                              </span>
+                            )}
+                            {hasCloudflare && (
+                              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                <span>Cloudflare</span>
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                       <p className="text-xs text-slate-500 mt-1 line-clamp-2">
@@ -331,15 +406,46 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
             )}
 
             {canManage && isManageMode && (
-              <button
-                type="button"
-                onClick={handlePromptReset}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
-                title="Reset kembali ke URL default Vercel"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Reset Default</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const json = SwitchBoardService.exportConfigJson(boards);
+                    navigator.clipboard.writeText(json);
+                    setCopyToast(true);
+                    setTimeout(() => setCopyToast(false), 3000);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer border border-blue-200"
+                  title="Salin semua tautan ke clipboard"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{copyToast ? 'Tersalin!' : 'Salin JSON'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportJsonText('');
+                    setImportStatusMsg(null);
+                    setIsImportModalOpen(true);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border border-slate-300"
+                  title="Tempel konfigurasi JSON dari perangkat lain"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Impor JSON</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePromptReset}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                  title="Reset kembali ke URL default sistem"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Reset Default</span>
+                </button>
+              </>
             )}
           </div>
 
@@ -353,6 +459,87 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
         </div>
       </div>
     </div>
+
+    {/* Modal Impor Konfigurasi JSON */}
+    {isImportModalOpen && (
+      <div className="fixed inset-0 z-[70] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden my-auto animate-in zoom-in-95 duration-150 flex flex-col">
+          <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                <Upload className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Impor Konfigurasi Switchboard</h4>
+                <p className="text-[11px] text-slate-500">Tempel JSON dari perangkat lain untuk sinkronisasi cepat</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(false)}
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-5 space-y-3">
+            {importStatusMsg && (
+              <div className={`p-2.5 rounded-xl text-xs flex items-center gap-2 border ${
+                importStatusMsg.isError 
+                  ? 'bg-rose-50 border-rose-200 text-rose-700' 
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              }`}>
+                {importStatusMsg.isError ? <AlertCircle className="w-4 h-4 shrink-0" /> : <Check className="w-4 h-4 shrink-0" />}
+                <span>{importStatusMsg.text}</span>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700">JSON Konfigurasi Modul</label>
+              <textarea
+                value={importJsonText}
+                onChange={e => setImportJsonText(e.target.value)}
+                rows={7}
+                placeholder='[{"id":"blend","nama":"Rekap Proses Blend","url":"https://...workers.dev",...}]'
+                className="w-full p-3 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-600"
+              />
+            </div>
+          </div>
+
+          <div className="p-4 border-t border-slate-200 flex items-center justify-end gap-2 bg-slate-50">
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-xl"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!importJsonText.trim()) {
+                  setImportStatusMsg({ isError: true, text: 'Harap masukkan teks JSON terlebih dahulu' });
+                  return;
+                }
+                const res = importBoards(importJsonText);
+                if (res.ok) {
+                  setImportStatusMsg({ isError: false, text: res.message });
+                  setTimeout(() => {
+                    setIsImportModalOpen(false);
+                  }, 1200);
+                } else {
+                  setImportStatusMsg({ isError: true, text: res.message });
+                }
+              }}
+              className="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs"
+            >
+              Terapkan JSON
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Centered Pop-up Modal: Edit & Tambah Modul */}
     {canManage && (isAddingNew || editingItem) && (
@@ -406,16 +593,24 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Globe className="w-3.5 h-3.5 text-[#00696b]" />
-                <span>URL Tautan (Domain Vercel / Web Apps)</span>
+                <span>URL Tautan (Domain Cloudflare / Web Apps)</span>
               </label>
               <input
                 type="text"
                 value={formUrl}
                 onChange={e => setFormUrl(e.target.value)}
-                placeholder="https://rekap-data-..."
+                placeholder="https://...workers.dev atau https://...pages.dev"
                 className="w-full px-3.5 py-2.5 text-xs font-mono bg-white rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-[#00696b] text-slate-900"
                 required
               />
+              {isVercelUrl(formUrl) && (
+                <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] flex items-start gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                  <span>
+                    URL ini masih menggunakan domain <strong>.vercel.app</strong> yang saat ini mengalami status paused. Ganti dengan tautan hasil deploy Cloudflare (misalnya berakhiran <code>.workers.dev</code> atau <code>.pages.dev</code>) agar halaman tidak putih/kosong.
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

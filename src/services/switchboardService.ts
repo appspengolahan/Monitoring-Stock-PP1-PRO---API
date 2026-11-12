@@ -58,22 +58,59 @@ export const DEFAULT_SWITCH_BOARDS: SwitchBoardItem[] = [
   }
 ];
 
-const STORAGE_KEY = 'pp1_switchboard_modules_v2';
+const STORAGE_KEY = 'pp1_switchboard_modules_v3';
+const LEGACY_STORAGE_KEY = 'pp1_switchboard_modules_v2';
 const EVENT_NAME = 'pp1_switchboard_updated';
+
+export const isVercelUrl = (url: string): boolean => {
+  if (!url) return false;
+  return url.toLowerCase().includes('.vercel.app');
+};
+
+export const isCloudflareUrl = (url: string): boolean => {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return lower.includes('.workers.dev') || lower.includes('.pages.dev') || lower.includes('cloudflare');
+};
 
 export const SwitchBoardService = {
   getBoards(): SwitchBoardItem[] {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      // 1. Coba baca penyimpanan v3
+      let stored = localStorage.getItem(STORAGE_KEY);
+      
+      // 2. Jika v3 belum ada, periksa apakah ada konfigurasi di v2
+      if (!stored) {
+        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (legacy) {
+          stored = legacy;
+        }
+      }
+
       if (!stored) return DEFAULT_SWITCH_BOARDS;
+
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Ensure main is always present and marked isCurrent
+        // Auto-merge: Pastikan board 'main' selalu ada
         const hasMain = parsed.some(b => b.id === 'main');
-        if (!hasMain) {
-          return [DEFAULT_SWITCH_BOARDS[0], ...parsed];
-        }
-        return parsed;
+        const listWithMain = hasMain ? parsed : [DEFAULT_SWITCH_BOARDS[0], ...parsed];
+
+        // Jika ada board bawaan yang di DEFAULT_SWITCH_BOARDS sudah diupdate ke non-Vercel,
+        // prioritaskan URL baru jika entri di cache lokal masih menggunakan domain Vercel yang mati
+        const upgraded = listWithMain.map(item => {
+          const defaultMatch = DEFAULT_SWITCH_BOARDS.find(d => d.id === item.id);
+          if (defaultMatch && !isVercelUrl(defaultMatch.url) && isVercelUrl(item.url)) {
+            return {
+              ...item,
+              url: defaultMatch.url
+            };
+          }
+          return item;
+        });
+
+        // Simpan versi terupgrade ke v3
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(upgraded));
+        return upgraded;
       }
       return DEFAULT_SWITCH_BOARDS;
     } catch (e) {
@@ -94,11 +131,39 @@ export const SwitchBoardService = {
   resetToDefault(): SwitchBoardItem[] {
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
       window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: DEFAULT_SWITCH_BOARDS }));
       return DEFAULT_SWITCH_BOARDS;
     } catch (e) {
       console.error('Gagal mereset switchboard:', e);
       return DEFAULT_SWITCH_BOARDS;
+    }
+  },
+
+  exportConfigJson(boards: SwitchBoardItem[]): string {
+    return JSON.stringify(boards, null, 2);
+  },
+
+  importConfigJson(jsonStr: string): { ok: boolean; message: string; boards?: SwitchBoardItem[] } {
+    try {
+      const parsed = JSON.parse(jsonStr.trim());
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        return { ok: false, message: 'Format JSON tidak valid atau daftar kosong' };
+      }
+      // Validasi struktur minimal
+      const isValid = parsed.every(p => p && typeof p.id === 'string' && typeof p.nama === 'string' && typeof p.url === 'string');
+      if (!isValid) {
+        return { ok: false, message: 'Objek modul di dalam JSON harus memiliki properti id, nama, dan url' };
+      }
+
+      // Pastikan main tetap ada
+      const hasMain = parsed.some(b => b.id === 'main');
+      const finalBoards = hasMain ? parsed : [DEFAULT_SWITCH_BOARDS[0], ...parsed];
+
+      this.saveBoards(finalBoards);
+      return { ok: true, message: `Berhasil mengimpor ${finalBoards.length} modul switchboard`, boards: finalBoards };
+    } catch (e) {
+      return { ok: false, message: 'JSON tidak dapat diparse: ' + (e instanceof Error ? e.message : 'Syntax error') };
     }
   }
 };
@@ -137,9 +202,18 @@ export function useSwitchBoards() {
     setBoards(def);
   }, []);
 
+  const importBoards = useCallback((jsonStr: string) => {
+    const res = SwitchBoardService.importConfigJson(jsonStr);
+    if (res.ok && res.boards) {
+      setBoards(res.boards);
+    }
+    return res;
+  }, []);
+
   return {
     boards,
     updateBoards,
-    resetBoards
+    resetBoards,
+    importBoards
   };
 }
