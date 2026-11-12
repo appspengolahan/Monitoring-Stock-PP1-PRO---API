@@ -24,7 +24,7 @@ export const DEFAULT_SWITCH_BOARDS: SwitchBoardItem[] = [
     id: 'blend',
     nama: 'Rekap Proses Blend',
     desc: 'Monitoring susut pengolahan & rekap mixing blend tembakau',
-    url: 'https://rekap-data-proses-blend-pro-api-eng.vercel.app/',
+    url: 'https://rekap-data-proses-blend-pro-api-engine.appspengolahan.workers.dev/',
     commodityKey: 'blend',
     isCurrent: false,
     isCustom: false
@@ -42,7 +42,7 @@ export const DEFAULT_SWITCH_BOARDS: SwitchBoardItem[] = [
     id: 'tembakau',
     nama: 'Rekap Proses Tembakau',
     desc: 'Rekapitulasi proses dan susut bahan tembakau',
-    url: 'https://rekap-dataproses-tembakau-pro.vercel.app/',
+    url: 'https://rekap-data-proses-tembakau-pro-api.appspengolahan.workers.dev/',
     commodityKey: 'tembakau',
     isCurrent: false,
     isCustom: false
@@ -51,7 +51,7 @@ export const DEFAULT_SWITCH_BOARDS: SwitchBoardItem[] = [
     id: 'krosok',
     nama: 'Rekap Proses Krosok',
     desc: 'Monitoring susut perajangan krosok (Rajang I & II)',
-    url: 'https://rekap-data-krosok-api-phi.vercel.app/',
+    url: 'https://rekap-data-proses-krosok.appspengolahan.workers.dev/',
     commodityKey: 'krosok',
     isCurrent: false,
     isCustom: false
