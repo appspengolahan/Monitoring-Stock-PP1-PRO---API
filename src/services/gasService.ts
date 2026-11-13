@@ -31,6 +31,9 @@ export class GasService {
   private static hasLocalProxyApi: boolean | null = typeof window === 'undefined' ? true : null;
   private static enrichedKomoditasMemoryCache: KomoditasData[] | null = null;
   private static cachedKomoditasRawSignature: string | null = null;
+  private static syncInFlightPromise: Promise<{ success: boolean; message: string; durationMs: number; data?: { komoditas: KomoditasData[]; bspp: BSPPData[] } }> | null = null;
+  private static reconInFlightPromise: Promise<DHPEntry[]> | null = null;
+  private static lastReconSuccessAt: number = 0;
 
   public static getGasUrl(): string {
     return this.gasUrl;
@@ -3194,6 +3197,7 @@ export class GasService {
   }
 
   public static saveCachedKomoditas(data: KomoditasData[]): void {
+    if (!Array.isArray(data) || data.length === 0) return;
     const enriched = this.enrichKomoditasData(data);
     this.clearSnapshotCache();
     if (typeof localStorage !== 'undefined') {
@@ -3435,6 +3439,7 @@ export class GasService {
   }
 
   public static saveCachedBSPP(data: BSPPData[]): void {
+    if (!Array.isArray(data) || data.length === 0) return;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.BSPP, JSON.stringify(data));
     }
@@ -4173,47 +4178,58 @@ export class GasService {
    * Menyimpan ke cache lokal dan otomatis memicu penataan ulang badge auto-check di Mutasi
    */
   public static async refreshDHPReconciliation(): Promise<DHPEntry[]> {
-    try {
-      const [sktItems, blendItems, setoranItems, pengirimanItems, dryerItems, setoranCengkehItems] = await Promise.all([
-        this.fetchDHPSKTDirectFromSheet().catch(e => { console.warn('Refresh DHP SKT error:', e); return []; }),
-        this.fetchDHPBlendDirectFromSheet().catch(e => { console.warn('Refresh DHP Blend error:', e); return []; }),
-        this.fetchSetoranDirectFromSheet().catch(e => { console.warn('Refresh Setoran error:', e); return []; }),
-        this.fetchPengirimanBlendDirectFromSheet().catch(e => { console.warn('Refresh Pengiriman Blend error:', e); return []; }),
-        this.fetchCengkehDryerDirectFromSheet().catch(e => { console.warn('Refresh Cengkeh Dryer error:', e); return []; }),
-        this.fetchSetoranCengkehDirectFromSheet().catch(e => { console.warn('Refresh Setoran Cengkeh error:', e); return []; }),
-        this.fetchRajangIIDirectFromSheet().catch(e => { console.warn('Refresh Rajang II error:', e); return []; }),
-        this.fetchRajangIDirectFromSheet().catch(e => { console.warn('Refresh Rajang I error:', e); return []; })
-      ]);
-      if (blendItems && blendItems.length > 0) {
-        this.saveCachedDHPBlend(blendItems, true);
-      }
-      if (setoranItems && setoranItems.length > 0) {
-        this.saveCachedSetoran(setoranItems, true);
-      }
-      if (pengirimanItems && pengirimanItems.length > 0) {
-        this.saveCachedPengirimanBlend(pengirimanItems, true);
-      }
-      if (dryerItems && dryerItems.length > 0) {
-        this.saveCachedCengkehDryer(dryerItems, true);
-      }
-      if (setoranCengkehItems && setoranCengkehItems.length > 0) {
-        this.saveCachedSetoranCengkeh(setoranCengkehItems, true);
-      }
-      if (sktItems && sktItems.length > 0) {
-        this.saveCachedDHP(sktItems, true);
-      }
-      const current = this.getCachedKomoditas();
-      this.saveCachedKomoditas(current);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
-      }
-      if (sktItems && sktItems.length > 0) {
-        return sktItems;
-      }
-    } catch (e) {
-      console.warn('Gagal refresh DHP reconciliation langsung:', e);
+    if (this.reconInFlightPromise) {
+      return this.reconInFlightPromise;
     }
-    return this.getCachedDHP();
+
+    this.reconInFlightPromise = (async () => {
+      try {
+        const [sktItems, blendItems, setoranItems, pengirimanItems, dryerItems, setoranCengkehItems] = await Promise.all([
+          this.fetchDHPSKTDirectFromSheet().catch(e => { console.warn('Refresh DHP SKT error:', e); return []; }),
+          this.fetchDHPBlendDirectFromSheet().catch(e => { console.warn('Refresh DHP Blend error:', e); return []; }),
+          this.fetchSetoranDirectFromSheet().catch(e => { console.warn('Refresh Setoran error:', e); return []; }),
+          this.fetchPengirimanBlendDirectFromSheet().catch(e => { console.warn('Refresh Pengiriman Blend error:', e); return []; }),
+          this.fetchCengkehDryerDirectFromSheet().catch(e => { console.warn('Refresh Cengkeh Dryer error:', e); return []; }),
+          this.fetchSetoranCengkehDirectFromSheet().catch(e => { console.warn('Refresh Setoran Cengkeh error:', e); return []; }),
+          this.fetchRajangIIDirectFromSheet().catch(e => { console.warn('Refresh Rajang II error:', e); return []; }),
+          this.fetchRajangIDirectFromSheet().catch(e => { console.warn('Refresh Rajang I error:', e); return []; })
+        ]);
+        if (blendItems && blendItems.length > 0) {
+          this.saveCachedDHPBlend(blendItems, true);
+        }
+        if (setoranItems && setoranItems.length > 0) {
+          this.saveCachedSetoran(setoranItems, true);
+        }
+        if (pengirimanItems && pengirimanItems.length > 0) {
+          this.saveCachedPengirimanBlend(pengirimanItems, true);
+        }
+        if (dryerItems && dryerItems.length > 0) {
+          this.saveCachedCengkehDryer(dryerItems, true);
+        }
+        if (setoranCengkehItems && setoranCengkehItems.length > 0) {
+          this.saveCachedSetoranCengkeh(setoranCengkehItems, true);
+        }
+        if (sktItems && sktItems.length > 0) {
+          this.saveCachedDHP(sktItems, true);
+        }
+        const current = this.getCachedKomoditas();
+        this.saveCachedKomoditas(current);
+        this.lastReconSuccessAt = Date.now();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
+        }
+        if (sktItems && sktItems.length > 0) {
+          return sktItems;
+        }
+      } catch (e) {
+        console.warn('Gagal refresh DHP reconciliation langsung:', e);
+      } finally {
+        this.reconInFlightPromise = null;
+      }
+      return this.getCachedDHP();
+    })();
+
+    return this.reconInFlightPromise;
   }
 
   // --- Rekonsiliasi Hasil Proses Tembakau Blend (Kertas Kerja DHP Blend - Kolom I) ---
@@ -6277,15 +6293,75 @@ export class GasService {
   }
 
   // --- Live Multi-Stream Parallel Sync from GAS (7x Faster than monolithic getDashboardData) ---
+  private static mergeSafeKomoditasPayload(index: number, prevItem: KomoditasData | undefined, nextItem: any): { item: KomoditasData; updated: boolean } {
+    if (!nextItem || typeof nextItem !== 'object' || !nextItem.komoditas || nextItem.error || nextItem.fallback || nextItem.ok === false) {
+      return { item: prevItem as KomoditasData, updated: false };
+    }
+
+    const prevHasKode = Array.isArray(prevItem?.kodeList) && prevItem!.kodeList.length > 0;
+    const nextHasKode = Array.isArray(nextItem.kodeList) && nextItem.kodeList.length > 0;
+    const prevHasMutasi = Array.isArray(prevItem?.mutasiTerbaru) && prevItem!.mutasiTerbaru.length > 0;
+    const nextHasMutasi = Array.isArray(nextItem.mutasiTerbaru) && nextItem.mutasiTerbaru.length > 0;
+
+    // Anti-Overwrite Guard: Tolak respon kosong dari GAS/Sheet bila cache lokal sudah memiliki data valid
+    if (prevItem && (prevHasKode || prevHasMutasi) && !nextHasKode && !nextHasMutasi) {
+      return { item: prevItem, updated: false };
+    }
+
+    const safeItem: any = { ...nextItem };
+    if (prevItem && prevHasKode && !nextHasKode) {
+      safeItem.kodeList = prevItem.kodeList;
+      safeItem.jumlahKode = prevItem.jumlahKode;
+      safeItem.saldoTotal = prevItem.saldoTotal;
+      safeItem.saldoSKTTotal = prevItem.saldoSKTTotal;
+      safeItem.saldoSKMTotal = prevItem.saldoSKMTotal;
+    }
+    if (prevItem && prevHasMutasi && !nextHasMutasi) {
+      safeItem.mutasiTerbaru = prevItem.mutasiTerbaru;
+      safeItem.masukTotal = prevItem.masukTotal;
+      safeItem.keluarTotal = prevItem.keluarTotal;
+      safeItem.entriTervalidasi = prevItem.entriTervalidasi;
+    }
+
+    // Safeguard Rajang I: pertahankan entri mutasi lebih baru (mis. 12 Nov 2026) jika respon GAS belum termutakhirkan
+    if (index === 3 && prevItem && Array.isArray(prevItem.mutasiTerbaru)) {
+      const incomingMutasi = Array.isArray(safeItem.mutasiTerbaru) ? safeItem.mutasiTerbaru : [];
+      const incomingHasNov12 = incomingMutasi.some((m: any) => (m.tanggal || '').includes('2026-11-12'));
+      const prevNov12 = prevItem.mutasiTerbaru.filter((m: any) => (m.tanggal || '').includes('2026-11-12'));
+      if (!incomingHasNov12 && prevNov12.length > 0) {
+        safeItem.mutasiTerbaru = [...prevNov12, ...incomingMutasi];
+        safeItem.kodeList = prevItem.kodeList;
+        safeItem.saldoTotal = prevItem.saldoTotal;
+        safeItem.saldoSKTTotal = prevItem.saldoSKTTotal;
+        safeItem.saldoSKMTotal = prevItem.saldoSKMTotal;
+      }
+    }
+
+    return { item: safeItem as KomoditasData, updated: true };
+  }
+
   public static async syncFromGas(onProgress?: (msg: string, percent: number) => void): Promise<{ 
     success: boolean; 
     message: string; 
     durationMs: number;
     data?: { komoditas: KomoditasData[]; bspp: BSPPData[] } 
   }> {
+    // Deduplikasi panggilan sinkronisasi bersamaan agar tidak memicu burst request & rate limit Google
+    if (this.syncInFlightPromise) {
+      return this.syncInFlightPromise;
+    }
+
+    this.syncInFlightPromise = (async () => {
     const startTime = performance.now();
     try {
       if (onProgress) onProgress('Menghubungkan ke 4 Spreadsheet Komoditas secara paralel...', 15);
+
+      // Jika refreshDHPReconciliation() sedang berjalan atau baru saja selesai (< 20 detik lalu),
+      // tunggu/gunakan hasilnya agar tidak menembak 6 sheet CSV rekonsiliasi dua kali bersamaan
+      if (this.reconInFlightPromise) {
+        await this.reconInFlightPromise.catch(() => []);
+      }
+      const skipDuplicateReconFetch = (Date.now() - this.lastReconSuccessAt) < 20000;
 
       // Launch 4 Komoditas in parallel stream (Promise.allSettled)
       // This reduces latency from ~9.6s to only ~1.1s!
@@ -6317,7 +6393,7 @@ export class GasService {
       });
 
       // Launch DHP reconciliation in parallel stream (Direct Sheet fetch with GAS fallback)
-      const dhpPromise = (async () => {
+      const dhpPromise = skipDuplicateReconFetch ? Promise.resolve(this.getCachedDHP()) : (async () => {
         try {
           const directItems = await this.fetchDHPSKTDirectFromSheet();
           if (directItems && directItems.length > 0) {
@@ -6342,7 +6418,7 @@ export class GasService {
       })();
 
       // Launch Setoran reconciliation in parallel stream
-      const setoranPromise = (async () => {
+      const setoranPromise = skipDuplicateReconFetch ? Promise.resolve(this.getCachedSetoran()) : (async () => {
         try {
           const sUrl = `${this.gasUrl}?action=getSetoranReconciliation&t=${Date.now()}`;
           const sRes = await this.fetchWithTimeout(sUrl, 16000);
@@ -6367,7 +6443,7 @@ export class GasService {
       })();
 
       // Launch DHP Blend reconciliation in parallel stream (Direct Sheet fetch with GAS fallback)
-      const dhpBlendPromise = (async () => {
+      const dhpBlendPromise = skipDuplicateReconFetch ? Promise.resolve(this.getCachedDHPBlend()) : (async () => {
         try {
           const directBlendItems = await this.fetchDHPBlendDirectFromSheet();
           if (directBlendItems && directBlendItems.length > 0) {
@@ -6392,7 +6468,7 @@ export class GasService {
       })();
 
       // Launch Pengiriman Blend reconciliation in parallel stream
-      const pengirimanBlendPromise = (async () => {
+      const pengirimanBlendPromise = skipDuplicateReconFetch ? Promise.resolve(this.getCachedPengirimanBlend()) : (async () => {
         try {
           const pUrl = `${this.gasUrl}?action=getPengirimanBlendReconciliation&t=${Date.now()}`;
           const pRes = await this.fetchWithTimeout(pUrl, 16000);
@@ -6417,7 +6493,7 @@ export class GasService {
       })();
 
       // Launch Cengkeh Dryer reconciliation in parallel stream
-      const cengkehDryerPromise = (async () => {
+      const cengkehDryerPromise = skipDuplicateReconFetch ? Promise.resolve(this.getCachedCengkehDryer()) : (async () => {
         try {
           const directDryerItems = await this.fetchCengkehDryerDirectFromSheet();
           if (directDryerItems && directDryerItems.length > 0) {
@@ -6440,7 +6516,7 @@ export class GasService {
       })();
 
       // Launch Setoran Cengkeh reconciliation in parallel stream
-      const setoranCengkehPromise = (async () => {
+      const setoranCengkehPromise = skipDuplicateReconFetch ? Promise.resolve(this.getCachedSetoranCengkeh()) : (async () => {
         try {
           const directSetoranCengkehItems = await this.fetchSetoranCengkehDirectFromSheet();
           if (directSetoranCengkehItems && directSetoranCengkehItems.length > 0) {
@@ -6476,26 +6552,13 @@ export class GasService {
       let komoditasUpdatedCount = 0;
 
       komoditasResults.forEach((res) => {
-        if (res.status === 'fulfilled' && res.value?.data?.komoditas) {
+        if (res.status === 'fulfilled' && res.value?.data) {
           const prevItem = currentKomoditasList[res.value.index];
-          const nextItem = res.value.data;
-
-          // Safeguard Rajang I: pertahankan entri mutasi lebih baru (mis. 12 Nov 2026) jika respon GAS belum termutakhirkan
-          if (res.value.index === 3 && prevItem && Array.isArray(prevItem.mutasiTerbaru)) {
-            const incomingMutasi = Array.isArray(nextItem.mutasiTerbaru) ? nextItem.mutasiTerbaru : [];
-            const incomingHasNov12 = incomingMutasi.some((m: any) => (m.tanggal || '').includes('2026-11-12'));
-            const prevNov12 = prevItem.mutasiTerbaru.filter((m: any) => (m.tanggal || '').includes('2026-11-12'));
-            if (!incomingHasNov12 && prevNov12.length > 0) {
-              nextItem.mutasiTerbaru = [...prevNov12, ...incomingMutasi];
-              nextItem.kodeList = prevItem.kodeList;
-              nextItem.saldoTotal = prevItem.saldoTotal;
-              nextItem.saldoSKTTotal = prevItem.saldoSKTTotal;
-              nextItem.saldoSKMTotal = prevItem.saldoSKMTotal;
-            }
+          const { item, updated } = this.mergeSafeKomoditasPayload(res.value.index, prevItem, res.value.data);
+          if (updated) {
+            currentKomoditasList[res.value.index] = item;
+            komoditasUpdatedCount++;
           }
-
-          currentKomoditasList[res.value.index] = nextItem;
-          komoditasUpdatedCount++;
         }
       });
 
@@ -6513,11 +6576,15 @@ export class GasService {
       let bsppUpdatedCount = 0;
 
       bsppResults.forEach((res) => {
-        if (res.status === 'fulfilled' && res.value?.data) {
+        if (res.status === 'fulfilled' && res.value?.data && !res.value.data.error && !res.value.data.fallback && res.value.data.ok !== false) {
           const rawData = res.value.data;
           const idx = res.value.index;
 
           if (rawData && Array.isArray(rawData.records)) {
+            const prevEntries = currentBsppList[idx]?.entries || [];
+            if (rawData.records.length === 0 && prevEntries.length > 0) {
+              return; // Anti-Overwrite Guard: jangan timpa cache BSPP valid dengan records kosong
+            }
             const mappedEntries: BSPPEntry[] = rawData.records.map((r: any) => ({
               tanggal: r.tanggal ? (r.tanggal.includes('T') ? r.tanggal : `${r.tanggal}T00:00:00.000Z`) : '',
               jenis: r.jenis || '',
@@ -6539,7 +6606,6 @@ export class GasService {
             });
 
             if (currentBsppList[idx]) {
-              const prevEntries = currentBsppList[idx]?.entries || [];
               const prevNovEntries = prevEntries.filter(e => (e.tanggal || '').startsWith('2026-11'));
               const newHasNov = mappedEntries.some(e => (e.tanggal || '').startsWith('2026-11'));
               const mergedEntries = (!newHasNov && prevNovEntries.length > 0)
@@ -6559,6 +6625,9 @@ export class GasService {
             }
           } else if (rawData && Array.isArray(rawData.entries)) {
             const prevEntries = currentBsppList[idx]?.entries || [];
+            if (rawData.entries.length === 0 && prevEntries.length > 0) {
+              return; // Anti-Overwrite Guard
+            }
             const prevNovEntries = prevEntries.filter(e => (e.tanggal || '').startsWith('2026-11'));
             const newHasNov = rawData.entries.some((e: any) => (e.tanggal || '').startsWith('2026-11'));
             const mergedEntries = (!newHasNov && prevNovEntries.length > 0)
@@ -6579,6 +6648,7 @@ export class GasService {
         this.saveCachedBSPP(currentBsppList);
       }
 
+      this.lastReconSuccessAt = Date.now();
       const durationMs = Math.round(performance.now() - startTime);
 
       if (onProgress) onProgress('Sinkronisasi selesai!', 100);
@@ -6603,7 +6673,12 @@ export class GasService {
           bspp: this.getCachedBSPP()
         }
       };
+    } finally {
+      this.syncInFlightPromise = null;
     }
+    })();
+
+    return this.syncInFlightPromise;
   }
 
   // --- TARIK DATASHEET LANGSUNG (Bypass Cache Total & Deep Sync Seluruh Sheet) ---
@@ -6803,31 +6878,19 @@ export class GasService {
       let komoditasUpdatedCount = 0;
 
       komoditasResults.forEach((res) => {
-        if (res.status === 'fulfilled' && res.value?.data?.komoditas) {
+        if (res.status === 'fulfilled' && res.value?.data) {
           const prevItem = currentKomoditasList[res.value.index];
-          const nextItem = res.value.data;
-
-          // Safeguard Rajang I: pertahankan entri mutasi lebih baru (mis. 12 Nov 2026) jika respon GAS belum termutakhirkan
-          if (res.value.index === 3 && prevItem && Array.isArray(prevItem.mutasiTerbaru)) {
-            const incomingMutasi = Array.isArray(nextItem.mutasiTerbaru) ? nextItem.mutasiTerbaru : [];
-            const incomingHasNov12 = incomingMutasi.some((m: any) => (m.tanggal || '').includes('2026-11-12'));
-            const prevNov12 = prevItem.mutasiTerbaru.filter((m: any) => (m.tanggal || '').includes('2026-11-12'));
-            if (!incomingHasNov12 && prevNov12.length > 0) {
-              nextItem.mutasiTerbaru = [...prevNov12, ...incomingMutasi];
-              nextItem.kodeList = prevItem.kodeList;
-              nextItem.saldoTotal = prevItem.saldoTotal;
-              nextItem.saldoSKTTotal = prevItem.saldoSKTTotal;
-              nextItem.saldoSKMTotal = prevItem.saldoSKMTotal;
-            }
+          const { item, updated } = this.mergeSafeKomoditasPayload(res.value.index, prevItem, res.value.data);
+          if (updated) {
+            currentKomoditasList[res.value.index] = item;
+            komoditasUpdatedCount++;
           }
-
-          currentKomoditasList[res.value.index] = nextItem;
-          komoditasUpdatedCount++;
         }
       });
 
       // Save and re-enrich komoditas once for all updated commodities & reconciliation streams
       this.saveCachedKomoditas(currentKomoditasList);
+      this.lastReconSuccessAt = Date.now();
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('stockpp1_reconciliation_data_updated'));
       }
@@ -6837,10 +6900,33 @@ export class GasService {
       let bsppUpdatedCount = 0;
 
       bsppResults.forEach((res) => {
-        if (res.status === 'fulfilled' && res.value?.data) {
+        if (res.status === 'fulfilled' && res.value?.data && !res.value.data.error && !res.value.data.fallback && res.value.data.ok !== false) {
           const bsppItem = res.value.data;
-          if (Array.isArray(bsppItem.entries)) {
-            const prevEntries = currentBsppList[res.value.index]?.entries || [];
+          const prevEntries = currentBsppList[res.value.index]?.entries || [];
+          if (Array.isArray(bsppItem.records)) {
+            if (bsppItem.records.length === 0 && prevEntries.length > 0) return;
+            const mappedEntries: BSPPEntry[] = bsppItem.records.map((r: any) => ({
+              tanggal: r.tanggal ? (r.tanggal.includes('T') ? r.tanggal : `${r.tanggal}T00:00:00.000Z`) : '',
+              jenis: r.jenis || '',
+              labelNetto: Number(r.labelNetto) || 0,
+              timbangUlang: Number(r.timbangUlang) || 0,
+              selisihKg: Number(r.selisihKg) || 0,
+              selisihPersen: Math.abs(Number(r.selisihPersen) || 0) * (Math.abs(Number(r.selisihPersen) || 0) <= 1 ? 100 : 1),
+              status: r.status || (Number(r.selisihKg) > 0 ? 'Selisih Lebih' : Number(r.selisihKg) < 0 ? 'Selisih Kurang' : 'Tanpa Selisih')
+            }));
+            const prevNovEntries = prevEntries.filter(e => (e.tanggal || '').startsWith('2026-11'));
+            const newHasNov = mappedEntries.some(e => (e.tanggal || '').startsWith('2026-11'));
+            const mergedEntries = (!newHasNov && prevNovEntries.length > 0)
+              ? [...prevNovEntries, ...mappedEntries]
+              : mappedEntries;
+            currentBsppList[res.value.index] = {
+              ...currentBsppList[res.value.index],
+              entries: mergedEntries,
+              jumlahEntri: mergedEntries.length
+            };
+            bsppUpdatedCount++;
+          } else if (Array.isArray(bsppItem.entries)) {
+            if (bsppItem.entries.length === 0 && prevEntries.length > 0) return;
             const prevNovEntries = prevEntries.filter(e => (e.tanggal || '').startsWith('2026-11'));
             const newHasNov = bsppItem.entries.some((e: any) => (e.tanggal || '').startsWith('2026-11'));
             const mergedEntries = (!newHasNov && prevNovEntries.length > 0)

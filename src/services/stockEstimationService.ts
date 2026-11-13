@@ -27,6 +27,9 @@ export const SUBSTITUTION_RULES: Record<string, string> = {
 };
 
 export class StockEstimationService {
+  private static hasLocalProxyApi: boolean | null = typeof window === 'undefined' ? true : null;
+  private static inFlightRefresh: Promise<{ ok: boolean; data?: DatabasePrufData; message: string }> | null = null;
+
   public static getDefaultConfig(): EstimationConfig {
     return {
       usageBasis: 'target_batch_per_day',
@@ -76,6 +79,7 @@ export class StockEstimationService {
   }
 
   public static savePrufData(data: DatabasePrufData): void {
+    if (!data || (!data.tembakauItems?.length && !data.cengkehItems?.length)) return;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_PRUF_DATA, JSON.stringify(data));
       window.dispatchEvent(new CustomEvent('stockpp1_pruf_data_updated'));
@@ -86,31 +90,46 @@ export class StockEstimationService {
    * Mengambil data terbaru dari Google Sheets DATABASEPRUF secara online
    */
   public static async refreshFromGoogleSheets(): Promise<{ ok: boolean; data?: DatabasePrufData; message: string }> {
+    if (this.inFlightRefresh) {
+      return this.inFlightRefresh;
+    }
+
+    this.inFlightRefresh = (async () => {
     try {
       const fetchTab = async (sheetName: string): Promise<string> => {
         const targetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
         
-        // 1. Coba via Express server proxy (/api/gas-proxy) untuk menghindari pemblokiran CORS di browser operator
-        try {
-          const proxyRes = await fetch(`/api/gas-proxy?noCache=true&url=${encodeURIComponent(targetUrl)}`);
-          if (proxyRes.ok) {
-            const data = await proxyRes.json();
-            if (typeof data === 'string' && data.trim().length > 0) return data;
-            if (typeof data === 'object' && data && typeof (data as any).data === 'string') return (data as any).data;
+        // 1. Coba via Express server proxy (/api/gas-proxy) bila tersedia
+        if (this.hasLocalProxyApi !== false) {
+          try {
+            const proxyRes = await fetch(`/api/gas-proxy?noCache=true&url=${encodeURIComponent(targetUrl)}`);
+            const ct = proxyRes.headers.get('content-type') || '';
+            if (ct.includes('text/html')) {
+              this.hasLocalProxyApi = false;
+            } else if (proxyRes.ok) {
+              this.hasLocalProxyApi = true;
+              const data = await proxyRes.json();
+              const str = typeof data === 'string' ? data : (data && typeof (data as any).data === 'string' ? (data as any).data : '');
+              if (str.trim().length > 0 && !str.trim().startsWith('<')) return str;
+            }
+          } catch (proxyErr) {
+            console.warn(`Proxy fetch gagal untuk ${sheetName}, mencoba direct fetch...`, proxyErr);
           }
-        } catch (proxyErr) {
-          console.warn(`Proxy fetch gagal untuk ${sheetName}, mencoba direct fetch...`, proxyErr);
         }
 
-        // 2. Direct fetch fallback
+        // 2. Direct fetch fallback dengan validasi anti-HTML / anti-rate-limit
         const res = await fetch(targetUrl, { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status} gagal memuat tab ${sheetName}`);
-        return await res.text();
+        const text = await res.text();
+        if (!text || text.trim().length === 0 || text.trim().startsWith('<')) {
+          throw new Error(`Respon Google Sheets untuk tab ${sheetName} bukan CSV valid (kemungkinan dibatasi sementara).`);
+        }
+        return text;
       };
 
       const [tbkCsv, cgkCsv, planCsv] = await Promise.all([
-        fetchTab('DATABASEPRUF TEMBAKAU & KROSOK'),
-        fetchTab('DATABASEPRUF CENGKEH'),
+        fetchTab('DATABASEPRUF TEMBAKAU & KROSOK').catch(() => ''),
+        fetchTab('DATABASEPRUF CENGKEH').catch(() => ''),
         fetchTab('PLANING BLEND MINGGUAN').catch(e => {
           console.warn('Tab PLANING BLEND MINGGUAN belum dapat diakses:', e);
           return '';
@@ -270,13 +289,29 @@ export class StockEstimationService {
         }
       }
 
+      const existing = this.getPrufData();
+
+      // Anti-Overwrite Guard: jangan timpa cache Pruf yang sudah berisi jika Google Sheets mengirim respon kosong
+      if (tbk.items.length === 0 && cgk.items.length === 0) {
+        return {
+          ok: false,
+          data: existing,
+          message: 'Respon Google Sheets kosong atau sedang dibatasi sementara. Mempertahankan data Pruf tersimpan.'
+        };
+      }
+
+      const safeTbkItems = tbk.items.length > 0 ? tbk.items : existing.tembakauItems;
+      const safeCgkItems = cgk.items.length > 0 ? cgk.items : existing.cengkehItems;
+      const safePlanInfo = tbk.items.length > 0 ? tbk.planInfo : existing.planInfo;
+      const safeWeeklyPlan = weeklyPlan || existing.weeklyPlan;
+
       const combined: DatabasePrufData = {
         spreadsheetId: SPREADSHEET_ID,
         lastUpdated: new Date().toISOString(),
-        planInfo: tbk.planInfo,
-        weeklyPlan,
-        cengkehItems: cgk.items,
-        tembakauItems: tbk.items
+        planInfo: safePlanInfo,
+        weeklyPlan: safeWeeklyPlan,
+        cengkehItems: safeCgkItems,
+        tembakauItems: safeTbkItems
       };
 
       this.savePrufData(combined);
@@ -284,7 +319,12 @@ export class StockEstimationService {
     } catch (err: any) {
       console.warn('Gagal refresh DATABASEPRUF dari Google Sheets, menggunakan baseline tersimpan:', err);
       return { ok: false, message: `Gagal menyinkronkan data: ${err.message || String(err)}. Menggunakan data tersimpan.` };
+    } finally {
+      this.inFlightRefresh = null;
     }
+    })();
+
+    return this.inFlightRefresh;
   }
 
   /**
