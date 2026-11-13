@@ -5,6 +5,7 @@
     height: 100%;
     margin: 0;
     padding: 0;
+    overscroll-behavior-y: contain;
   }
 
   html {
@@ -12,6 +13,10 @@
     font-size: 17.2px; /* ~17px - 17.5px base typography for field mobile and laptop legibility */
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
+  }
+
+  button, [role="button"], a, select, input, textarea, label {
+    touch-action: manipulation;
   }
 
   code, kbd, samp, pre, .font-mono {

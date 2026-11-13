@@ -29,6 +29,8 @@ const STORAGE_KEYS = {
 export class GasService {
   private static gasUrl: string = typeof localStorage !== 'undefined' ? (localStorage.getItem(STORAGE_KEYS.GAS_URL) || DEFAULT_GAS_URL) : DEFAULT_GAS_URL;
   private static hasLocalProxyApi: boolean | null = typeof window === 'undefined' ? true : null;
+  private static enrichedKomoditasMemoryCache: KomoditasData[] | null = null;
+  private static cachedKomoditasRawSignature: string | null = null;
 
   public static getGasUrl(): string {
     return this.gasUrl;
@@ -2322,8 +2324,16 @@ export class GasService {
   }
 
   public static getCachedKomoditas(): KomoditasData[] {
-    if (typeof localStorage === 'undefined') return this.enrichKomoditasData(INITIAL_KOMODITAS_DATA);
+    if (typeof localStorage === 'undefined') {
+      if (!this.enrichedKomoditasMemoryCache) {
+        this.enrichedKomoditasMemoryCache = this.enrichKomoditasData(INITIAL_KOMODITAS_DATA);
+      }
+      return this.enrichedKomoditasMemoryCache;
+    }
     const cached = localStorage.getItem(STORAGE_KEYS.KOMODITAS);
+    if (cached && this.enrichedKomoditasMemoryCache && cached === this.cachedKomoditasRawSignature) {
+      return this.enrichedKomoditasMemoryCache;
+    }
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -3131,6 +3141,9 @@ export class GasService {
           if (isCorrupted) {
             console.warn('Cache tercemar terdeteksi. Otomatis membersihkan dan merestore ke baseline murni...');
             this.saveCachedKomoditas(enriched);
+          } else {
+            this.enrichedKomoditasMemoryCache = enriched;
+            this.cachedKomoditasRawSignature = localStorage.getItem(STORAGE_KEYS.KOMODITAS);
           }
           return enriched;
         }
@@ -3185,8 +3198,11 @@ export class GasService {
     this.clearSnapshotCache();
     if (typeof localStorage !== 'undefined') {
       try {
-        localStorage.setItem(STORAGE_KEYS.KOMODITAS, JSON.stringify(enriched));
+        const serialized = JSON.stringify(enriched);
+        localStorage.setItem(STORAGE_KEYS.KOMODITAS, serialized);
         localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+        this.enrichedKomoditasMemoryCache = enriched;
+        this.cachedKomoditasRawSignature = serialized;
       } catch (err: any) {
         // Quota Guard: Jika penyimpanan HP operator penuh, bersihkan cache non-esensial dan pangkas mutasi lama
         console.warn('LocalStorage quota warning. Menjalankan auto-purge & trimming cache...', err);
@@ -3202,12 +3218,17 @@ export class GasService {
             ...k,
             mutasiTerbaru: (k.mutasiTerbaru || []).slice(0, 100)
           }));
-          localStorage.setItem(STORAGE_KEYS.KOMODITAS, JSON.stringify(trimmed));
+          const serializedTrimmed = JSON.stringify(trimmed);
+          localStorage.setItem(STORAGE_KEYS.KOMODITAS, serializedTrimmed);
           localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+          this.enrichedKomoditasMemoryCache = trimmed;
+          this.cachedKomoditasRawSignature = serializedTrimmed;
         } catch (retryErr) {
           console.error('Auto-purge storage recovery failed:', retryErr);
         }
       }
+    } else {
+      this.enrichedKomoditasMemoryCache = enriched;
     }
   }
 
@@ -4128,6 +4149,8 @@ export class GasService {
       map.set(k, item);
     });
     const merged = Array.from(map.values());
+    this.enrichedKomoditasMemoryCache = null;
+    this.cachedKomoditasRawSignature = null;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.DHP_RECONCILIATION, JSON.stringify(merged));
     }
@@ -4526,6 +4549,8 @@ export class GasService {
       map.set(k, item);
     });
     const merged = Array.from(map.values());
+    this.enrichedKomoditasMemoryCache = null;
+    this.cachedKomoditasRawSignature = null;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.DHP_BLEND_RECONCILIATION, JSON.stringify(merged));
     }
@@ -4624,6 +4649,8 @@ export class GasService {
 
   public static saveCachedPengirimanBlend(data: PengirimanBlendEntry[], skipNotify: boolean = false): void {
     const cleaned = this.cleanPengirimanBlendEntries(data);
+    this.enrichedKomoditasMemoryCache = null;
+    this.cachedKomoditasRawSignature = null;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.PENGIRIMAN_BLEND_RECONCILIATION, JSON.stringify(cleaned));
     }
@@ -4761,6 +4788,8 @@ export class GasService {
 
   public static saveCachedCengkehDryer(data: CengkehDryerEntry[], skipNotify: boolean = false): void {
     const cleaned = this.cleanCengkehDryerEntries(data);
+    this.enrichedKomoditasMemoryCache = null;
+    this.cachedKomoditasRawSignature = null;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.CENGKEH_DRYER_RECONCILIATION, JSON.stringify(cleaned));
     }
@@ -5236,6 +5265,8 @@ export class GasService {
 
   public static saveCachedSetoranCengkeh(data: SetoranCengkehEntry[], skipNotify: boolean = false): void {
     const cleaned = this.cleanSetoranCengkehEntries(data);
+    this.enrichedKomoditasMemoryCache = null;
+    this.cachedKomoditasRawSignature = null;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.SETORAN_CENGKEH_RECONCILIATION, JSON.stringify(cleaned));
     }
@@ -5520,6 +5551,8 @@ export class GasService {
 
   public static saveCachedSetoran(data: SetoranEntry[], skipNotify: boolean = false): void {
     const cleaned = this.cleanSetoranEntries(data);
+    this.enrichedKomoditasMemoryCache = null;
+    this.cachedKomoditasRawSignature = null;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.SETORAN_RECONCILIATION, JSON.stringify(cleaned));
     }
