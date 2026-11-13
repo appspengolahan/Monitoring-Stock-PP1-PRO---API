@@ -28,6 +28,7 @@ const STORAGE_KEYS = {
 
 export class GasService {
   private static gasUrl: string = typeof localStorage !== 'undefined' ? (localStorage.getItem(STORAGE_KEYS.GAS_URL) || DEFAULT_GAS_URL) : DEFAULT_GAS_URL;
+  private static hasLocalProxyApi: boolean | null = typeof window === 'undefined' ? true : null;
 
   public static getGasUrl(): string {
     return this.gasUrl;
@@ -6067,7 +6068,7 @@ export class GasService {
     return result;
   }
 
-  // --- Network Fetch with Fast Server Proxy & Graceful Timeout (with Direct GAS Fallback for Cloudflare / Static Hosting) ---
+  // --- Network Fetch with Fast Server Proxy & Graceful Timeout (with Direct GAS/CSV Fallback for Cloudflare / Static Hosting) ---
   public static async fetchWithTimeout(url: string, timeoutMs: number = 20000): Promise<any> {
     const controller = new AbortController();
     const timeoutMsg = `Waktu tunggu permintaan habis (${timeoutMs}ms) untuk: ${url}`;
@@ -6083,17 +6084,41 @@ export class GasService {
       try {
         const directRes = await fetch(url, {
           signal: controller.signal,
-          headers: { 'Accept': 'application/json, text/plain, */*' }
+          headers: { 'Accept': 'application/json, text/csv, text/plain, */*' }
         });
-        const directJson = await directRes.json().catch(() => null);
-        if (directJson && typeof directJson === 'object') {
-          return directJson;
+        const rawText = await directRes.text();
+        if (!rawText) return null;
+        try {
+          const directJson = JSON.parse(rawText);
+          if (directJson && typeof directJson === 'object') {
+            return directJson;
+          }
+        } catch {
+          if (!rawText.trim().startsWith('<')) {
+            return rawText;
+          }
         }
       } catch (directErr) {
-        console.warn('Direct GAS fetch notice:', directErr);
+        console.warn('Direct GAS/Sheet fetch notice:', directErr);
       }
       return null;
     };
+
+    // Jika terdeteksi berjalan di static hosting (Cloudflare Workers) tanpa Express /api, langsung fetch ke GAS / Google Sheets
+    if (this.hasLocalProxyApi === false) {
+      try {
+        const direct = await tryDirectFetch();
+        clearTimeout(id);
+        if (direct !== null) return direct;
+        return { ok: false, fallback: true, error: 'Koneksi langsung sementara tidak tersedia' };
+      } catch (err: any) {
+        clearTimeout(id);
+        if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+          return { ok: false, fallback: true, timeout: true, error: timeoutMsg };
+        }
+        return { ok: false, fallback: true, error: err?.message || 'Koneksi gagal' };
+      }
+    }
 
     let proxyUrl = `/api/gas-proxy?url=${encodeURIComponent(url)}`;
     if (typeof window === 'undefined') {
@@ -6109,29 +6134,31 @@ export class GasService {
       });
       const contentType = res.headers.get('content-type') || '';
       
-      // Deteksi Cloudflare / Static SPA: Jika proxy mengembalikan HTML (karena server Express tidak ada), bypass langsung ke Google Apps Script
+      // Deteksi Cloudflare / Static SPA: Jika proxy mengembalikan HTML (karena server Express tidak ada), bypass langsung ke Google Apps Script / CSV
       if (contentType.includes('text/html')) {
+        this.hasLocalProxyApi = false;
         const direct = await tryDirectFetch();
         clearTimeout(id);
-        if (direct) return direct;
+        if (direct !== null) return direct;
         return { ok: false, fallback: true, error: 'Proxy mengembalikan HTML, koneksi langsung gagal' };
       }
 
+      this.hasLocalProxyApi = true;
       clearTimeout(id);
       const data = await res.json().catch(() => null);
       if (!data) {
         const direct = await tryDirectFetch();
-        if (direct) return direct;
+        if (direct !== null) return direct;
         return { ok: false, fallback: true, error: 'Respon server kosong' };
       }
       if (data.fallback) {
         const direct = await tryDirectFetch();
-        if (direct) return direct;
+        if (direct !== null) return direct;
         return data;
       }
       if (!res.ok || (data && data.isHtml)) {
         const direct = await tryDirectFetch();
-        if (direct) return direct;
+        if (direct !== null) return direct;
         throw new Error(data.error || `HTTP ${res.status}: Respon server tidak valid`);
       }
       return data;
@@ -6140,7 +6167,7 @@ export class GasService {
       try {
         const direct = await tryDirectFetch();
         clearTimeout(id);
-        if (direct) return direct;
+        if (direct !== null) return direct;
       } catch {}
       clearTimeout(id);
       if (err.name === 'AbortError' || err.message?.includes('aborted')) {

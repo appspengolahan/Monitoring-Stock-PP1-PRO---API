@@ -133,54 +133,74 @@ function parseDateIndoInternal(str: string): Date | null {
   return null;
 }
 
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+const TANGGAL_KEY_CACHE = new Map<string, string>();
+const FORMAT_INDO_CACHE = new Map<string, string>();
+const INDO_DATE_FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
+
+function getCachedIndoFormatter(key: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  let fmt = INDO_DATE_FORMATTER_CACHE.get(key);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('id-ID', options);
+    INDO_DATE_FORMATTER_CACHE.set(key, fmt);
+  }
+  return fmt;
+}
+
 /**
  * Normalisasi ke String Kunci Tanggal Kanonikal: 'YYYY-MM-DD'
- * Sangat presisi untuk pencarian, sorting, dan filter input type="date".
+ * Menggunakan konversi cepat WIB (Asia/Jakarta = UTC+7 permanen tanpa DST) + memoization
+ * sehingga bebas overhead pembuatan Intl.DateTimeFormat di dalam loop ribuan baris.
  */
 export function getTanggalKey(input: unknown): string {
-  const d = parseDateIndo(input);
-  if (!d) {
-    if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.slice(0, 10))) {
-      return input.slice(0, 10);
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if (!trimmed) return '';
+    // Fast-path: tanggal kanonikal YYYY-MM-DD tanpa waktu
+    if (trimmed.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
     }
-    return '';
+    const cached = TANGGAL_KEY_CACHE.get(trimmed);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const d = parseDateIndo(trimmed);
+    let res = '';
+    if (d) {
+      const wib = new Date(d.getTime() + WIB_OFFSET_MS);
+      const y = wib.getUTCFullYear();
+      const m = String(wib.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(wib.getUTCDate()).padStart(2, '0');
+      res = `${y}-${m}-${day}`;
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed.slice(0, 10))) {
+      res = trimmed.slice(0, 10);
+    }
+    if (TANGGAL_KEY_CACHE.size > 5000) {
+      TANGGAL_KEY_CACHE.clear();
+    }
+    TANGGAL_KEY_CACHE.set(trimmed, res);
+    return res;
   }
-  try {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Jakarta',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-    return formatter.format(d);
-  } catch {
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
+
+  const d = parseDateIndo(input);
+  if (!d) return '';
+  const wib = new Date(d.getTime() + WIB_OFFSET_MS);
+  const y = wib.getUTCFullYear();
+  const m = String(wib.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(wib.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 /**
  * Mengembalikan tanggal hari ini (hari/tanggal bulan tahun berjalan) dalam format 'YYYY-MM-DD'
- * Menggunakan zona waktu Asia/Jakarta (WIB) yang merupakan acuan waktu operasional PT Batu Karang
+ * Menggunakan zona waktu Asia/Jakarta (WIB = UTC+7) yang merupakan acuan waktu operasional PT Batu Karang
  */
 export function getTodayKey(): string {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Jakarta',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-    return formatter.format(new Date());
-  } catch {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
+  const wib = new Date(Date.now() + WIB_OFFSET_MS);
+  const y = wib.getUTCFullYear();
+  const m = String(wib.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(wib.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 /**
@@ -241,23 +261,53 @@ export function formatTanggalIndo(
 ): string {
   if (!input) return options?.fallback || '—';
 
-  const d = parseDateIndo(input);
-  if (!d) {
-    return typeof input === 'string' ? input : (options?.fallback || '—');
-  }
-
   const withWeekday = options?.withWeekday ?? true;
   const monthFormat = options?.monthFormat ?? 'short';
   const withYear = options?.withYear ?? true;
+  const optKey = `${withWeekday ? '1' : '0'}_${monthFormat}_${withYear ? '1' : '0'}`;
+
+  if (typeof input === 'string') {
+    const cacheKey = `${optKey}:${input}`;
+    const cached = FORMAT_INDO_CACHE.get(cacheKey);
+    if (cached !== undefined) return cached;
+
+    const d = parseDateIndo(input);
+    if (!d) return input;
+    let formatted: string;
+    try {
+      const fmt = getCachedIndoFormatter(optKey, {
+        timeZone: 'Asia/Jakarta',
+        weekday: withWeekday ? 'short' : undefined,
+        day: 'numeric',
+        month: monthFormat,
+        year: withYear ? 'numeric' : undefined
+      });
+      formatted = fmt.format(d);
+    } catch {
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth() + 1;
+      const day = d.getUTCDate();
+      formatted = `${day}/${m}/${y}`;
+    }
+    if (FORMAT_INDO_CACHE.size > 5000) FORMAT_INDO_CACHE.clear();
+    FORMAT_INDO_CACHE.set(cacheKey, formatted);
+    return formatted;
+  }
+
+  const d = parseDateIndo(input);
+  if (!d) {
+    return options?.fallback || '—';
+  }
 
   try {
-    return d.toLocaleDateString('id-ID', {
+    const fmt = getCachedIndoFormatter(optKey, {
       timeZone: 'Asia/Jakarta',
       weekday: withWeekday ? 'short' : undefined,
       day: 'numeric',
       month: monthFormat,
       year: withYear ? 'numeric' : undefined
     });
+    return fmt.format(d);
   } catch {
     const y = d.getUTCFullYear();
     const m = d.getUTCMonth() + 1;
@@ -276,18 +326,18 @@ export function formatDateTimeIndo(input: unknown): string {
   if (!d) return String(input);
 
   try {
-    const datePart = d.toLocaleDateString('id-ID', {
+    const dateFmt = getCachedIndoFormatter('dt_date', {
       timeZone: 'Asia/Jakarta',
       day: 'numeric',
       month: 'short',
       year: 'numeric'
     });
-    const timePart = d.toLocaleTimeString('id-ID', {
+    const timeFmt = getCachedIndoFormatter('dt_time', {
       timeZone: 'Asia/Jakarta',
       hour: '2-digit',
       minute: '2-digit'
     });
-    return `${datePart}, ${timePart} WIB`;
+    return `${dateFmt.format(d)}, ${timeFmt.format(d)} WIB`;
   } catch {
     return formatTanggalIndo(d);
   }
