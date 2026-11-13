@@ -33,7 +33,7 @@ export const DEFAULT_SWITCH_BOARDS: SwitchBoardItem[] = [
     id: 'cengkeh',
     nama: 'Rekap Proses Cengkeh',
     desc: 'Monitoring susut perajangan & drying cengkeh',
-    url: 'https://rekap-data-proses-cengkeh-pro-api-l.vercel.app/',
+    url: 'https://rekap-data-proses-cengkeh-pro-api.appspengolahan.workers.dev/',
     commodityKey: 'cengkeh',
     isCurrent: false,
     isCustom: false

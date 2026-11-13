@@ -191,7 +191,7 @@ export const SwitchAppModal: React.FC<SwitchAppModalProps> = ({
     setConfirmModal({
       isOpen: true,
       title: 'monitoring stock apps says',
-      message: 'Kembalikan setelan modul ke daftar default Vercel? Semua tautan kustom tambahan akan diatur ulang.',
+      message: 'Kembalikan setelan modul ke daftar default sistem (Cloudflare)? Semua tautan kustom tambahan akan diatur ulang.',
       confirmLabel: 'OK',
       cancelLabel: 'Cancel',
       onConfirm: () => {
