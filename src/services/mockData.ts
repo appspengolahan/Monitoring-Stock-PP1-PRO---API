@@ -13726,153 +13726,293 @@ export const INITIAL_BSPP_DATA: BSPPData[] = [
   },
   {
     "nama": "Tembakau Blend",
-    "jumlahEntri": 7,
+    "jumlahEntri": 23,
     "jenisList": [
-      "Blend A-101",
-      "Blend B-202",
-      "Blend Special 55",
-      "Blend Mild 21",
-      "Blend Export Red",
-      "Blend Premium 99",
-      "Blend Kretek Gold"
+      "153 - BK",
+      "KARANG - BK",
+      "F REG (LN,AVE) (KODE B)",
+      "FR LN - AVE",
+      "TIS - KBT24"
     ],
-    "totalLebih": 3,
-    "totalKurang": 4,
-    "totalTanpa": 0,
-    "rataRataAbsSelisihPersen": 0.18,
+    "totalLebih": 17,
+    "totalKurang": 1,
+    "totalTanpa": 5,
+    "rataRataAbsSelisihPersen": 0.56,
     "entries": [
       {
-        "tanggal": "2026-10-29T00:00:00.000Z",
-        "jenis": "Blend Special 55",
-        "labelNetto": 450.0,
-        "timbangUlang": 449.6,
-        "selisihKg": -0.4,
-        "selisihPersen": 0.09,
-        "status": "Selisih Kurang"
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "jenis": "KARANG - BK",
+        "labelNetto": 81.2,
+        "timbangUlang": 81.3,
+        "selisihKg": 0.1,
+        "selisihPersen": 0.12,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
       },
       {
-        "tanggal": "2026-10-29T00:00:00.000Z",
-        "jenis": "Blend Export Red",
-        "labelNetto": 520.0,
-        "timbangUlang": 520.5,
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 62.7,
+        "timbangUlang": 63.2,
         "selisihKg": 0.5,
-        "selisihPersen": 0.10,
-        "status": "Selisih Lebih"
+        "selisihPersen": 0.80,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
       },
       {
-        "tanggal": "2026-10-28T00:00:00.000Z",
-        "jenis": "Blend Premium 99",
-        "labelNetto": 380.0,
-        "timbangUlang": 379.4,
-        "selisihKg": -0.6,
-        "selisihPersen": 0.16,
-        "status": "Selisih Kurang"
+        "tanggal": "2026-11-11T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 43.1,
+        "timbangUlang": 44.1,
+        "selisihKg": 1.0,
+        "selisihPersen": 2.32,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
       },
       {
-        "tanggal": "2026-10-28T00:00:00.000Z",
-        "jenis": "Blend Mild 21",
-        "labelNetto": 410.0,
-        "timbangUlang": 410.3,
+        "tanggal": "2026-11-10T00:00:00.000Z",
+        "jenis": "TIS - KBT24",
+        "labelNetto": 28.0,
+        "timbangUlang": 28.0,
+        "selisihKg": 0.0,
+        "selisihPersen": 0.00,
+        "status": "Tanpa Selisih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-10T00:00:00.000Z",
+        "jenis": "KARANG - BK",
+        "labelNetto": 116.3,
+        "timbangUlang": 116.3,
+        "selisihKg": 0.0,
+        "selisihPersen": 0.00,
+        "status": "Tanpa Selisih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-10T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 59.7,
+        "timbangUlang": 60.0,
         "selisihKg": 0.3,
-        "selisihPersen": 0.07,
-        "status": "Selisih Lebih"
+        "selisihPersen": 0.50,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-09T00:00:00.000Z",
+        "jenis": "FR LN - AVE",
+        "labelNetto": 42.3,
+        "timbangUlang": 42.3,
+        "selisihKg": 0.0,
+        "selisihPersen": 0.00,
+        "status": "Tanpa Selisih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-09T00:00:00.000Z",
+        "jenis": "F REG (LN,AVE) (KODE B)",
+        "labelNetto": 24.7,
+        "timbangUlang": 24.6,
+        "selisihKg": -0.1,
+        "selisihPersen": 0.40,
+        "status": "Selisih Kurang",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-09T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 54.6,
+        "timbangUlang": 55.2,
+        "selisihKg": 0.6,
+        "selisihPersen": 1.10,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-06T00:00:00.000Z",
+        "jenis": "KARANG - BK",
+        "labelNetto": 19.2,
+        "timbangUlang": 19.5,
+        "selisihKg": 0.3,
+        "selisihPersen": 1.56,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "jenis": "KARANG - BK",
+        "labelNetto": 69.2,
+        "timbangUlang": 69.3,
+        "selisihKg": 0.1,
+        "selisihPersen": 0.14,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-05T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 52.1,
+        "timbangUlang": 52.7,
+        "selisihKg": 0.6,
+        "selisihPersen": 1.15,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-04T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 276.7,
+        "timbangUlang": 277.6,
+        "selisihKg": 0.9,
+        "selisihPersen": 0.33,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-03T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 416.4,
+        "timbangUlang": 417.2,
+        "selisihKg": 0.8,
+        "selisihPersen": 0.19,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-02T00:00:00.000Z",
+        "jenis": "FR LN - AVE",
+        "labelNetto": 19.6,
+        "timbangUlang": 19.8,
+        "selisihKg": 0.2,
+        "selisihPersen": 1.02,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-11-02T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 294.2,
+        "timbangUlang": 294.5,
+        "selisihKg": 0.3,
+        "selisihPersen": 0.10,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-10-30T00:00:00.000Z",
+        "jenis": "KARANG - BK",
+        "labelNetto": 14.8,
+        "timbangUlang": 14.9,
+        "selisihKg": 0.1,
+        "selisihPersen": 0.68,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-10-30T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 32.6,
+        "timbangUlang": 32.7,
+        "selisihKg": 0.1,
+        "selisihPersen": 0.31,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "KARANG - BK",
+        "labelNetto": 70.2,
+        "timbangUlang": 70.2,
+        "selisihKg": 0.0,
+        "selisihPersen": 0.00,
+        "status": "Tanpa Selisih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-10-29T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 43.9,
+        "timbangUlang": 43.9,
+        "selisihKg": 0.0,
+        "selisihPersen": 0.00,
+        "status": "Tanpa Selisih",
+        "suhuRuangan": 27.5
+      },
+      {
+        "tanggal": "2026-10-28T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 44.4,
+        "timbangUlang": 44.7,
+        "selisihKg": 0.3,
+        "selisihPersen": 0.68,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
       },
       {
         "tanggal": "2026-10-27T00:00:00.000Z",
-        "jenis": "Blend Kretek Gold",
-        "labelNetto": 480.0,
-        "timbangUlang": 479.2,
-        "selisihKg": -0.8,
-        "selisihPersen": 0.17,
-        "status": "Selisih Kurang"
+        "jenis": "KARANG - BK",
+        "labelNetto": 88.9,
+        "timbangUlang": 89.0,
+        "selisihKg": 0.1,
+        "selisihPersen": 0.11,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
       },
       {
-        "tanggal": "2026-10-26T00:00:00.000Z",
-        "jenis": "Blend A-101",
-        "labelNetto": 500.0,
-        "timbangUlang": 500.4,
-        "selisihKg": 0.4,
-        "selisihPersen": 0.08,
-        "status": "Selisih Lebih"
-      },
-      {
-        "tanggal": "2026-10-26T00:00:00.000Z",
-        "jenis": "Blend B-202",
-        "labelNetto": 350.0,
-        "timbangUlang": 349.3,
-        "selisihKg": -0.7,
-        "selisihPersen": 0.20,
-        "status": "Selisih Kurang"
+        "tanggal": "2026-10-27T00:00:00.000Z",
+        "jenis": "153 - BK",
+        "labelNetto": 19.7,
+        "timbangUlang": 20.0,
+        "selisihKg": 0.3,
+        "selisihPersen": 1.52,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 27.5
       }
     ]
   },
   {
     "nama": "Tembakau & Krosok (Rajang I)",
-    "jumlahEntri": 6,
+    "jumlahEntri": 3,
     "jenisList": [
-      "Krosok Rajang Madura 2024",
-      "Krosok Rajang Bojonegoro 2024",
-      "Krosok Rajang Paiton 2024",
-      "Krosok Rajang Garut 2024"
+      "Hang Madura 2024 (BAT)",
+      "Krs. Garut 2024 (MYN)",
+      "Krs. Garut 2025 (MYN)"
     ],
-    "totalLebih": 2,
-    "totalKurang": 4,
+    "totalLebih": 3,
+    "totalKurang": 0,
     "totalTanpa": 0,
-    "rataRataAbsSelisihPersen": 0.22,
+    "rataRataAbsSelisihPersen": 1.01,
     "entries": [
       {
-        "tanggal": "2026-10-29T00:00:00.000Z",
-        "jenis": "Krosok Rajang Madura 2024",
-        "labelNetto": 260.0,
-        "timbangUlang": 259.4,
-        "selisihKg": -0.6,
-        "selisihPersen": 0.23,
-        "status": "Selisih Kurang"
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "jenis": "Hang Madura 2024 (BAT)",
+        "labelNetto": 60.0,
+        "timbangUlang": 61.5,
+        "selisihKg": 1.5,
+        "selisihPersen": 2.50,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 29.5
       },
       {
-        "tanggal": "2026-10-29T00:00:00.000Z",
-        "jenis": "Krosok Rajang Bojonegoro 2024",
-        "labelNetto": 310.0,
-        "timbangUlang": 310.4,
-        "selisihKg": 0.4,
-        "selisihPersen": 0.13,
-        "status": "Selisih Lebih"
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "jenis": "Krs. Garut 2024 (MYN)",
+        "labelNetto": 285.3,
+        "timbangUlang": 285.8,
+        "selisihKg": 0.5,
+        "selisihPersen": 0.18,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 29.5
       },
       {
-        "tanggal": "2026-10-28T00:00:00.000Z",
-        "jenis": "Krosok Rajang Paiton 2024",
-        "labelNetto": 195.0,
-        "timbangUlang": 194.5,
-        "selisihKg": -0.5,
-        "selisihPersen": 0.26,
-        "status": "Selisih Kurang"
-      },
-      {
-        "tanggal": "2026-10-27T00:00:00.000Z",
-        "jenis": "Krosok Rajang Garut 2024",
-        "labelNetto": 180.0,
-        "timbangUlang": 179.6,
-        "selisihKg": -0.4,
-        "selisihPersen": 0.22,
-        "status": "Selisih Kurang"
-      },
-      {
-        "tanggal": "2026-10-26T00:00:00.000Z",
-        "jenis": "Krosok Rajang Madura 2024",
-        "labelNetto": 250.0,
-        "timbangUlang": 250.3,
-        "selisihKg": 0.3,
-        "selisihPersen": 0.12,
-        "status": "Selisih Lebih"
-      },
-      {
-        "tanggal": "2026-10-26T00:00:00.000Z",
-        "jenis": "Krosok Rajang Bojonegoro 2024",
-        "labelNetto": 280.0,
-        "timbangUlang": 279.3,
-        "selisihKg": -0.7,
-        "selisihPersen": 0.25,
-        "status": "Selisih Kurang"
+        "tanggal": "2026-11-12T00:00:00.000Z",
+        "jenis": "Krs. Garut 2025 (MYN)",
+        "labelNetto": 315.0,
+        "timbangUlang": 316.1,
+        "selisihKg": 1.1,
+        "selisihPersen": 0.35,
+        "status": "Selisih Lebih",
+        "suhuRuangan": 29.5
       }
     ]
   }

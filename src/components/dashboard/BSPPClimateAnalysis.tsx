@@ -22,10 +22,11 @@ export const BSPPClimateAnalysis: React.FC<BSPPClimateAnalysisProps> = ({
   currentData,
   filterJenis
 }) => {
-  const isBlend = (currentData?.nama || '').toLowerCase().includes('blend');
-  const isRajangII = (currentData?.nama || '').toLowerCase().includes('rajang ii') || 
-    ((currentData?.nama || '').toLowerCase().includes('tembakau') && !isBlend);
-  const isCengkeh = (currentData?.nama || '').toLowerCase().includes('cengkeh');
+  const nameLower = (currentData?.nama || '').toLowerCase();
+  const isBlend = nameLower.includes('blend');
+  const isRajangI = (nameLower.includes('rajang i') && !nameLower.includes('rajang ii')) || nameLower.includes('rajang 1');
+  const isRajangII = nameLower.includes('rajang ii') || (nameLower.includes('tembakau') && !isBlend && !isRajangI);
+  const isCengkeh = nameLower.includes('cengkeh');
 
   const entries = useMemo(() => {
     if (!currentData || !currentData.entries) return [];
@@ -82,6 +83,8 @@ export const BSPPClimateAnalysis: React.FC<BSPPClimateAnalysisProps> = ({
       let suhuRuang = 27.0;
       if (isRajangII) {
         suhuRuang = isDrySeason ? 31.7 : 29.4; // Mecah Lt 2 L8
+      } else if (isRajangI) {
+        suhuRuang = 29.5; // Gudang Rajang I
       } else if (isBlend) {
         suhuRuang = isDrySeason ? 29.7 : 27.5; // DATAMASTER Kolom N / DHP Blend
       } else {
@@ -104,7 +107,7 @@ export const BSPPClimateAnalysis: React.FC<BSPPClimateAnalysisProps> = ({
         kurangRatio: item.count > 0 ? Math.round((item.kurangCount / item.count) * 100) : 0
       };
     });
-  }, [entries, isBlend, isRajangII]);
+  }, [entries, isBlend, isRajangI, isRajangII]);
 
   // Sensitivitas susut per jenis bahan
   const varietySensitivity = useMemo(() => {
@@ -149,6 +152,11 @@ export const BSPPClimateAnalysis: React.FC<BSPPClimateAnalysisProps> = ({
                   <Flame className="w-4 h-4 text-amber-500" />
                   <span>Suhu Ruang Lt 2 (L8)</span>
                 </>
+              ) : isRajangI ? (
+                <>
+                  <Flame className="w-4 h-4 text-emerald-500" />
+                  <span>Suhu Gudang Rajang I</span>
+                </>
               ) : isBlend ? (
                 <>
                   <Activity className="w-4 h-4 text-blue-500" />
@@ -163,22 +171,25 @@ export const BSPPClimateAnalysis: React.FC<BSPPClimateAnalysisProps> = ({
             </span>
             <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
               isRajangII ? 'text-amber-600 bg-amber-50' :
+              isRajangI ? 'text-emerald-700 bg-emerald-50' :
               isBlend ? 'text-cyan-700 bg-cyan-50' :
               'text-slate-500 bg-slate-100'
             }`}>
               {isRajangII ? '+4.9°C vs Luar' :
+               isRajangI ? 'BSPP Hub Rajang I' :
                isBlend ? 'DHP & Master' :
                'Belum Dicatat'}
             </span>
           </div>
           <div className="text-xl sm:text-2xl font-bold font-mono text-slate-900 mt-1">
-            {isRajangII ? '31.7' : isBlend ? '28.0' : '26.8'} 
+            {isRajangII ? '31.7' : isRajangI ? '29.5' : isBlend ? '28.0' : '26.8'} 
             <span className="text-xs font-normal text-slate-500">
-              °C {isRajangII ? '(Maksimum Mecah)' : isBlend ? '(DHP Kolom W)' : '(Ambient Wagir)'}
+              °C {isRajangII ? '(Maksimum Mecah)' : isRajangI ? '(Gudang Rajang I)' : isBlend ? '(DHP Kolom W)' : '(Ambient Wagir)'}
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-1 leading-snug">
             {isRajangII ? 'Suhu gudang penyimpanan lantai 2 memiliki akumulasi panas tertinggi di area pemecahan.' :
+             isRajangI ? 'Suhu ruang penimbangan & perajangan Rajang I tercatat stabil pada 29,5°C saat sinkronisasi BSPP.' :
              isBlend ? 'Suhu batch proses mixing molen tercatat stabil pada Kertas Kerja DHP Blend.' :
              'Gudang cengkeh saat ini belum mencatat suhu fisik internal, mengacu pada iklim Wagir.'}
           </p>

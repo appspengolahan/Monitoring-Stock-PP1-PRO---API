@@ -247,6 +247,10 @@ export default function App() {
     GasService.refreshDHPReconciliation().then(() => {
       setKomoditasList(GasService.getCachedKomoditas());
     });
+    // Immediate direct BSPP Hub refresh for Blend & Rajang I
+    GasService.refreshBSPPHubDirect().then((bspp) => {
+      if (bspp && bspp.length > 0) setBsppList(bspp);
+    }).catch(() => {});
     // Sync users & custom roles from server across all devices
     GasService.syncUsersWithServer();
 

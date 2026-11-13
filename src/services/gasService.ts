@@ -34,6 +34,27 @@ export class GasService {
   private static syncInFlightPromise: Promise<{ success: boolean; message: string; durationMs: number; data?: { komoditas: KomoditasData[]; bspp: BSPPData[] } }> | null = null;
   private static reconInFlightPromise: Promise<DHPEntry[]> | null = null;
   private static lastReconSuccessAt: number = 0;
+  private static bsppHubInFlightPromise: Promise<BSPPData[]> | null = null;
+  private static lastBsppHubSuccessAt: number = 0;
+  private static readonly BSPP_CENTER_HUB_SHEET_ID = '1Qm3dLQaKpnwCRuIaGxR2UmVxV1MdxbTFvTVnnrRwoK8';
+  private static readonly DUMMY_BSPP_BLEND_NAMES = new Set([
+    'Blend A-101',
+    'Blend B-202',
+    'Blend Special 55',
+    'Blend Mild 21',
+    'Blend Export Red',
+    'Blend Premium 99',
+    'Blend Kretek Gold',
+    'FR LA BOLD - BK',
+    'F MILD STAR - BK',
+    'SP 153 - BK'
+  ]);
+  private static readonly DUMMY_BSPP_RAJANG_I_NAMES = new Set([
+    'Krosok Rajang Madura 2024',
+    'Krosok Rajang Bojonegoro 2024',
+    'Krosok Rajang Paiton 2024',
+    'Krosok Rajang Garut 2024'
+  ]);
 
   public static getGasUrl(): string {
     return this.gasUrl;
@@ -3238,137 +3259,267 @@ export class GasService {
 
   public static readonly DEFAULT_BLEND_BSPP: BSPPData = {
     nama: 'Tembakau Blend',
-    jumlahEntri: 7,
-    jenisList: ['153 - BK', 'KARANG - BK', 'FR LA BOLD - BK', 'F MILD STAR - BK', 'SP 153 - BK'],
-    totalLebih: 5,
-    totalKurang: 2,
-    totalTanpa: 0,
-    rataRataAbsSelisihPersen: 0.28,
+    jumlahEntri: INITIAL_BSPP_DATA[2]?.jumlahEntri || 23,
+    jenisList: INITIAL_BSPP_DATA[2]?.jenisList || ['153 - BK', 'KARANG - BK', 'F REG (LN,AVE) (KODE B)', 'FR LN - AVE', 'TIS - KBT24'],
+    totalLebih: INITIAL_BSPP_DATA[2]?.totalLebih || 17,
+    totalKurang: INITIAL_BSPP_DATA[2]?.totalKurang || 1,
+    totalTanpa: INITIAL_BSPP_DATA[2]?.totalTanpa || 5,
+    rataRataAbsSelisihPersen: INITIAL_BSPP_DATA[2]?.rataRataAbsSelisihPersen || 0.56,
     roomTemperature: TelemetryService.getBlendRoomTemperature(),
-    entries: [
-      {
-        tanggal: '2026-10-27T00:00:00.000Z',
-        jenis: '153 - BK',
-        labelNetto: 19.7,
-        timbangUlang: 20.0,
-        selisihKg: 0.3,
-        selisihPersen: 1.52,
-        status: 'Selisih Lebih'
-      },
-      {
-        tanggal: '2026-10-27T00:00:00.000Z',
-        jenis: 'KARANG - BK',
-        labelNetto: 88.9,
-        timbangUlang: 89.0,
-        selisihKg: 0.1,
-        selisihPersen: 0.11,
-        status: 'Selisih Lebih'
-      },
-      {
-        tanggal: '2026-10-16T00:00:00.000Z',
-        jenis: 'FR LA BOLD - BK',
-        labelNetto: 488.0,
-        timbangUlang: 489.0,
-        selisihKg: -1.0,
-        selisihPersen: -0.20,
-        status: 'Selisih Lebih'
-      },
-      {
-        tanggal: '2026-10-15T00:00:00.000Z',
-        jenis: 'F MILD STAR - BK',
-        labelNetto: 510.8,
-        timbangUlang: 512.5,
-        selisihKg: -1.7,
-        selisihPersen: -0.33,
-        status: 'Selisih Lebih'
-      },
-      {
-        tanggal: '2026-10-14T00:00:00.000Z',
-        jenis: 'SP 153 - BK',
-        labelNetto: 620.0,
-        timbangUlang: 618.2,
-        selisihKg: 1.8,
-        selisihPersen: 0.29,
-        status: 'Selisih Kurang'
-      },
-      {
-        tanggal: '2026-10-13T00:00:00.000Z',
-        jenis: 'KARANG - BK',
-        labelNetto: 840.5,
-        timbangUlang: 842.0,
-        selisihKg: -1.5,
-        selisihPersen: -0.18,
-        status: 'Selisih Lebih'
-      },
-      {
-        tanggal: '2026-10-12T00:00:00.000Z',
-        jenis: '153 - BK',
-        labelNetto: 1250.0,
-        timbangUlang: 1248.5,
-        selisihKg: 1.5,
-        selisihPersen: 0.12,
-        status: 'Selisih Kurang'
-      }
-    ]
+    entries: INITIAL_BSPP_DATA[2]?.entries || []
   };
 
   public static readonly DEFAULT_RAJANG_I_BSPP: BSPPData = {
     nama: 'Tembakau & Krosok (Rajang I)',
-    jumlahEntri: 0,
-    jenisList: ['Krs. Garut 2024 (MYN)', 'Hang Madura 2024 (BAT)', 'Amerika 2025 (BO1)'],
-    totalLebih: 0,
-    totalKurang: 0,
-    totalTanpa: 0,
-    rataRataAbsSelisihPersen: 0,
+    jumlahEntri: INITIAL_BSPP_DATA[3]?.jumlahEntri || 3,
+    jenisList: INITIAL_BSPP_DATA[3]?.jenisList || ['Hang Madura 2024 (BAT)', 'Krs. Garut 2024 (MYN)', 'Krs. Garut 2025 (MYN)'],
+    totalLebih: INITIAL_BSPP_DATA[3]?.totalLebih || 3,
+    totalKurang: INITIAL_BSPP_DATA[3]?.totalKurang || 0,
+    totalTanpa: INITIAL_BSPP_DATA[3]?.totalTanpa || 0,
+    rataRataAbsSelisihPersen: INITIAL_BSPP_DATA[3]?.rataRataAbsSelisihPersen || 1.01,
     roomTemperature: {
       hasData: true,
       lokasiRuang: 'Gudang Rajang I',
       suhuRataRata: 29.5,
       keterangan: 'Pencatatan suhu berkala Rajang I',
-      sumberSheet: 'BSPP TEMBAKAU KROSOK-RAJANG 1'
+      sumberSheet: 'BSPP TEMBAKAU & KROSOK (RAJANG I)'
     },
-    entries: []
+    entries: INITIAL_BSPP_DATA[3]?.entries || []
   };
+
+  private static parseBSPPHubNumber(raw: string | number | undefined): number {
+    if (typeof raw === 'number') return Number.isFinite(raw) ? raw : 0;
+    let s = String(raw ?? '').trim().replace(/%/g, '').replace(/\s+/g, '');
+    if (!s || s === '-') return 0;
+    if (s.includes(',') && s.includes('.')) {
+      s = s.replace(/\./g, '').replace(/,/g, '.');
+    } else if (s.includes(',')) {
+      s = s.replace(/,/g, '.');
+    }
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  private static buildBSPPEntrySignature(e: BSPPEntry): string {
+    const tgl = (e.tanggal || '').slice(0, 10);
+    const jns = (e.jenis || '').trim().toUpperCase();
+    const lbl = (Number(e.labelNetto) || 0).toFixed(1);
+    const tmb = (Number(e.timbangUlang) || 0).toFixed(1);
+    return `${tgl}|${jns}|${lbl}|${tmb}`;
+  }
+
+  private static summarizeBSPPBlock(existing: BSPPData, rawEntries: BSPPEntry[], isDummyCheck?: Set<string>): BSPPData {
+    const dedupMap = new Map<string, BSPPEntry>();
+    rawEntries.forEach((e) => {
+      if (!e || !e.jenis) return;
+      if (isDummyCheck && isDummyCheck.has(e.jenis.trim())) return;
+      dedupMap.set(this.buildBSPPEntrySignature(e), e);
+    });
+    const entries = Array.from(dedupMap.values()).sort((a, b) => {
+      const tA = (a.tanggal || '').slice(0, 10);
+      const tB = (b.tanggal || '').slice(0, 10);
+      return tB.localeCompare(tA);
+    });
+    const jenisSet = new Set<string>();
+    let totalLebih = 0;
+    let totalKurang = 0;
+    let totalTanpa = 0;
+    let absPctSum = 0;
+    entries.forEach((e) => {
+      if (e.jenis) jenisSet.add(e.jenis);
+      if ((e.status || '').includes('Lebih')) totalLebih++;
+      else if ((e.status || '').includes('Kurang')) totalKurang++;
+      else totalTanpa++;
+      absPctSum += Math.abs(Number(e.selisihPersen) || 0);
+    });
+    const rataRataAbsSelisihPersen = entries.length > 0
+      ? Math.round((absPctSum / entries.length) * 100) / 100
+      : 0;
+    return {
+      ...existing,
+      entries,
+      jumlahEntri: entries.length,
+      jenisList: Array.from(jenisSet),
+      totalLebih,
+      totalKurang,
+      totalTanpa,
+      rataRataAbsSelisihPersen
+    };
+  }
+
+  public static async fetchBSPPDirectFromHub(index: number, bustCache: boolean = false): Promise<BSPPEntry[]> {
+    const HUB_TABS: Record<number, string> = {
+      0: 'BSPP CENGKEH',
+      1: 'BSPP TEMBAKAU & KROSOK (RAJANG II)',
+      2: 'BSPP TEMBAKAU BLEND',
+      3: 'BSPP TEMBAKAU & KROSOK (RAJANG I)'
+    };
+    const tabName = HUB_TABS[index];
+    if (!tabName) return [];
+
+    try {
+      const url = `https://docs.google.com/spreadsheets/d/${this.BSPP_CENTER_HUB_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}${bustCache ? `&_t=${Date.now()}` : ''}`;
+      const res = await this.fetchWithTimeout(url, 15000);
+      const rawText = typeof res === 'string' ? res : '';
+      if (!rawText || rawText.length < 30 || rawText.trim().startsWith('<')) {
+        return [];
+      }
+
+      const lines = rawText.split(/\r?\n/);
+      const parsed: BSPPEntry[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const cols = this.parseCSVLine(line);
+        if (cols.length < 9) continue;
+
+        const rawTanggal = (cols[1] || '').trim();
+        const rawJenis = (cols[3] || '').trim();
+        if (!rawTanggal || !rawJenis || rawTanggal.toUpperCase() === 'TANGGAL' || rawJenis.toUpperCase().includes('JENIS')) {
+          continue;
+        }
+
+        const isoTanggal = normalizeDateToIso(rawTanggal, '');
+        if (!isoTanggal || isoTanggal.length < 10) continue;
+        const yearNum = parseInt(isoTanggal.slice(0, 4), 10);
+        if (isNaN(yearNum) || yearNum < 2020 || yearNum > 2100) continue;
+
+        const labelNetto = Math.round(this.parseBSPPHubNumber(cols[4]) * 100) / 100;
+        const timbangUlang = Math.round(this.parseBSPPHubNumber(cols[5]) * 100) / 100;
+        if (labelNetto <= 0 && timbangUlang <= 0) continue;
+
+        const diffTimbangMinusLabel = Math.round((timbangUlang - labelNetto) * 100) / 100;
+        const selisihKg = (index === 0 || index === 1)
+          ? Math.round((labelNetto - timbangUlang) * 100) / 100
+          : diffTimbangMinusLabel;
+
+        // Recompute exact selisih (%) mathematically to prevent 100x locale scaling bugs in Hub sheets
+        const selisihPersen = labelNetto > 0
+          ? Math.round((Math.abs(timbangUlang - labelNetto) / labelNetto) * 10000) / 100
+          : 0;
+
+        const rawStatus = (cols[8] || '').trim();
+        let status = rawStatus;
+        if (!status || (!status.includes('Lebih') && !status.includes('Kurang') && !status.includes('Tanpa') && !status.includes('Sesuai'))) {
+          status = diffTimbangMinusLabel > 0.001
+            ? 'Selisih Lebih'
+            : diffTimbangMinusLabel < -0.001
+              ? 'Selisih Kurang'
+              : 'Tanpa Selisih';
+        }
+
+        const rawSuhu = (cols[9] || '').trim();
+        const suhuVal = rawSuhu && rawSuhu !== '-' ? this.parseBSPPHubNumber(rawSuhu) : NaN;
+        const entry: BSPPEntry = {
+          tanggal: isoTanggal,
+          jenis: rawJenis,
+          labelNetto,
+          timbangUlang,
+          selisihKg,
+          selisihPersen,
+          status
+        };
+        if (Number.isFinite(suhuVal) && suhuVal > 10 && suhuVal < 60) {
+          entry.suhuRuangan = Math.round(suhuVal * 10) / 10;
+        }
+        parsed.push(entry);
+      }
+
+      return parsed;
+    } catch (err) {
+      console.warn(`fetchBSPPDirectFromHub(${index}) warning:`, err);
+      return [];
+    }
+  }
+
+  public static async refreshBSPPHubDirect(force: boolean = false): Promise<BSPPData[]> {
+    if (!force && this.bsppHubInFlightPromise) {
+      return this.bsppHubInFlightPromise;
+    }
+    if (!force && (Date.now() - this.lastBsppHubSuccessAt) < 15000) {
+      return this.getCachedBSPP();
+    }
+
+    this.bsppHubInFlightPromise = (async () => {
+      try {
+        const [blendEntries, rajangIEntries] = await Promise.all([
+          this.fetchBSPPDirectFromHub(2, force),
+          this.fetchBSPPDirectFromHub(3, force)
+        ]);
+        const currentList = [...this.getCachedBSPP()];
+        let changed = false;
+
+        if (blendEntries.length > 0 && currentList[2]) {
+          currentList[2] = this.summarizeBSPPBlock(
+            currentList[2],
+            blendEntries,
+            this.DUMMY_BSPP_BLEND_NAMES
+          );
+          changed = true;
+        }
+        if (rajangIEntries.length > 0 && currentList[3]) {
+          currentList[3] = this.summarizeBSPPBlock(
+            currentList[3],
+            rajangIEntries,
+            this.DUMMY_BSPP_RAJANG_I_NAMES
+          );
+          changed = true;
+        }
+
+        if (changed) {
+          this.saveCachedBSPP(currentList);
+          this.lastBsppHubSuccessAt = Date.now();
+        }
+        return this.getCachedBSPP();
+      } catch (err) {
+        console.warn('refreshBSPPHubDirect warning:', err);
+        return this.getCachedBSPP();
+      } finally {
+        this.bsppHubInFlightPromise = null;
+      }
+    })();
+
+    return this.bsppHubInFlightPromise;
+  }
 
   public static getCachedBSPP(): BSPPData[] {
     const enrichBSPP = (list: BSPPData[]): BSPPData[] => {
       let result = [...list];
 
-      // 1. Pastikan Tembakau Blend ada dan memiliki data terbaru (termasuk 27 Oktober 2026)
+      // 1. Bersihkan entri dummy lawas & pastikan Tembakau Blend memakai data riil terbaru (BSPP CENTER HUB)
       const blendIndex = result.findIndex(b => (b.nama || '').toLowerCase().includes('blend'));
       if (blendIndex === -1) {
         result.push(this.DEFAULT_BLEND_BSPP);
       } else {
         const blend = result[blendIndex];
-        const hasOct27 = (blend.entries || []).some(e => (e.tanggal || '').startsWith('2026-10-27'));
-        if (!hasOct27) {
-          const oct27Entries = this.DEFAULT_BLEND_BSPP.entries.filter(e => (e.tanggal || '').startsWith('2026-10-27'));
-          const mergedEntries = [...oct27Entries, ...(blend.entries || [])];
-          const jenisSet = new Set(blend.jenisList || []);
-          this.DEFAULT_BLEND_BSPP.jenisList.forEach(j => jenisSet.add(j));
-          result[blendIndex] = {
-            ...blend,
-            entries: mergedEntries,
-            jumlahEntri: mergedEntries.length,
-            jenisList: Array.from(jenisSet)
-          };
-        }
+        const cleanExisting = (blend.entries || []).filter(e => !this.DUMMY_BSPP_BLEND_NAMES.has((e.jenis || '').trim()));
+        const hasNovReal = cleanExisting.some(e => (e.tanggal || '').startsWith('2026-11'));
+        const combined = hasNovReal
+          ? cleanExisting
+          : [...this.DEFAULT_BLEND_BSPP.entries, ...cleanExisting];
+        result[blendIndex] = this.summarizeBSPPBlock(blend, combined, this.DUMMY_BSPP_BLEND_NAMES);
       }
 
-      // 2. Pastikan Tembakau & Krosok (Rajang I) terdaftar di daftar pilihan bahan
-      const hasRajangI = result.some(b => 
-        (b.nama || '').toLowerCase().includes('rajang i') || 
-        (b.nama || '').toLowerCase().includes('rajang 1')
-      );
-      if (!hasRajangI) {
+      // 2. Bersihkan entri dummy lawas & pastikan Tembakau & Krosok (Rajang I) memakai data riil terbaru (BSPP CENTER HUB)
+      const rajangIIndex = result.findIndex(b => {
+        const n = (b.nama || '').toLowerCase();
+        return (n.includes('rajang i') && !n.includes('rajang ii')) || n.includes('rajang 1');
+      });
+      if (rajangIIndex === -1) {
         result.push(this.DEFAULT_RAJANG_I_BSPP);
+      } else {
+        const rj1 = result[rajangIIndex];
+        const cleanExisting = (rj1.entries || []).filter(e => !this.DUMMY_BSPP_RAJANG_I_NAMES.has((e.jenis || '').trim()));
+        const combined = cleanExisting.length > 0 ? cleanExisting : this.DEFAULT_RAJANG_I_BSPP.entries;
+        result[rajangIIndex] = this.summarizeBSPPBlock(rj1, combined, this.DUMMY_BSPP_RAJANG_I_NAMES);
       }
 
       // 3. Pastikan Tembakau & Krosok (Rajang II) memiliki data transaksi November 2026
-      const rj2Index = result.findIndex(b => 
-        (b.nama || '').toLowerCase().includes('rajang ii') || 
-        ((b.nama || '').toLowerCase().includes('tembakau') && !(b.nama || '').toLowerCase().includes('blend') && !(b.nama || '').toLowerCase().includes('cengkeh') && !(b.nama || '').toLowerCase().includes('rajang i'))
-      );
+      const rj2Index = result.findIndex(b => {
+        const n = (b.nama || '').toLowerCase();
+        return n.includes('rajang ii') || (n.includes('tembakau') && !n.includes('blend') && !n.includes('cengkeh') && !n.includes('rajang i'));
+      });
       if (rj2Index !== -1) {
         const rj2 = result[rj2Index];
         const hasNov = (rj2.entries || []).some(e => (e.tanggal || '').startsWith('2026-11'));
@@ -3393,18 +3544,19 @@ export class GasService {
 
       return result.map(b => {
         const nameLower = (b.nama || '').toLowerCase();
+        const isR1 = (nameLower.includes('rajang i') && !nameLower.includes('rajang ii')) || nameLower.includes('rajang 1');
         if (nameLower.includes('blend')) {
           b.roomTemperature = TelemetryService.getBlendRoomTemperature();
-        } else if (nameLower.includes('rajang ii') || (nameLower.includes('tembakau') && !nameLower.includes('cengkeh') && !nameLower.includes('rajang i'))) {
-          b.roomTemperature = TelemetryService.getDefaultTobaccoRoomTemperature();
-        } else if (nameLower.includes('rajang i') || nameLower.includes('rajang 1')) {
+        } else if (isR1) {
           b.roomTemperature = {
             hasData: true,
             lokasiRuang: 'Gudang Rajang I',
             suhuRataRata: 29.5,
             keterangan: 'Pencatatan suhu berkala Rajang I',
-            sumberSheet: 'BSPP TEMBAKAU KROSOK-RAJANG 1'
+            sumberSheet: 'BSPP TEMBAKAU & KROSOK (RAJANG I)'
           };
+        } else if (nameLower.includes('rajang ii') || (nameLower.includes('tembakau') && !nameLower.includes('cengkeh'))) {
+          b.roomTemperature = TelemetryService.getDefaultTobaccoRoomTemperature();
         } else {
           // Cengkeh - tegas tidak memiliki sensor suhu fisik
           b.roomTemperature = {
@@ -6377,17 +6529,36 @@ export class GasService {
         }
       });
 
-      // Launch 4 BSPP in parallel stream (Cengkeh, Rajang II, Blend, Rajang I)
+      // Launch 4 BSPP in parallel stream (Cengkeh & Rajang II via GAS + Hub fallback; Blend & Rajang I direct from BSPP CENTER HUB)
       const bsppCommodityKeys = ['CENGKEH', 'RAJANG_II', 'BLEND', 'RAJANG_I'];
       const bsppPromises = [0, 1, 2, 3].map(async (b) => {
+        const key = bsppCommodityKeys[b];
         try {
-          const key = bsppCommodityKeys[b];
+          if (b === 2 || b === 3) {
+            if (this.bsppHubInFlightPromise) {
+              await this.bsppHubInFlightPromise.catch(() => []);
+            }
+            if ((Date.now() - this.lastBsppHubSuccessAt) < 15000) {
+              return { index: b, key, data: null };
+            }
+            const hubEntries = await this.fetchBSPPDirectFromHub(b, false);
+            return { index: b, key, data: hubEntries.length > 0 ? { entries: hubEntries, fromHub: true } : null };
+          }
           const bUrl = `${this.gasUrl}?action=getBSPPData&index=${b}&t=${Date.now()}`;
           const bRes = await this.fetchWithTimeout(bUrl, 18000);
           const bData = (bRes && bRes.data) || bRes;
+          const hasGasRecords = bData && ((Array.isArray(bData.records) && bData.records.length > 0) || (Array.isArray(bData.entries) && bData.entries.length > 0));
+          if (!hasGasRecords && b === 0) {
+            const hubEntries = await this.fetchBSPPDirectFromHub(0, false);
+            if (hubEntries.length > 0) return { index: b, key, data: { entries: hubEntries, fromHub: true } };
+          }
           return { index: b, key, data: bData };
         } catch (err) {
           console.warn(`Sinkronisasi BSPP index ${b} (${bsppCommodityKeys[b]}) dilewati:`, err);
+          if (b === 0) {
+            const hubEntries = await this.fetchBSPPDirectFromHub(0, false).catch(() => []);
+            if (hubEntries.length > 0) return { index: b, key, data: { entries: hubEntries, fromHub: true } };
+          }
           return { index: b, key: bsppCommodityKeys[b], data: null };
         }
       });
@@ -6580,7 +6751,20 @@ export class GasService {
           const rawData = res.value.data;
           const idx = res.value.index;
 
-          if (rawData && Array.isArray(rawData.records)) {
+          if (rawData && rawData.fromHub && Array.isArray(rawData.entries)) {
+            const prevEntries = currentBsppList[idx]?.entries || [];
+            if (rawData.entries.length === 0 && prevEntries.length > 0) return;
+            if (currentBsppList[idx]) {
+              const dummySet = idx === 2
+                ? this.DUMMY_BSPP_BLEND_NAMES
+                : idx === 3
+                  ? this.DUMMY_BSPP_RAJANG_I_NAMES
+                  : undefined;
+              currentBsppList[idx] = this.summarizeBSPPBlock(currentBsppList[idx], rawData.entries, dummySet);
+              if (idx === 2 || idx === 3) this.lastBsppHubSuccessAt = Date.now();
+              bsppUpdatedCount++;
+            }
+          } else if (rawData && Array.isArray(rawData.records)) {
             const prevEntries = currentBsppList[idx]?.entries || [];
             if (rawData.records.length === 0 && prevEntries.length > 0) {
               return; // Anti-Overwrite Guard: jangan timpa cache BSPP valid dengan records kosong
@@ -6597,13 +6781,6 @@ export class GasService {
 
             const jenisSet = new Set<string>();
             mappedEntries.forEach(e => { if (e.jenis) jenisSet.add(e.jenis); });
-
-            let lebih = 0, kurang = 0, tanpa = 0;
-            mappedEntries.forEach(e => {
-              if (e.status.includes('Lebih')) lebih++;
-              else if (e.status.includes('Kurang')) kurang++;
-              else tanpa++;
-            });
 
             if (currentBsppList[idx]) {
               const prevNovEntries = prevEntries.filter(e => (e.tanggal || '').startsWith('2026-11'));
@@ -6708,16 +6885,29 @@ export class GasService {
         }
       });
 
-      // 2. Tarik 4 Datasheet Rekap BSPP secara paralel
+      // 2. Tarik 4 Datasheet Rekap BSPP secara paralel (Blend & Rajang I langsung dari BSPP CENTER HUB)
       if (onProgress) onProgress('Menarik 4 Datasheet Rekap BSPP...', 55);
       const bsppPromises = [0, 1, 2, 3].map(async (b) => {
         try {
+          if (b === 2 || b === 3) {
+            const hubEntries = await this.fetchBSPPDirectFromHub(b, true);
+            return { index: b, data: hubEntries.length > 0 ? { entries: hubEntries, fromHub: true } : null };
+          }
           const bUrl = `${this.gasUrl}?action=getBSPPData&index=${b}&force=true&nocache=1&_t=${bustTimestamp}`;
           const bRes = await this.fetchWithTimeout(bUrl, 20000);
           const bData = (bRes && bRes.data) || bRes;
+          const hasGasRecords = bData && ((Array.isArray(bData.records) && bData.records.length > 0) || (Array.isArray(bData.entries) && bData.entries.length > 0));
+          if (!hasGasRecords && b === 0) {
+            const hubEntries = await this.fetchBSPPDirectFromHub(0, true);
+            if (hubEntries.length > 0) return { index: b, data: { entries: hubEntries, fromHub: true } };
+          }
           return { index: b, data: bData };
         } catch (err) {
           console.warn(`Force sync BSPP index ${b} dilewati:`, err);
+          if (b === 0) {
+            const hubEntries = await this.fetchBSPPDirectFromHub(0, true).catch(() => []);
+            if (hubEntries.length > 0) return { index: b, data: { entries: hubEntries, fromHub: true } };
+          }
           return { index: b, data: null };
         }
       });
@@ -6902,8 +7092,21 @@ export class GasService {
       bsppResults.forEach((res) => {
         if (res.status === 'fulfilled' && res.value?.data && !res.value.data.error && !res.value.data.fallback && res.value.data.ok !== false) {
           const bsppItem = res.value.data;
-          const prevEntries = currentBsppList[res.value.index]?.entries || [];
-          if (Array.isArray(bsppItem.records)) {
+          const idx = res.value.index;
+          const prevEntries = currentBsppList[idx]?.entries || [];
+          if (bsppItem.fromHub && Array.isArray(bsppItem.entries)) {
+            if (bsppItem.entries.length === 0 && prevEntries.length > 0) return;
+            if (currentBsppList[idx]) {
+              const dummySet = idx === 2
+                ? this.DUMMY_BSPP_BLEND_NAMES
+                : idx === 3
+                  ? this.DUMMY_BSPP_RAJANG_I_NAMES
+                  : undefined;
+              currentBsppList[idx] = this.summarizeBSPPBlock(currentBsppList[idx], bsppItem.entries, dummySet);
+              if (idx === 2 || idx === 3) this.lastBsppHubSuccessAt = Date.now();
+              bsppUpdatedCount++;
+            }
+          } else if (Array.isArray(bsppItem.records)) {
             if (bsppItem.records.length === 0 && prevEntries.length > 0) return;
             const mappedEntries: BSPPEntry[] = bsppItem.records.map((r: any) => ({
               tanggal: r.tanggal ? (r.tanggal.includes('T') ? r.tanggal : `${r.tanggal}T00:00:00.000Z`) : '',
@@ -6919,8 +7122,8 @@ export class GasService {
             const mergedEntries = (!newHasNov && prevNovEntries.length > 0)
               ? [...prevNovEntries, ...mappedEntries]
               : mappedEntries;
-            currentBsppList[res.value.index] = {
-              ...currentBsppList[res.value.index],
+            currentBsppList[idx] = {
+              ...currentBsppList[idx],
               entries: mergedEntries,
               jumlahEntri: mergedEntries.length
             };
@@ -6933,7 +7136,7 @@ export class GasService {
               ? [...prevNovEntries, ...bsppItem.entries]
               : bsppItem.entries;
 
-            currentBsppList[res.value.index] = {
+            currentBsppList[idx] = {
               ...bsppItem,
               entries: mergedEntries,
               jumlahEntri: mergedEntries.length
@@ -6953,7 +7156,7 @@ export class GasService {
       return {
         success: true,
         durationMs,
-        message: `Tarik Datasheet Berhasil! Diperbarui langsung dari Google Spreadsheet dalam ${(durationMs / 1000).toFixed(2)}s (${komoditasUpdatedCount}/4 bahan & ${bsppUpdatedCount}/2 BSPP).`,
+        message: `Tarik Datasheet Berhasil! Diperbarui langsung dari Google Spreadsheet dalam ${(durationMs / 1000).toFixed(2)}s (${komoditasUpdatedCount}/4 bahan & ${bsppUpdatedCount}/4 BSPP).`,
         data: {
           komoditas: this.getCachedKomoditas(),
           bspp: this.getCachedBSPP()

@@ -51,20 +51,21 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
   // Ambil data suhu ruangan yang sesuai dengan komoditas aktif
   const roomData: BSPPRoomTemperature = roomTemperature || TelemetryService.getRoomTemperatureForKomoditas(currentKomoditas);
 
-  const isBlend = currentKomoditas.toLowerCase().includes('blend');
-  const isRajangII = currentKomoditas.toLowerCase().includes('rajang ii') || 
-    (currentKomoditas.toLowerCase().includes('tembakau') && !isBlend);
-  const hasRoomData = roomData.hasData !== false && (isBlend || isRajangII);
+  const nameLower = currentKomoditas.toLowerCase();
+  const isBlend = nameLower.includes('blend');
+  const isRajangI = (nameLower.includes('rajang i') && !nameLower.includes('rajang ii')) || nameLower.includes('rajang 1');
+  const isRajangII = nameLower.includes('rajang ii') || (nameLower.includes('tembakau') && !isBlend && !isRajangI);
+  const hasRoomData = roomData.hasData !== false && (isBlend || isRajangI || isRajangII);
 
   const tOutdoor = telemetry?.temperature ?? 26.5;
   const rhOutdoor = telemetry?.relativeHumidity ?? 73;
   const vpdOutdoor = telemetry?.vpdKpa ?? TelemetryService.calculateVPD(tOutdoor, rhOutdoor);
 
   // Suhu ruangan internal
-  const tHarian = roomData.suhuHarian ?? (isBlend ? 27.5 : 29.8);
-  const tRataRata = roomData.suhuRataRata ?? (isBlend ? 27.5 : 29.6);
-  const tMaxOrLt2 = roomData.suhuLt2 ?? (isBlend ? 28.0 : 31.7);
-  const tSesi3 = roomData.suhuSesiLanjutan ?? (isBlend ? 29.7 : 30.4);
+  const tHarian = roomData.suhuHarian ?? (isBlend ? 27.5 : isRajangI ? 29.5 : 29.8);
+  const tRataRata = roomData.suhuRataRata ?? (isBlend ? 27.5 : isRajangI ? 29.5 : 29.6);
+  const tMaxOrLt2 = roomData.suhuLt2 ?? (isBlend ? 28.0 : isRajangI ? 29.5 : 31.7);
+  const tSesi3 = roomData.suhuSesiLanjutan ?? (isBlend ? 29.7 : isRajangI ? 29.5 : 30.4);
 
   // Delta Termal antara Titik Hangat Ruangan dan Udara Luar Wagir
   const deltaT = Math.round((tMaxOrLt2 - tOutdoor) * 10) / 10;
@@ -130,6 +131,7 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
               <Building2 className="w-4 h-4 text-amber-400" />
               <span>
                 {isRajangII ? 'Suhu Fisik Gudang (Tembakau Mecah)' : 
+                 isRajangI ? 'Suhu Fisik Gudang (Rajang I)' :
                  isBlend ? 'Suhu Fisik Proses (Molen & DHP Blend)' : 
                  `Suhu Fisik (${currentKomoditas})`}
               </span>
@@ -137,11 +139,14 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
             <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
               isRajangII 
                 ? 'text-amber-300 bg-amber-950/60 border-amber-700' 
+                : isRajangI
+                  ? 'text-emerald-300 bg-emerald-950/60 border-emerald-700'
                 : isBlend 
                   ? 'text-cyan-300 bg-cyan-950/60 border-cyan-700' 
                   : 'text-slate-400 bg-slate-900/60 border-slate-700'
             }`}>
               {isRajangII ? 'Sheet Mecah: Suhu Harian & L7, L8, L58' : 
+               isRajangI ? 'BSPP CENTER HUB (Rajang I)' :
                isBlend ? 'DHP Kolom W & DATAMASTER Kolom N' : 
                'Belum Ada Sensor Fisik'}
             </span>
@@ -291,6 +296,52 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
             </>
           )}
 
+          {/* KONDISI 2b: Tembakau & Krosok (Rajang I) */}
+          {isRajangI && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-slate-900/70 p-2.5 rounded-lg border border-emerald-700/60">
+                  <div className="text-[10px] text-emerald-300 flex items-center gap-1 mb-0.5 font-semibold">
+                    <Thermometer className="w-3 h-3 text-emerald-400" />
+                    <span className="truncate">Suhu Ruang Rajang I</span>
+                  </div>
+                  <div className="text-lg sm:text-xl font-bold font-mono text-emerald-300">
+                    {tRataRata.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                    <span className="text-xs font-normal text-slate-400 ml-0.5">°C</span>
+                  </div>
+                  <span className="text-[9.5px] text-slate-400 block mt-0.5 leading-tight">
+                    Tercatat pada Hub BSPP
+                  </span>
+                </div>
+
+                <div className="bg-slate-900/70 p-2.5 rounded-lg border border-slate-700/80">
+                  <div className="text-[10px] text-cyan-300 flex items-center gap-1 mb-0.5 font-semibold">
+                    <Activity className="w-3 h-3 text-cyan-400" />
+                    <span className="truncate">Delta Termal vs Luar</span>
+                  </div>
+                  <div className="text-lg sm:text-xl font-bold font-mono text-white">
+                    {deltaT > 0 ? `+${deltaT}` : deltaT}
+                    <span className="text-xs font-normal text-slate-400 ml-0.5">°C</span>
+                  </div>
+                  <span className="text-[9.5px] text-slate-400 block mt-0.5 leading-tight">
+                    Stabil terkendali
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-700">
+                <span className="text-slate-300 flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Sumber Live: BSPP CENTER HUB (Rajang I)</span>
+                </span>
+                <span className="text-emerald-400 text-[10.5px] font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Tersinkronisasi</span>
+                </span>
+              </div>
+            </>
+          )}
+
           {/* KONDISI 3: Cengkeh atau komoditas tanpa pencatatan suhu fisik */}
           {!hasRoomData && (
             <div className="bg-slate-900/80 rounded-lg p-3.5 border border-slate-700/80 space-y-2">
@@ -397,6 +448,10 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
                 <>
                   {vpdInterpretation.dampakSusut} Jika terjadi selisih minus pada penimbangan tembakau di Lantai 2, sistem menandai sebagai <strong className="text-amber-300">susut evaporasi termal wajar</strong>, bukan kehilangan fisik.
                 </>
+              ) : isRajangI ? (
+                <>
+                  {vpdInterpretation.dampakSusut} Penimbangan Tembakau &amp; Krosok (Rajang I) tersinkronisasi langsung dengan <strong className="text-emerald-300">BSPP CENTER HUB</strong> pada kondisi ruang stabil ({tRataRata}°C).
+                </>
               ) : isBlend ? (
                 <>
                   {vpdInterpretation.dampakSusut} Selisih berat tembakau blend terverifikasi selaras dengan dinamika suhu batch molen (<strong className="text-cyan-300">{tRataRata}°C - {tMaxOrLt2}°C</strong>) pada Kertas Kerja DHP Blend.
@@ -412,7 +467,7 @@ export const BSPPTelemetryWidget: React.FC<BSPPTelemetryWidgetProps> = ({
 
         <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/80 border border-slate-700 text-[10.5px] text-slate-400">
           <Info className="w-3 h-3 text-blue-400" />
-          <span>{isBlend ? 'DHP & DATAMASTER' : isRajangII ? 'Tetens VPD & L8 Mecah' : 'Ambient Open-Meteo'}</span>
+          <span>{isBlend ? 'DHP & DATAMASTER' : isRajangI ? 'BSPP Hub Rajang I' : isRajangII ? 'Tetens VPD & L8 Mecah' : 'Ambient Open-Meteo'}</span>
         </div>
       </div>
     </div>

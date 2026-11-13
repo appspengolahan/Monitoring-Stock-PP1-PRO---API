@@ -33,10 +33,11 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
   const [filterGranularity, setFilterGranularity] = useState<'bulan' | 'entri'>('bulan');
 
   const currentData = bsppList[selectedBahanIndex] || bsppList[0];
-  const isBlend = (currentData?.nama || '').toLowerCase().includes('blend');
-  const isRajangII = (currentData?.nama || '').toLowerCase().includes('rajang ii') || 
-    ((currentData?.nama || '').toLowerCase().includes('tembakau') && !isBlend);
-  const isTobacco = isBlend || isRajangII;
+  const nameLower = (currentData?.nama || '').toLowerCase();
+  const isBlend = nameLower.includes('blend');
+  const isRajangI = (nameLower.includes('rajang i') && !nameLower.includes('rajang ii')) || nameLower.includes('rajang 1');
+  const isRajangII = nameLower.includes('rajang ii') || (nameLower.includes('tembakau') && !isBlend && !isRajangI);
+  const isTobacco = isBlend || isRajangI || isRajangII;
 
   const formatNumber = (n: number): string => {
     return Number(n).toLocaleString('id-ID', {
@@ -169,7 +170,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
       else tanpa++;
     });
 
-    const totalSelisihKg = sumLabel - sumTimbang;
+    const totalSelisihKg = (isBlend || isRajangI) ? (sumTimbang - sumLabel) : (sumLabel - sumTimbang);
     const totalSelisihPersen = sumLabel > 0 ? (totalSelisihKg / sumLabel) * 100 : 0;
 
     return {
@@ -232,11 +233,13 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
         map[mKey][e.jenis] = { sumLabel: 0, sumSelisih: 0 };
       }
       map[mKey][e.jenis].sumLabel += e.labelNetto || 0;
-      map[mKey][e.jenis].sumSelisih += (e.labelNetto - e.timbangUlang);
+      map[mKey][e.jenis].sumSelisih += (isBlend || isRajangI)
+        ? (e.timbangUlang - e.labelNetto)
+        : (e.labelNetto - e.timbangUlang);
     });
 
     return map;
-  }, [filteredEntries]);
+  }, [filteredEntries, isBlend, isRajangI]);
 
   // Monthly aggregated data for bar chart (Lebih vs Kurang Kg)
   const monthlyBarData = useMemo(() => {
@@ -482,6 +485,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
           <CloudSun className="w-4 h-4 text-amber-600" />
           <span>
             {isBlend ? '2. Analisis Bulanan & Suhu Proses Blend (DHP & Master)' :
+             isRajangI ? '2. Analisis Bulanan & Suhu Gudang Rajang I' :
              isRajangII ? '2. Analisis Bulanan & Korelasi Suhu Ruang (Lt 2 vs Susut)' :
              '2. Analisis Bulanan & Iklim Makro Wagir'}
           </span>
@@ -1136,14 +1140,10 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
                 <td colSpan={7} className="py-12 text-center text-slate-500">
                   <div className="max-w-md mx-auto space-y-1.5">
                     <p className="font-semibold text-slate-800 text-sm">
-                      {currentData.nama.includes('Rajang I')
-                        ? 'Data BSPP Rajang I Saat Ini Kosong'
-                        : 'Tidak ada data BSPP yang cocok dengan filter atau periode terpilih.'}
+                      Tidak ada data BSPP yang cocok dengan filter atau periode terpilih.
                     </p>
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      {currentData.nama.includes('Rajang I')
-                        ? 'Data dummy sebelumnya telah dikosongkan. Sheet tujuan bersih dan siap menerima data riil saat jadwal penimbangan Rajang I berlangsung.'
-                        : 'Silakan sesuaikan pilihan jenis varian atau ubah periode waktu ke "Semua" untuk melihat entri lainnya.'}
+                      Silakan sesuaikan pilihan jenis varian atau ubah periode waktu ke "Semua Periode" untuk melihat entri lainnya.
                     </p>
                   </div>
                 </td>
