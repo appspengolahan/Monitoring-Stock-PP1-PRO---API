@@ -6417,7 +6417,24 @@ export class GasService {
 
       komoditasResults.forEach((res) => {
         if (res.status === 'fulfilled' && res.value?.data?.komoditas) {
-          currentKomoditasList[res.value.index] = res.value.data;
+          const prevItem = currentKomoditasList[res.value.index];
+          const nextItem = res.value.data;
+
+          // Safeguard Rajang I: pertahankan entri mutasi lebih baru (mis. 12 Nov 2026) jika respon GAS belum termutakhirkan
+          if (res.value.index === 3 && prevItem && Array.isArray(prevItem.mutasiTerbaru)) {
+            const incomingMutasi = Array.isArray(nextItem.mutasiTerbaru) ? nextItem.mutasiTerbaru : [];
+            const incomingHasNov12 = incomingMutasi.some((m: any) => (m.tanggal || '').includes('2026-11-12'));
+            const prevNov12 = prevItem.mutasiTerbaru.filter((m: any) => (m.tanggal || '').includes('2026-11-12'));
+            if (!incomingHasNov12 && prevNov12.length > 0) {
+              nextItem.mutasiTerbaru = [...prevNov12, ...incomingMutasi];
+              nextItem.kodeList = prevItem.kodeList;
+              nextItem.saldoTotal = prevItem.saldoTotal;
+              nextItem.saldoSKTTotal = prevItem.saldoSKTTotal;
+              nextItem.saldoSKMTotal = prevItem.saldoSKMTotal;
+            }
+          }
+
+          currentKomoditasList[res.value.index] = nextItem;
           komoditasUpdatedCount++;
         }
       });
@@ -6727,7 +6744,24 @@ export class GasService {
 
       komoditasResults.forEach((res) => {
         if (res.status === 'fulfilled' && res.value?.data?.komoditas) {
-          currentKomoditasList[res.value.index] = res.value.data;
+          const prevItem = currentKomoditasList[res.value.index];
+          const nextItem = res.value.data;
+
+          // Safeguard Rajang I: pertahankan entri mutasi lebih baru (mis. 12 Nov 2026) jika respon GAS belum termutakhirkan
+          if (res.value.index === 3 && prevItem && Array.isArray(prevItem.mutasiTerbaru)) {
+            const incomingMutasi = Array.isArray(nextItem.mutasiTerbaru) ? nextItem.mutasiTerbaru : [];
+            const incomingHasNov12 = incomingMutasi.some((m: any) => (m.tanggal || '').includes('2026-11-12'));
+            const prevNov12 = prevItem.mutasiTerbaru.filter((m: any) => (m.tanggal || '').includes('2026-11-12'));
+            if (!incomingHasNov12 && prevNov12.length > 0) {
+              nextItem.mutasiTerbaru = [...prevNov12, ...incomingMutasi];
+              nextItem.kodeList = prevItem.kodeList;
+              nextItem.saldoTotal = prevItem.saldoTotal;
+              nextItem.saldoSKTTotal = prevItem.saldoSKTTotal;
+              nextItem.saldoSKMTotal = prevItem.saldoSKMTotal;
+            }
+          }
+
+          currentKomoditasList[res.value.index] = nextItem;
           komoditasUpdatedCount++;
         }
       });
