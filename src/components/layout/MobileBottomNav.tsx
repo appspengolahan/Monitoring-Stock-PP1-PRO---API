@@ -74,7 +74,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       : 'grid-cols-5';
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 pb-[env(safe-area-inset-bottom)] shadow-lg">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)] shadow-lg transition-colors">
       <div className={`grid ${gridColsClass} items-center h-15`}>
         {tabs.map(tab => {
           const Icon = tab.icon;
@@ -85,10 +85,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               onClick={() => onSelectTab(tab.id)}
               className="flex flex-col items-center justify-center min-h-[44px] py-1 transition-colors group cursor-pointer"
             >
-              <div className={`p-1 rounded-xl transition-all ${isActive ? 'text-blue-700 bg-blue-50' : 'text-slate-500'}`}>
+              <div className={`p-1 rounded-xl transition-all ${isActive ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60' : 'text-slate-500 dark:text-slate-400'}`}>
                 <Icon className="w-5 h-5" />
               </div>
-              <span className={`text-[10.5px] font-medium tracking-tight mt-0.5 ${isActive ? 'text-blue-700 font-semibold' : 'text-slate-500'}`}>
+              <span className={`text-[10.5px] font-medium tracking-tight mt-0.5 ${isActive ? 'text-blue-700 dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'}`}>
                 {tab.label}
               </span>
             </button>
@@ -99,7 +99,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {showMenuBtn && (
           <button
             onClick={onOpenMenu}
-            className="flex flex-col items-center justify-center min-h-[44px] py-1 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+            className="flex flex-col items-center justify-center min-h-[44px] py-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
           >
             <div className="p-1 rounded-xl">
               <MoreHorizontal className="w-5 h-5" />

@@ -32,6 +32,7 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { StockEstimationService } from './services/stockEstimationService';
 import { useFullscreen } from './hooks/useFullscreen';
 import { usePWAInstall } from './hooks/usePWAInstall';
+import { useTheme } from './hooks/useTheme';
 import { 
   Wifi, 
   RotateCw, 
@@ -53,7 +54,9 @@ import {
   Bot,
   Sparkles,
   FileCheck2,
-  Share2
+  Share2,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 export default function App() {
@@ -98,9 +101,10 @@ export default function App() {
     return localStorage.getItem('monitoring_pp1_sidebar_collapsed') === 'true';
   });
 
-  // 3. Fullscreen & PWA Hooks
+  // 3. Fullscreen, PWA & Theme Hooks
   const { isFullscreen, toggleFullscreen } = useFullscreen();
   const { isInstalled, canInstall } = usePWAInstall();
+  const { theme, toggleTheme } = useTheme();
 
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarCollapsed(prev => {
@@ -411,7 +415,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="h-screen h-[100dvh] bg-slate-50 text-slate-900 flex flex-col font-sans select-none overflow-hidden">
+    <div className="h-screen h-[100dvh] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none overflow-hidden transition-colors duration-200">
       {/* Top Navigation */}
       <Navbar
         session={session}
@@ -442,6 +446,8 @@ export default function App() {
         onOpenInstall={() => setIsInstallOpen(true)}
         canInstall={canInstall}
         isInstalled={isInstalled}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Main Workspace: Sidebar + Content */}
@@ -466,6 +472,8 @@ export default function App() {
             onToggleFullscreen={toggleFullscreen}
             onOpenInstall={() => setIsInstallOpen(true)}
             isInstalled={isInstalled}
+            theme={theme}
+            onToggleTheme={toggleTheme}
           />
         </div>
 
@@ -680,7 +688,22 @@ export default function App() {
               </button>
             </div>
 
-            <div className="space-y-1 text-xs sm:text-sm font-semibold text-slate-700">
+            <div className="space-y-1 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">
+              {/* Mobile Theme Toggle */}
+              <button
+                type="button"
+                onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }}
+                className="w-full text-left p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between text-indigo-700 dark:text-amber-300 cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
+                  <span>{theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}</span>
+                </div>
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  {theme === 'dark' ? 'Gelap Aktif' : 'Terang Aktif'}
+                </span>
+              </button>
+
               {/* Mobile Fullscreen Toggle */}
               <button
                 onClick={() => { toggleFullscreen(); setIsMobileMenuOpen(false); }}

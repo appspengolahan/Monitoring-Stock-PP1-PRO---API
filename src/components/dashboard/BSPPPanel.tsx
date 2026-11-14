@@ -732,8 +732,8 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
               return (
                 <div key={jenis} className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
                   <span
-                    className="w-3 h-3 rounded-xs border-2"
-                    style={{ borderColor: color, backgroundColor: 'white' }}
+                    className="w-3 h-3 rounded-xs border-2 bg-white dark:bg-slate-900"
+                    style={{ borderColor: color }}
                   ></span>
                   <span className="truncate max-w-[160px]">{jenis}</span>
                 </div>
@@ -764,7 +764,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
                         y1={y}
                         x2={SVG_WIDTH - PADDING.right}
                         y2={y}
-                        stroke={isZero ? '#94a3b8' : '#e2e8f0'}
+                        className={isZero ? 'stroke-slate-400 dark:stroke-slate-500' : 'stroke-slate-200 dark:stroke-slate-800'}
                         strokeWidth={isZero ? '1.5' : '1'}
                         strokeDasharray={isZero ? undefined : '2,2'}
                       />
@@ -807,7 +807,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
                           y1={PADDING.top}
                           x2={x}
                           y2={PADDING.top + CHART_H}
-                          stroke="#f1f5f9"
+                          className="stroke-slate-100 dark:stroke-slate-800/70"
                           strokeWidth="1"
                         />
                         <text
@@ -830,7 +830,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
                         y1={PADDING.top}
                         x2={tick.x}
                         y2={PADDING.top + CHART_H}
-                        stroke="#f1f5f9"
+                        className="stroke-slate-100 dark:stroke-slate-800/70"
                         strokeWidth="1"
                       />
                       <text
@@ -919,10 +919,9 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
                           cx={pt.x}
                           cy={pt.y}
                           r={filterGranularity === 'bulan' ? 4 : 3}
-                          fill="#ffffff"
                           stroke={color}
                           strokeWidth={filterGranularity === 'bulan' ? 2.5 : 1.5}
-                          className="cursor-pointer hover:r-6 transition-all"
+                          className="fill-white dark:fill-slate-900 cursor-pointer hover:r-6 transition-all"
                         >
                           <title>{pt.label}</title>
                         </circle>
@@ -982,7 +981,7 @@ export const BSPPPanel: React.FC<BSPPPanelProps> = ({ bsppList }) => {
                         y1={y}
                         x2={SVG_WIDTH - PADDING.right}
                         y2={y}
-                        stroke="#e2e8f0"
+                        className="stroke-slate-200 dark:stroke-slate-800"
                         strokeWidth="1"
                         strokeDasharray={val === 0 ? undefined : '2,2'}
                       />

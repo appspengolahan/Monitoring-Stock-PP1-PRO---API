@@ -19,7 +19,9 @@ import {
   Bot,
   Sparkles,
   Sliders,
-  FileCheck2
+  FileCheck2,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { UserSession, PublicPortalConfig } from '../../types';
 import { PublicPortalService } from '../../services/publicPortalService';
@@ -42,6 +44,8 @@ interface SidebarProps {
   onToggleFullscreen?: () => void;
   onOpenInstall?: () => void;
   isInstalled?: boolean;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = React.memo(({
@@ -61,7 +65,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   isFullscreen = false,
   onToggleFullscreen,
   onOpenInstall,
-  isInstalled = false
+  isInstalled = false,
+  theme = 'light',
+  onToggleTheme
 }) => {
   const hasBsppAccess = React.useMemo(() => {
     if (!session.allowedKomoditas || session.allowedKomoditas.includes('*') || session.allowedKomoditas.includes('all')) {
@@ -475,6 +481,51 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
             </div>
           )}
         </div>
+
+        {/* Theme Toggle Action in Sidebar */}
+        {onToggleTheme && (
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
+                isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5 text-left'
+              } text-slate-300 hover:text-white hover:bg-slate-800/80`}
+              title={isCollapsed ? (theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap') : undefined}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-amber-400 shrink-0" />
+              ) : (
+                <Moon className="w-5 h-5 text-indigo-400 shrink-0" />
+              )}
+              {!isCollapsed && (
+                <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold truncate leading-tight text-slate-200">
+                      {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+                    </div>
+                    <div className="text-[10.5px] text-slate-500 truncate">
+                      {theme === 'dark' ? 'Aktifkan tampilan cerah' : 'Aktifkan tampilan gelap'}
+                    </div>
+                  </div>
+                  <span className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                    theme === 'dark'
+                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                      : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                  }`}>
+                    {theme === 'dark' ? 'DARK' : 'LIGHT'}
+                  </span>
+                </div>
+              )}
+            </button>
+            {isCollapsed && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-800 text-white rounded-lg shadow-xl text-xs whitespace-nowrap hidden group-hover:block z-50 border border-slate-700 pointer-events-none">
+                <div className="font-semibold text-white">{theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}</div>
+                <div className="text-[10px] text-slate-400">Ubah tema tampilan aplikasi</div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Fullscreen Quick Action in Sidebar */}
         {onToggleFullscreen && (
